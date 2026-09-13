@@ -180,6 +180,28 @@
   .leaflet-popup-content b{display:block; margin-bottom:3px; font-size:14px}
   .leaflet-popup-content a{color:var(--acc); font-size:12.5px; font-weight:700}
 
+  /* ============ AI panel ============ */
+  .ai{position:absolute; inset:0; z-index:20; background:var(--surf); display:none; flex-direction:column}
+  .ai.open{display:flex}
+  .aihead{display:flex; align-items:center; gap:8px; padding:11px 14px; border-bottom:1px solid var(--line); background:var(--card)}
+  .aihead b{font-size:15px; font-weight:800; flex:1}
+  .aihead button{font-size:12px; color:var(--muted); background:var(--soft); border-radius:99px; padding:5px 10px; font-weight:700}
+  .aimsgs{flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px}
+  .msg{max-width:88%; padding:10px 13px; border-radius:15px; font-size:14px; line-height:1.6; white-space:pre-wrap; word-break:break-word}
+  .msg.u{align-self:flex-end; background:var(--ink); color:var(--surf); border-bottom-right-radius:5px}
+  .msg.a{align-self:flex-start; background:var(--card); box-shadow:var(--sh); border-bottom-left-radius:5px}
+  .msg.sys{align-self:center; background:var(--gold-soft); font-size:12px; color:var(--ink2); padding:6px 12px; border-radius:99px}
+  .msg .did{display:block; margin-top:7px; font-size:12px; color:var(--acc); font-weight:800}
+  .aiwelcome{color:var(--muted); font-size:13px; text-align:center; padding:22px 12px; line-height:1.8}
+  .aichips{display:flex; gap:6px; padding:0 14px 8px; flex-wrap:wrap}
+  .aichips button{font-size:12px; background:var(--card); box-shadow:var(--sh); border-radius:99px; padding:6px 11px; color:var(--ink2); font-weight:700}
+  .aiin{display:flex; gap:8px; padding:10px 14px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:var(--card); align-items:flex-end}
+  .aiin textarea{flex:1; background:var(--soft); border-radius:13px; padding:10px 12px; resize:none; max-height:120px; font-size:14px; line-height:1.5}
+  .aiin button{width:38px; height:38px; border-radius:50%; background:var(--acc); color:#fff; font-size:16px; display:flex; align-items:center; justify-content:center; flex:0 0 auto}
+  .aiin button:disabled{opacity:.4}
+  .warnb{display:inline-block; font-size:10.5px; font-weight:800; color:#fff; background:var(--warn); border-radius:5px; padding:1px 5px; margin-left:6px; vertical-align:1px}
+  @media (max-width:820px){ .ai{position:fixed; inset:0; z-index:70} }
+
   /* ============ sheet / modal ============ */
   .sheet{position:fixed; inset:0; z-index:60; display:none}
   .sheet.show{display:block}
@@ -255,7 +277,7 @@
 
   <aside class="side" id="side">
     <div class="brand"><em>🧭</em> 旅程記錄</div>
-    <button class="aibtn" data-act="ai">✨ AI 助手 <small>第二浪</small></button>
+    <button class="aibtn" data-act="ai">✨ AI 助手</button>
     <div id="toc"></div>
     <div class="sfoot">
       <button data-act="trips">切換旅程</button>
@@ -280,6 +302,16 @@
     <div id="map"></div>
     <div class="mapbar" id="mapbar"></div>
     <button class="mapclose" data-act="closemap">收起</button>
+
+    <section class="ai" id="aiPanel">
+      <div class="aihead"><b>✨ AI 助手</b>
+        <button data-act="aiclear">新對話</button>
+        <button data-act="aiclose">收起</button></div>
+      <div class="aimsgs" id="aiMsgs"></div>
+      <div class="aichips" id="aiChips"></div>
+      <div class="aiin"><textarea id="aiText" rows="1" placeholder="問我行程嘅嘢，或者叫我改…"></textarea>
+        <button data-act="aisend" id="aiSend">↑</button></div>
+    </section>
   </section>
 
 </div>
@@ -294,7 +326,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260913-v2-3';
+  var APP_VER='20260913-v3-2';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -562,6 +594,155 @@
     $('pan').__onText=onText;
   }
 
+  // ---------- AI 助手（常駐對話）----------
+  var aiBusy=false;
+  function chatLog(){ var t=curTrip(); if(!t) return [];
+    if(!state.chat) state.chat={}; if(!state.chat[t.id]) state.chat[t.id]=[]; return state.chat[t.id]; }
+  function tripCtx(){
+    var t=curTrip(), ds=days(), L=[];
+    L.push('旅程：'+t.name+'｜目的地：'+(t.dest||'未填')+'｜'+(t.start||'?')+'→'+(t.end||'?')+'（'+ds.length+'日）｜貨幣：'+cur());
+    if(t.note) L.push('旅程筆記：'+String(t.note).slice(0,500));
+    tLists().forEach(function(l){
+      L.push('【清單 '+l.name+'】id='+l.id);
+      var a=listItems(l.id);
+      if(!a.length) L.push('  （空）');
+      a.forEach(function(x){ L.push('  '+x.id+' '+kd(x.kind).n+' '+x.name+(x.cost?' '+cur()+x.cost:'')+(x.note?' ／'+String(x.note).slice(0,60):'')); });
+    });
+    ds.forEach(function(d,i){
+      var a=dayItems(d);
+      L.push('【第'+(i+1)+'日 '+d+' 星期'+dow(d)+'】'+(a.length?'':'（空）'));
+      a.forEach(function(x){
+        L.push('  '+x.id+' '+(x.time||'--:--')+' '+kd(x.kind).n+' '+x.name+
+          (x.cost?' '+cur()+x.cost:'')+(x.lat?'':' [冇座標]')+(x.done?' [去咗]':'')+(x.note?' ／'+String(x.note).slice(0,60):''));
+      });
+      var lg=getLog(d); if(lg&&lg.text) L.push('  〔日誌〕'+String(lg.text).slice(0,150));
+    });
+    L.push('總使費：'+money(sumCost(tItems())));
+    return L.join('\n');
+  }
+  function sysPrompt(){
+    return '你係 Franki 個旅程助手。佢而家個行程喺下面，每行開頭係項目 id。\n'+
+      '用書面中文（香港用詞）答，簡短直接，唔好客套。\n\n'+
+      '【重要】講地點名嗰陣，只可以用你有信心真實存在嘅地方，用當地語言嘅正式名（例：金閣寺、一蘭 渋谷店）。'+
+      '唔肯定就照直講「呢個我唔肯定」，寧願少講，唔准作店名。\n\n'+
+      '如果要幫佢改行程，喺回覆最後加一個 JSON block（```json 開頭），格式：\n'+
+      '{"ops":[ ... ]}\n'+
+      'op 可以係：\n'+
+      '{"op":"add","to":"day:YYYY-MM-DD 或 list:<listId>","kind":"place|eat|stay|flight|car|note|check","name":"","time":"09:30","cost":0,"note":""}\n'+
+      '{"op":"set","id":"<id>","time":"","name":"","note":"","cost":0,"kind":"","done":true}\n'+
+      '{"op":"move","id":"<id>","to":"day:YYYY-MM-DD 或 list:<listId>"}\n'+
+      '{"op":"del","id":"<id>"}\n'+
+      '{"op":"newlist","name":""}\n'+
+      '淨係答問題、唔使改嘢就唔好出 JSON block。日期一定要係行程入面有嘅。\n\n'+
+      '=== 行程 ===\n'+tripCtx();
+  }
+  function aiOpen(){
+    if(!curTrip()){ alert('開咗旅程先'); return; }
+    $('aiPanel').classList.add('open');
+    $('mapwrap').classList.add('open');
+    renderChat();
+    setTimeout(function(){ try{ $('aiText').focus(); }catch(e){} },80);
+  }
+  function renderChat(){
+    var log=chatLog(), h='';
+    if(!log.length){
+      h='<div class="aiwelcome">我睇得到你成個行程。<br>可以問我嘢，亦可以叫我直接改。<br><br>改完會即刻反映喺左邊，撳頂部 ↶ 就復原到。</div>';
+    } else {
+      log.forEach(function(m){
+        if(m.r==='sys'){ h+='<div class="msg sys">'+esc(m.t)+'</div>'; return; }
+        h+='<div class="msg '+(m.r==='u'?'u':'a')+'">'+esc(m.t)+(m.did?'<span class="did">'+esc(m.did)+'</span>':'')+'</div>';
+      });
+    }
+    if(aiBusy) h+='<div class="msg a"><span class="spin"></span>諗緊…</div>';
+    $('aiMsgs').innerHTML=h;
+    $('aiMsgs').scrollTop=$('aiMsgs').scrollHeight;
+    var chips=['第幾日排得太密？','幫我填晒未有時間嘅項目','我總共使緊幾多錢？','想去清單有咩可以塞入行程？'];
+    $('aiChips').innerHTML=chips.map(function(c){ return '<button data-act="aichip">'+esc(c)+'</button>'; }).join('');
+    $('aiSend').disabled=aiBusy;
+  }
+  function stripOps(txt){
+    return String(txt).replace(/```json[\s\S]*?```/g,'').replace(/```[\s\S]*?```/g,'').trim();
+  }
+  function grabOps(txt){
+    var m=String(txt).match(/```json\s*([\s\S]*?)```/);
+    var raw=m? m[1] : null;
+    if(!raw){ var m2=String(txt).match(/\{[^{}]*"ops"[\s\S]*\}/); raw=m2?m2[0]:null; }
+    if(!raw) return null;
+    try{ var j=JSON.parse(raw.trim()); return Array.isArray(j.ops)?j.ops:null; }catch(e){ return null; }
+  }
+  function applyOps(ops){
+    var t=curTrip(); if(!t||!ops||!ops.length) return 0;
+    snap();
+    var n=0, fresh=[];
+    ops.forEach(function(o){
+      try{
+        if(!o||!o.op) return;
+        if(o.op==='add'){
+          var pp=String(o.to||'').split(':'), isDay=pp[0]==='day';
+          var date=isDay?pp[1]:null, listId=isDay?null:(pp[1]||(tLists()[0]||{}).id);
+          if(isDay && days().indexOf(date)<0) return;
+          if(!isDay && !listId) return;
+          var nm=String(o.name||'').trim(); if(!nm) return;
+          var x={id:uid(),tripId:t.id,kind:KINDS[o.kind]?o.kind:'place',listId:listId,date:date,
+                 ord:nextOrd(isDay?dayItems(date):listItems(listId)),time:String(o.time||''),
+                 name:nm.slice(0,120),lat:null,lng:null,addr:'',note:String(o.note||'').slice(0,400),
+                 cost:+o.cost||0,done:false,checks:[],ai:1};
+          state.items.push(x); fresh.push(x.id); n++;
+        }
+        else if(o.op==='del'){ var b=state.items.length;
+          state.items=state.items.filter(function(i){ return i.id!==o.id; }); if(state.items.length<b) n++; }
+        else if(o.op==='move'){ var x2=itemById(o.id); if(!x2||x2.tripId!==t.id) return;
+          var q=String(o.to||'').split(':');
+          if(q[0]==='day'){ if(days().indexOf(q[1])<0) return; x2.date=q[1]; x2.listId=null; }
+          else { if(!q[1]) return; x2.date=null; x2.listId=q[1]; }
+          x2.ord=nextOrd(x2.date?dayItems(x2.date):listItems(x2.listId)); n++; }
+        else if(o.op==='set'){ var x3=itemById(o.id); if(!x3||x3.tripId!==t.id) return;
+          if(o.name!=null) x3.name=String(o.name).slice(0,120);
+          if(o.time!=null) x3.time=String(o.time).slice(0,5);
+          if(o.note!=null) x3.note=String(o.note).slice(0,400);
+          if(o.cost!=null) x3.cost=+o.cost||0;
+          if(o.kind && KINDS[o.kind]) x3.kind=o.kind;
+          if(o.done!=null) x3.done=!!o.done;
+          n++; }
+        else if(o.op==='newlist'){ var ln=String(o.name||'').trim(); if(!ln) return;
+          state.lists.push({id:uid(),tripId:t.id,name:ln.slice(0,40),ord:tLists().length+1}); n++; }
+      }catch(e){}
+    });
+    if(n) save();
+    fresh.forEach(function(i){ geoQ.push(i); }); if(fresh.length) pumpGeo();
+    return n;
+  }
+  function aiSend(text){
+    var t=curTrip(); if(!t||aiBusy) return;
+    text=String(text||'').trim(); if(!text) return;
+    var log=chatLog();
+    log.push({r:'u',t:text});
+    if(log.length>40) log.splice(0,log.length-40);
+    aiBusy=true; renderChat();
+    if(MODE!=='cloud'){
+      log.push({r:'sys',t:'本機模式冇得駁 AI。入返暗號用雲端模式先。'});
+      aiBusy=false; renderChat(); return;
+    }
+    var msgs=[{role:'system',content:sysPrompt()}];
+    log.slice(-12).forEach(function(m){ if(m.r==='u') msgs.push({role:'user',content:m.t});
+      else if(m.r==='a') msgs.push({role:'assistant',content:m.t}); });
+    fetch(AI_URL,{method:'POST',headers:{apikey:SBK,Authorization:'Bearer '+SBK,'x-client-info':KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({messages:msgs})})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(j){
+        var txt=(j&&j.text)||'';
+        var ops=grabOps(txt), n=ops?applyOps(ops):0;
+        var lg=chatLog();
+        lg.push({r:'a', t:stripOps(txt)||'（冇嘢答）', did:n? '已經改咗 '+n+' 樣，唔啱撳 ↶ 復原':''});
+        aiBusy=false; save();
+        if($('aiPanel').classList.contains('open')) renderChat();
+      })
+      .catch(function(e){
+        chatLog().push({r:'sys',t:'駁唔到 AI（'+(e.message||e)+'）'});
+        aiBusy=false; renderChat();
+      });
+  }
+
   // ---------- render ----------
   function render(){
     if(!state) return;
@@ -651,7 +832,8 @@
       (idx?'<div class="idx" style="background:'+idx.c+'">'+idx.n+'</div>':'')+
       '<div class="grip">⠿</div>'+
       '<div class="ic">'+k.i+'</div>'+
-      '<div class="bd"><div class="t" data-act="focus" data-id="'+x.id+'">'+esc(x.name)+'</div>'+
+      '<div class="bd"><div class="t" data-act="focus" data-id="'+x.id+'">'+esc(x.name)+
+        (x.unverified?'<span class="warnb" title="地圖搵唔到呢個名，AI 可能作嘅">⚠ 查唔到</span>':'')+'</div>'+
       (meta.length?'<div class="m">'+meta.join(' · ')+'</div>':'')+
       (x.note?'<div class="nt">'+esc(x.note)+'</div>':'')+chk+'</div>'+
       '<div class="rt">'+(tl?'<span class="tm num">'+esc(tl)+'</span>':'')+
@@ -741,6 +923,24 @@
   function scrollTo(id){ var el=document.querySelector('.row[data-id="'+id+'"]'); if(el) el.scrollIntoView({block:'center',behavior:'smooth'}); }
 
   // ---------- geocode ----------
+  function destToken(){
+    var t=curTrip(); if(!t||!t.dest) return '';
+    return String(t.dest).split(/[・、,，\/／|｜]/)[0].trim().split(/\s*\(/)[0].trim();
+  }
+  // 順序試：名＋目的地第一個地名 → 淨個名。目的地寫「東京・北海道」呢類唔會再搞死查詢。
+  function nomTry(name, cb){
+    var d=destToken(), tries=[];
+    if(d) tries.push(name+' '+d);
+    tries.push(name);
+    (function go(i){
+      if(i>=tries.length){ cb([]); return; }
+      nom(tries[i], function(a){
+        if(a===null){ cb(null); return; }
+        if(a.length){ cb(a); return; }
+        if(i+1<tries.length) setTimeout(function(){ go(i+1); },1100); else cb([]);
+      });
+    })(0);
+  }
   function nom(q,cb){
     fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&addressdetails=1&accept-language=zh-HK,zh,en&q='+encodeURIComponent(q))
       .then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(a){ cb(a||[]); }).catch(function(){ cb(null); });
@@ -751,8 +951,9 @@
     var x=itemById(id); if(!x||x.lat){ pumpGeo(); return; }
     geoBusy=true; setSync('','定位緊…剩 '+(geoQ.length+1));
     var t=curTrip();
-    nom(x.name+(t&&t.dest?' '+t.dest:''),function(a){
-      if(a&&a[0]){ x.lat=+a[0].lat; x.lng=+a[0].lon; if(!x.addr) x.addr=shortAddr(a[0]); save(); }
+    nomTry(x.name,function(a){
+      if(a&&a[0]){ x.lat=+a[0].lat; x.lng=+a[0].lon; if(!x.addr) x.addr=shortAddr(a[0]); x.unverified=0; save(); }
+      else if(a && !a.length && x.ai){ x.unverified=1; save(true); }
       setTimeout(function(){ geoBusy=false; pumpGeo(); },1100);
     });
   }
@@ -899,8 +1100,7 @@
     if(!kd(scopeKind(scope)).geo){ showSug(scope,[],q); return; }
     showSug(scope,[],q);
     sugTimer=setTimeout(function(){
-      var t=curTrip();
-      nom(q+(t&&t.dest?' '+t.dest:''),function(arr){
+      nomTry(q,function(arr){
         var inp=document.querySelector('.add[data-scope="'+scope+'"] input');
         if(inp && inp.value.trim()===q) showSug(scope,arr,q);
       });
@@ -923,6 +1123,10 @@
         var i = sel? +sel.getAttribute('data-i') : -1;
         addItem(scope, i>=0? (sugData[i].name||sugData[i].display_name||'').split(',')[0] : q, i>=0? sugData[i] : null);
       }
+      return;
+    }
+    if(e.target.id==='aiText'){
+      if((e.key==='Enter'||e.keyCode===13) && !e.shiftKey){ e.preventDefault(); var v4=e.target.value; e.target.value=''; e.target.style.height=''; aiSend(v4); }
       return;
     }
     if((e.metaKey||e.ctrlKey)&&e.key==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
@@ -1072,7 +1276,12 @@
       var u='https://www.google.com/maps/dir/'+pts.map(function(x){return x.lat+','+x.lng;}).join('/');
       window.open(u,'_blank','noopener');
     }
-    else if(act==='ai'){ aiSheet(); }
+    else if(act==='ai'){ aiOpen(); }
+    else if(act==='aiclose'){ $('aiPanel').classList.remove('open'); if(innerWidth<=820) $('mapwrap').classList.remove('open'); }
+    else if(act==='aiclear'){ var t7=curTrip(); if(t7&&state.chat){ state.chat[t7.id]=[]; save(true); renderChat(); } }
+    else if(act==='aisend'){ var ta3=$('aiText'); var v3=ta3.value; ta3.value=''; ta3.style.height=''; aiSend(v3); }
+    else if(act==='aichip'){ aiSend(el.textContent); }
+    else if(act==='aitools'){ aiSheet(); }
     else if(act==='journal'){ journalSheet(el.getAttribute('data-d')); }
     else if(el.classList.contains('jm')){
       $('pan').querySelectorAll('.jm').forEach(function(b){ b.classList.remove('solid'); }); el.classList.add('solid');
@@ -1126,6 +1335,9 @@
     else if(act==='logout'){ try{ localStorage.removeItem('tripKey'); localStorage.removeItem('tripCache'); }catch(e){} location.reload(); }
   });
 
+  document.addEventListener('input',function(e){
+    if(e.target.id==='aiText'){ e.target.style.height='auto'; e.target.style.height=Math.min(120,e.target.scrollHeight)+'px'; }
+  });
   document.addEventListener('visibilitychange',function(){ if(!document.hidden) refreshIfChanged(); });
   setInterval(refreshIfChanged,45000);
   addEventListener('resize',function(){ if(map) map.invalidateSize(); });
