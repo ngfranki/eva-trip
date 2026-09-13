@@ -1,0 +1,14 @@
+{
+  "trip": { "name": "京都秋楓", "dest": "Kyoto, Japan", "start": "2026-09-13", "end": "2026-09-16", "cur": "HKD" },
+  "stops": [
+    { "name": "清水寺", "cat": "see", "date": "2026-09-13", "time": "09:30", "addr": "清水寺, Kiyomizu Slope, Kiyomizu 1-chōme", "note": "早點到避人。清水舞台看日出", "cost": 400, "done": true, "lat": 34.994303, "lng": 135.7844389 },
+    { "name": "金閣寺 Kyoto", "cat": "see", "date": null, "time": "", "addr": "鹿苑寺, Kinkakuji-chō, 馬喰町", "note": "金色舎利殿，上午光線最好", "cost": 500, "done": false, "lat": 35.0395293, "lng": 135.7295373 },
+    { "name": "伏見稻荷大社 Kyoto", "cat": "see", "date": null, "time": "", "addr": "伏见稻荷大社, Fushimi Ward, 京都市", "note": "千本鳥居，早上七點前人少", "cost": 0, "done": false, "lat": 34.9675192, "lng": 135.7797101 },
+    { "name": "嵐山竹林 Kyoto", "cat": "see", "date": null, "time": "", "addr": "Arashiyama Bamboo Grove, Ukyō Ward, 京都市", "note": "竹林小徑", "cost": 0, "done": false, "lat": 35.0167419, "lng": 135.6711482 },
+    { "name": "錨屋錨芳 Kyoto", "cat": "eat", "date": null, "time": "", "addr": "", "note": "錨魚飯，要排隊", "cost": 1200, "done": false, "lat": null, "lng": null }
+  ],
+  "logs": {
+    "2026-09-13": { "text": "落地第一日。早上九點半到清水寺，人已經唔少，但舞台嗰邊望落去成片山開始轉色。行完落斜食咗支抹茶雪糕，行到腳軟。", "mood": "🤩" }
+  },
+  "exportedAt": "匯出於 2026-09-13"
+}

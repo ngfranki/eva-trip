@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>旅程</title>
+<meta name="theme-color" content="#FAF6EB">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{ --bg:#FAF6EB; --ink:#3B3A19; --gold:#CEB991; --card:#FFFFFF; --muted:#8A876A; --line:#ECE5D3; --soft:#F4EFE2;
+    --see-soft:#E9F0E4; --eat-soft:#F8E6DC; --stay-soft:#E6ECF1; --go-soft:#EFE7F2; --buy-soft:#F8EFD2; --etc-soft:#EFEDE3;
+    --shadow:0 1px 3px rgba(0,0,0,.06), 0 8px 24px rgba(59,58,25,.05); }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1C1B14; --ink:#EDE8D6; --card:#26251C; --muted:#A39F86; --line:#3A382B; --soft:#302E22;
+      --see-soft:#2A3327; --eat-soft:#3D2C24; --stay-soft:#2A3138; --go-soft:#332B38; --buy-soft:#3B3422; --etc-soft:#302E24;
+      --shadow:0 1px 3px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3); } }
+  *{box-sizing:border-box}
+  html,body{margin:0; background:var(--bg); color:var(--ink)}
+  body{font-family:-apple-system,"PingFang HK",sans-serif; font-size:16px; line-height:1.45}
+  .app{max-width:480px; margin:0 auto; padding:18px 16px 40px}
+  h1{font-size:24px; margin:0 0 2px; font-weight:800; letter-spacing:-.01em}
+  .sub{font-size:13px; color:var(--muted); margin-bottom:16px}
+  .card{background:var(--card); border-radius:22px; box-shadow:var(--shadow); padding:16px; margin-bottom:14px}
+  .sech{display:flex; align-items:baseline; justify-content:space-between; margin:18px 2px 10px}
+  .sech h2{font-size:17px; margin:0; font-weight:800}
+  .sech span{font-size:13px; color:var(--muted)}
+  .stop{display:flex; gap:11px; padding:11px 0; border-top:1px dashed var(--line); align-items:flex-start}
+  .stop:first-child{border-top:0; padding-top:2px}
+  .tm{width:44px; flex:0 0 auto; text-align:right; font-size:13px; font-weight:800; font-variant-numeric:tabular-nums; padding-top:3px}
+  .ic{width:36px; height:36px; flex:0 0 auto; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:17px}
+  .bd{flex:1; min-width:0}
+  .bd b{font-size:15px; font-weight:700; display:block; word-break:break-word}
+  .bd .nt{font-size:13px; margin-top:3px; color:var(--muted); white-space:pre-wrap}
+  .bd .ad{font-size:12px; margin-top:1px; color:var(--muted)}
+  .see .ic{background:var(--see-soft)} .eat .ic{background:var(--eat-soft)} .stay .ic{background:var(--stay-soft)}
+  .go .ic{background:var(--go-soft)} .buy .ic{background:var(--buy-soft)} .etc .ic{background:var(--etc-soft)}
+  .done b{text-decoration:line-through; text-decoration-color:var(--muted); opacity:.6}
+  .jr{background:var(--soft); border-radius:16px; padding:13px 15px; margin-top:12px; white-space:pre-wrap; font-size:15px; line-height:1.6}
+  .jr .mo{font-size:18px; margin-right:6px}
+  #map{height:300px; border-radius:22px; box-shadow:var(--shadow); overflow:hidden; margin-bottom:14px}
+  .pin{background:var(--ink); color:var(--bg); width:26px; height:26px; border-radius:50% 50% 50% 4px; transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.35); border:2px solid #fff}
+  .pin b{transform:rotate(45deg); font-size:12px; font-weight:800}
+  .foot{text-align:center; font-size:11px; color:var(--muted); padding-top:18px}
+  .err{text-align:center; color:var(--muted); font-size:14px; padding:60px 20px; line-height:1.8}
+</style>
+</head>
+<body>
+<div class="app" id="app"><div class="err">載緊…</div></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  var CATS={see:'🏛',eat:'🍜',stay:'🏨',go:'🚆',buy:'🛍',etc:'📍'};
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function pad(n){ return (n<10?'0':'')+n; }
+  function parseD(s){ var p=String(s||'').split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
+  function dLabel(s){ var d=parseD(s); return (d.getMonth()+1)+'/'+d.getDate(); }
+  function dow(s){ return ['日','一','二','三','四','五','六'][parseD(s).getDay()]; }
+
+  fetch('data.json?cb='+Date.now(),{cache:'no-store'}).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+    .then(render).catch(function(){
+      document.getElementById('app').innerHTML='<div class="err">仲未有分享資料<br>喺 app 入面「設定 → 匯出分享頁 JSON」，<br>再將 data.json 放落 share/ 資料夾。</div>';
+    });
+
+  function render(d){
+    var t=d.trip||{}, stops=d.stops||[], logs=d.logs||{};
+    document.title = t.name || '旅程';
+    var days=[]; if(t.start&&t.end){ var a=parseD(t.start), b=parseD(t.end);
+      for(var x=new Date(a); x<=b; x.setDate(x.getDate()+1)) days.push(x.getFullYear()+'-'+pad(x.getMonth()+1)+'-'+pad(x.getDate())); }
+
+    var h='<h1>'+esc(t.name||'旅程')+'</h1><div class="sub">'+esc(t.dest||'')+(t.dest?' · ':'')+
+      (t.start?dLabel(t.start)+'–'+dLabel(t.end)+' · '+days.length+'日':'')+'</div>';
+    h+='<div id="map"></div>';
+
+    days.forEach(function(dt,i){
+      var list=stops.filter(function(s){ return s.date===dt; });
+      var lg=logs[dt];
+      if(!list.length && !(lg&&lg.text)) return;
+      var cost=list.reduce(function(a,s){ return a+(+s.cost||0); },0);
+      h+='<div class="sech"><h2>第'+(i+1)+'日 · '+dLabel(dt)+'（'+dow(dt)+'）</h2><span>'+(cost?esc(t.cur||'HKD')+' '+cost.toLocaleString():'')+'</span></div><div class="card">';
+      list.forEach(function(s){
+        h+='<div class="stop '+(CATS[s.cat]?s.cat:'etc')+(s.done?' done':'')+'">'+
+           '<div class="tm">'+(s.time?esc(s.time):'—')+'</div><div class="ic">'+(CATS[s.cat]||'📍')+'</div>'+
+           '<div class="bd"><b>'+esc(s.name)+'</b>'+(s.addr?'<div class="ad">'+esc(s.addr)+'</div>':'')+
+           (s.note?'<div class="nt">'+esc(s.note)+'</div>':'')+'</div></div>';
+      });
+      if(lg&&lg.text) h+='<div class="jr">'+(lg.mood?'<span class="mo">'+esc(lg.mood)+'</span>':'')+esc(lg.text)+'</div>';
+      h+='</div>';
+    });
+
+    var want=stops.filter(function(s){ return !s.date; });
+    if(want.length){
+      h+='<div class="sech"><h2>想去</h2><span>'+want.length+' 個</span></div><div class="card">';
+      want.forEach(function(s){
+        h+='<div class="stop '+(CATS[s.cat]?s.cat:'etc')+'"><div class="tm">—</div><div class="ic">'+(CATS[s.cat]||'📍')+'</div>'+
+           '<div class="bd"><b>'+esc(s.name)+'</b>'+(s.note?'<div class="nt">'+esc(s.note)+'</div>':'')+'</div></div>';
+      });
+      h+='</div>';
+    }
+    h+='<div class="foot">'+esc(d.exportedAt||'')+'</div>';
+    document.getElementById('app').innerHTML=h;
+
+    var pts=stops.filter(function(s){ return s.lat&&s.lng; });
+    var el=document.getElementById('map');
+    if(!pts.length || !window.L){ if(el) el.style.display='none'; return; }
+    var map=L.map(el,{zoomControl:false, scrollWheelZoom:false});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+    var ll=[], line=[];
+    pts.forEach(function(s,i){
+      L.marker([s.lat,s.lng],{icon:L.divIcon({className:'',html:'<div class="pin"><b>'+(i+1)+'</b></div>',iconSize:[26,26],iconAnchor:[13,26]})})
+        .addTo(map).bindPopup('<b>'+esc(s.name)+'</b>');
+      ll.push([s.lat,s.lng]); if(s.date) line.push([s.lat,s.lng]);
+    });
+    if(line.length>1) L.polyline(line,{color:'#CEB991',weight:3,opacity:.85,dashArray:'6 6'}).addTo(map);
+    map.fitBounds(L.latLngBounds(ll).pad(0.25));
+    if(ll.length===1) map.setZoom(14);
+    setTimeout(function(){ map.invalidateSize(); },80);
+  }
+})();
+</script>
+</body>
+</html>
