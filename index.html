@@ -245,7 +245,7 @@
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE = 'trip_log';
   var AI_URL = SB + '/functions/v1/trip-ai';
-  var APP_VER = '20260913-1840';
+  var APP_VER = '20260913-1852';
 
   var CATS = [['see','景點','🏛'],['eat','食','🍜'],['stay','住','🏨'],['go','交通','🚆'],['buy','購物','🛍'],['etc','其他','📍']];
   var MOODS = ['😀','🙂','😐','😮‍💨','🤩'];
@@ -352,8 +352,23 @@
           setOffline(true); setSync('err','離線，資料未同步');
           if(retryTimer) clearTimeout(retryTimer); retryTimer=setTimeout(boot, 10000); return;
         }
-        try{ localStorage.removeItem('tripKey'); }catch(e){}
-        KEY=''; MODE=''; showGate('暗號唔啱，再入一次'); return;
+        // 接通但一行都冇：可能係暗號錯（RLS 擋住），亦可能係第一次用（張表仲係空）。
+        // 分辨方法：試寫入初始 row —— 寫得入＝暗號啱；畀 RLS 擋（401/403）＝暗號真係錯。
+        setSync('', '第一次用，開緊…');
+        var init={id:'main', state:defaultState(), updated_at:new Date().toISOString()};
+        fetch(SB+'/rest/v1/'+TABLE+'?on_conflict=id', {method:'POST',
+          headers:Object.assign(hdr(),{Prefer:'resolution=merge-duplicates,return=representation'}),
+          body:JSON.stringify([init])})
+        .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+        .then(function(rows){
+          if(!rows || !rows[0]) throw 0;
+          applyState(rows[0]); cacheSave(); setOffline(false); setSync('ok','已同步'); render();
+        })
+        .catch(function(){
+          try{ localStorage.removeItem('tripKey'); }catch(e){}
+          KEY=''; MODE=''; showGate('暗號唔啱，再入一次');
+        });
+        return;
       }
       applyState(row); cacheSave(); setOffline(false); setSync('ok','已同步'); render();
       if(!row.state || !Array.isArray(row.state.trips)) markDirty();
