@@ -230,6 +230,42 @@
   .spin{display:inline-block; width:12px; height:12px; border:2px solid var(--line); border-top-color:var(--acc); border-radius:50%; animation:sp .7s linear infinite; vertical-align:-2px; margin-right:6px}
   @keyframes sp{to{transform:rotate(360deg)}}
 
+  /* ============ optimize / offline ============ */
+  .netbar{display:none; background:var(--warn); color:#fff; font-size:13px; font-weight:700; padding:9px 14px; text-align:center}
+  .netbar.show{display:block}
+  .optbox{background:var(--soft); border-radius:14px; padding:14px}
+  .optrow{display:flex; justify-content:space-between; align-items:baseline; padding:3px 0; font-size:14px}
+  .optrow b{font-size:19px; font-weight:800}
+  .optrow.ok b{color:var(--ok)}
+  .optsave{margin-top:9px; padding-top:9px; border-top:1px solid var(--line); font-size:13px; font-weight:800; color:var(--acc)}
+  .optseq{background:var(--card); border-radius:12px; padding:9px 12px; max-height:220px; overflow-y:auto; box-shadow:var(--sh)}
+  .optseq div{display:flex; gap:9px; padding:4px 0; font-size:13.5px; align-items:baseline}
+  .optseq b{width:18px; color:var(--muted); font-size:11.5px; font-weight:800; flex:0 0 auto}
+
+  /* ============ print ============ */
+  @media print{
+    .side,.mapwrap,.top,.add,.kebab,.grip,.tick,.ai,.sheet,.menu,.netbar,.hero,.hedit,.tbtn,.empty,.leg span{display:none !important}
+    html,body{overflow:visible !important; height:auto !important; background:#fff !important; color:#000 !important; font-size:11pt}
+    .shell{display:block !important; height:auto !important}
+    .doc{overflow:visible !important; height:auto !important; background:#fff !important}
+    .page{max-width:none !important; padding:0 !important}
+    .herocard{margin:0 0 14px !important; box-shadow:none !important; padding:0 !important; background:none !important}
+    .herocard h1{font-size:20pt}
+    .hstats{border-top:1px solid #bbb}
+    .panel{box-shadow:none !important; border:1px solid #ccc; border-radius:8px; padding:4px 11px; break-inside:avoid}
+    .sec,.day,.row{break-inside:avoid}
+    .row{border-top:1px solid #eee}
+    .ic{background:none !important; width:20px}
+    .idx{position:static; margin-right:4px; background:#444 !important}
+    .jr{background:#f6f6f6 !important; border:1px solid #ddd}
+    .sech h2{font-size:14pt}
+    .dayh h3{font-size:12pt}
+    a{color:#000; text-decoration:none}
+    .leg{padding-left:34px}
+    #tripNote{background:none !important; border:1px solid #ddd; min-height:auto}
+    @page{ margin:14mm 12mm }
+  }
+
   /* ============ gate ============ */
   .gate{position:fixed; inset:0; background:var(--bg); z-index:90; display:none; align-items:center; justify-content:center; padding:20px}
   .gate.show{display:flex}
@@ -295,6 +331,7 @@
       <button class="tbtn mapbtn" data-act="openmap">🗺 地圖</button>
       <button class="tbtn solid" data-act="export">匯出</button>
     </div>
+    <div class="netbar" id="netbar">📴 離線中 — 睇得改得，接返網就自動同步</div>
     <div id="main"></div>
   </main>
 
@@ -326,7 +363,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260913-v3-2';
+  var APP_VER='20260913-v4-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -743,6 +780,79 @@
       });
   }
 
+  // ---------- 路線最優化（nearest-neighbour → 2-opt）----------
+  function P(x){ return [x.lat,x.lng]; }
+  function pathKm(seq){ var t=0; for(var i=1;i<seq.length;i++) t+=hav(P(seq[i-1]),P(seq[i])); return t; }
+  function optimizeSeq(pts, fixStart){
+    if(pts.length<3) return pts.slice();
+    var rest=pts.slice(), order=[];
+    order.push(fixStart? rest.shift() : rest.shift());
+    var cur=order[0];
+    while(rest.length){
+      var bi=0,bd=Infinity;
+      for(var i=0;i<rest.length;i++){ var d=hav(P(cur),P(rest[i])); if(d<bd){ bd=d; bi=i; } }
+      cur=rest.splice(bi,1)[0]; order.push(cur);
+    }
+    var lo = fixStart?1:0, guard=0, improved=true;
+    while(improved && guard<120){
+      improved=false; guard++;
+      for(var a=lo; a<order.length-1; a++){
+        for(var b=a+1; b<order.length; b++){
+          var prev=order[a-1], A=order[a], B=order[b], nxt=order[b+1];
+          if(!prev) continue;
+          var before=hav(P(prev),P(A)) + (nxt? hav(P(B),P(nxt)) : 0);
+          var after =hav(P(prev),P(B)) + (nxt? hav(P(A),P(nxt)) : 0);
+          if(after < before - 1e-9){
+            var seg=order.slice(a,b+1).reverse();
+            Array.prototype.splice.apply(order,[a,b+1-a].concat(seg));
+            improved=true;
+          }
+        }
+      }
+    }
+    return order;
+  }
+  function optimizeDay(d){
+    var all=dayItems(d);
+    var geo=all.filter(function(x){ return x.lat&&x.lng; });
+    if(geo.length<3) return null;
+    var seq=optimizeSeq(geo,true);
+    var before=pathKm(geo), after=pathKm(seq);
+    var same=seq.every(function(x,i){ return x.id===geo[i].id; });
+    return {d:d, all:all, geo:geo, seq:seq, before:before, after:after, same:same};
+  }
+  function optimizeSheet(d){
+    var r=optimizeDay(d);
+    if(!r){ alert('呢日要至少 3 個有座標嘅地點先排到'); return; }
+    if(r.same){ openSheet('<h3>🧭 路線最優化</h3><div class="empty">而家嘅次序已經係最順<br>行程總長 '+r.before.toFixed(1)+' km，唔使改。</div>'); return; }
+    var saved=r.before-r.after, pct=Math.round(saved/r.before*100);
+    openSheet('<h3>🧭 路線最優化 · '+longD(d)+'</h3>'+
+      '<div class="optbox"><div class="optrow"><span>而家</span><b class="num">'+r.before.toFixed(1)+' km</b></div>'+
+      '<div class="optrow ok"><span>重排之後</span><b class="num">'+r.after.toFixed(1)+' km</b></div>'+
+      '<div class="optsave">慳 '+saved.toFixed(1)+' km（'+pct+'%）</div></div>'+
+      '<div class="fld" style="margin-top:14px"><label>新次序</label><div class="optseq">'+
+      r.seq.map(function(x,i){ return '<div><b>'+(i+1)+'</b> '+esc(x.name)+'</div>'; }).join('')+'</div></div>'+
+      '<div class="hint">第一個地點固定做起點。冇座標嘅項目（航班、筆記）位置唔會郁。時間會跟住個項目走，記得檢查返。</div>'+
+      '<div class="btnrow"><button class="btn ghost" data-act="closesheet">唔要</button>'+
+      '<button class="btn acc" data-act="applyopt" data-d="'+d+'">套用</button></div>');
+  }
+  function applyOpt(d){
+    var r=optimizeDay(d); if(!r||r.same) return;
+    snap();
+    // 只換有座標嗰啲項目所佔嘅位，冇座標嘅（航班／筆記）原地不動
+    var slots=[]; r.all.forEach(function(x,i){ if(x.lat&&x.lng) slots.push(i); });
+    var out=r.all.slice();
+    slots.forEach(function(pos,k){ out[pos]=r.seq[k]; });
+    out.forEach(function(x,i){ x.ord=(i+1)*10; });
+    save(); closeSheet(); setSync('ok','路線重排咗，慳 '+(r.before-r.after).toFixed(1)+' km');
+  }
+
+  // ---------- 離線 ----------
+  function setNet(){
+    var off=!navigator.onLine, b=$('netbar');
+    if(b) b.className='netbar'+(off?' show':'');
+  }
+
   // ---------- render ----------
   function render(){
     if(!state) return;
@@ -1074,11 +1184,13 @@
   }
   function exportSheet(){
     openSheet('<h3>匯出</h3>'+
+      '<button class="btn acc" data-act="print">🖨 列印 / 存做 PDF</button>'+
+      '<div class="hint" style="margin:6px 0 12px">喺列印對話框揀「Save as PDF」就出到 PDF。</div>'+
       '<button class="btn ghost" data-act="exJson">JSON 全份備份</button>'+
       '<button class="btn ghost" data-act="exCsv" style="margin-top:8px">CSV（Excel 開得）</button>'+
       '<button class="btn ghost" data-act="exShare" style="margin-top:8px">分享頁 data.json</button>'+
       '<button class="btn ghost" data-act="exGmap" style="margin-top:8px">Google Maps 路線（今日）</button>'+
-      '<div class="hint">PDF 同離線喺第三浪。</div>');
+      '<div class="hint">路線最優化喺每一日個 ⋯ 選單度。</div>');
   }
   function dl(name,txt,type){
     var b=new Blob([txt],{type:type||'application/json'}), u=URL.createObjectURL(b);
@@ -1170,7 +1282,8 @@
     }
     else if(act==='daymenu'){
       var d=el.getAttribute('data-d');
-      openMenu(ev,'<button data-act="journal" data-d="'+d+'">📖 寫日誌</button>'+
+      openMenu(ev,'<button data-act="optday" data-d="'+d+'">🧭 路線最優化</button>'+
+        '<button data-act="journal" data-d="'+d+'">📖 寫日誌</button>'+
         '<button data-act="sortday" data-d="'+d+'">按時間排</button><hr><button class="dz" data-act="clearday" data-d="'+d+'">清空呢日</button>');
     }
     else if(act==='listmenu'){
@@ -1251,6 +1364,9 @@
     else if(act==='undo'){ undo(); }
     else if(act==='redo'){ redo(); }
     else if(act==='closesheet'){ closeSheet(); }
+    else if(act==='optday'){ optimizeSheet(el.getAttribute('data-d')); }
+    else if(act==='applyopt'){ applyOpt(el.getAttribute('data-d')); }
+    else if(act==='print'){ closeSheet(); setTimeout(function(){ window.print(); },250); }
     else if(act==='export'){ exportSheet(); }
     else if(act==='exJson'){ dl('eva-trip-'+today()+'.json', JSON.stringify(state,null,2)); }
     else if(act==='exCsv'){
@@ -1341,6 +1457,12 @@
   document.addEventListener('visibilitychange',function(){ if(!document.hidden) refreshIfChanged(); });
   setInterval(refreshIfChanged,45000);
   addEventListener('resize',function(){ if(map) map.invalidateSize(); });
+  addEventListener('online',function(){ setNet(); refreshIfChanged(); });
+  addEventListener('offline',setNet);
+  setNet();
+  if('serviceWorker' in navigator) addEventListener('load',function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
   boot();
 })();
 </script>
