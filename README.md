@@ -5,7 +5,7 @@
 - 手機「加至主畫面」即似 app（有 manifest＋icon）
 - 開頁揀「入暗號同步雲端」或者「淨係喺呢部機用」（本機模式存 localStorage，唔使 Supabase）
 - 地圖用 Leaflet + OpenStreetMap，地點搜尋用 Nominatim——都係免費、唔使 API key
-- AI 經 Supabase Edge Function 代理，API key 唔會落到呢個 HTML 度；未 deploy 就自動轉「複製 prompt／貼返 JSON」手動模式
+- AI 經 Supabase Edge Function 代理（OpenRouter），API key 唔會落到呢個 HTML 度；掛咗就自動轉「複製 prompt／貼返 JSON」手動模式
 
 ## 四個頁
 
@@ -26,18 +26,22 @@ AI 加完地點會自動排隊去 Nominatim 攞座標（一秒一個，唔會轟
 
 ## 設定
 
-### 1. Supabase 表
+兩樣都已經喺 `wbh-sales-coach` 個 Supabase project 做咗（2026-09-13）。
 
-喺 SQL Editor 行 `supabase/schema.sql`，記得將 `你嘅暗號` 換做真嘅（同飲食記錄用同一個都得）。
+### 1. Supabase 表 ✅
 
-### 2. AI 代理（可以遲啲先做）
+`supabase/schema.sql` 已經行過。個 RLS 暗號閘係由 `meal_log` 直接抄過來，所以**旅程記錄同飲食記錄共用同一個暗號**。想改成獨立暗號，改個 policy 就得。
 
-```bash
-supabase functions deploy trip-ai --no-verify-jwt
-supabase secrets set ANTHROPIC_API_KEY=sk-ant-xxx TRIP_GATE=你嘅暗號
-```
+### 2. AI 代理 ✅
 
-未 deploy 之前，撳 AI 掣會出手動模式：複製 prompt → 貼落 Claude → 貼返個回覆 → 套用。功能一樣，只係多兩步。
+`trip-ai` Edge Function 已經 deploy。行 OpenRouter（`anthropic/claude-sonnet-5`），同 `meal-vision` 共用現成 secrets：
+
+- `OPENROUTER_API_KEY` — API key，淨係喺 server
+- `MEAL_KEY` — 暗號閘，同你喺 app 入面打嘅暗號一樣
+
+**唔使加任何新 secret。**
+
+萬一 function 掛咗或者暗號唔啱，app 會自動退返去手動模式：複製 prompt → 貼落 Claude → 貼返個回覆 → 套用。功能一樣，只係多兩步。
 
 ### 3. 分享頁
 
@@ -60,7 +64,8 @@ icon-{180,192,512}.png
 share/index.html    唯讀分享頁
 share/data.json     分享資料（由 app 匯出）
 supabase/schema.sql 表 + RLS 暗號閘
-supabase/trip-ai.ts Edge Function（AI 代理）
+supabase/functions/
+  trip-ai/index.ts  Edge Function（AI 代理·OpenRouter）
 ```
 
 ## 唔做嘅嘢
