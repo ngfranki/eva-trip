@@ -199,6 +199,8 @@
   <div class="box">
     <h2>旅程記錄</h2>
     <p>私人行程規劃＋旅程日誌。入暗號同步雲端；唔想同步可以淨係喺呢部機用。</p>
+    <button class="btn gold hide" id="gateReuse">用返飲食記錄嘅暗號</button>
+    <div class="hint hide" id="gateOr" style="text-align:center; margin:8px 0 10px">或者自己打</div>
     <input class="search" id="gateKey" type="password" autocomplete="off" placeholder="暗號">
     <button class="btn" id="gateGo">進入</button>
     <button class="btn ghost" id="gateLocal" style="margin-top:8px">淨係喺呢部機用</button>
@@ -243,7 +245,7 @@
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE = 'trip_log';
   var AI_URL = SB + '/functions/v1/trip-ai';
-  var APP_VER = '20260913-1815';
+  var APP_VER = '20260913-1840';
 
   var CATS = [['see','景點','🏛'],['eat','食','🍜'],['stay','住','🏨'],['go','交通','🚆'],['buy','購物','🛍'],['etc','其他','📍']];
   var MOODS = ['😀','🙂','😐','😮‍💨','🤩'];
@@ -359,7 +361,14 @@
   }
 
   // ---------- gate ----------
-  function showGate(msg){ $('gate').className='gate show'; $('gateMsg').textContent=msg||''; setTimeout(function(){ try{$('gateKey').focus();}catch(e){} },50); }
+  function mealKey(){ try{ return localStorage.getItem('mealKey')||''; }catch(e){ return ''; } }
+  function showGate(msg){
+    $('gate').className='gate show'; $('gateMsg').textContent=msg||'';
+    var has=!!mealKey();
+    $('gateReuse').className='btn gold'+(has?'':' hide');
+    $('gateOr').className='hint'+(has?'':' hide');
+    if(!has) setTimeout(function(){ try{$('gateKey').focus();}catch(e){} },50);
+  }
   function gateGo(){
     var k=($('gateKey').value||'').trim(); if(!k) return;
     KEY=k; MODE='cloud'; try{ localStorage.setItem('tripKey',KEY); localStorage.removeItem('tripLocal'); }catch(e){}
@@ -367,6 +376,12 @@
   }
   $('gateGo').addEventListener('click', gateGo);
   $('gateKey').addEventListener('keydown', function(e){ if(e.key==='Enter') gateGo(); });
+  $('gateReuse').addEventListener('click', function(){
+    var k=mealKey(); if(!k) return;
+    KEY=k; MODE='cloud';
+    try{ localStorage.setItem('tripKey',KEY); localStorage.removeItem('tripLocal'); }catch(e){}
+    $('gate').className='gate'; boot();
+  });
   $('gateLocal').addEventListener('click', function(){
     MODE='local'; try{ localStorage.setItem('tripLocal','1'); }catch(e){}
     $('gate').className='gate'; boot();
