@@ -515,7 +515,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v12-1';
+  var APP_VER='20260914-v12-2';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1417,13 +1417,14 @@
       // 唔用 fitBounds：實測 Maps 3.66 喺初始 fitBounds 之後唔會畫磚（成塊白），
       // 但任何之後嘅 setCenter/setZoom（例如撳個地點 flyTo）就即刻正常。
       // 所以自己由 bounds 算 center + zoom，直接 setCenter/setZoom。
-      gmap.setCenter(bounds.getCenter());
-      gmap.setZoom(pts.length===1 ? 15 : fitZoom(bounds));
+      // 實測：setCenter（瞬間）之後唔會畫磚；但 panTo（有動畫）之後就會。
+      // 所以先擺去一個偏移位置，再 panTo 去真正中心，保證有一次真實鏡頭移動。
+      var bc=bounds.getCenter();
+      var z=(pts.length===1 ? 15 : fitZoom(bounds));
+      gmap.setZoom(z);
+      gmap.setCenter({lat:bc.lat()+0.35, lng:bc.lng()+0.35});
       gmap.__fit=1; gmap.__lastDay=mapDay;
-      // 再補一下極細嘅鏡頭移動，逼佢一定重畫
-      google.maps.event.addListenerOnce(gmap,'idle',function(){
-        try{ gmap.panBy(0,1); gmap.panBy(0,-1); }catch(e){}
-      });
+      setTimeout(function(){ try{ gmap.panTo(bc); }catch(e){} }, 90);
     }
   }
 
