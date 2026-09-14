@@ -83,9 +83,10 @@
   .side{background:var(--surf); border-right:1px solid var(--line); display:flex; flex-direction:column; overflow-y:auto; padding-bottom:10px}
   .doc{overflow-y:auto; overflow-x:hidden; background:var(--bg); touch-action:pan-y; overscroll-behavior-x:none}
   .mapwrap{position:relative; height:100%; min-height:0; background:var(--soft)}
-  /* 用 width/height:100% 而唔係 inset:0 —— Google Maps 喺 grid 百分比欄入面
-     量唔到 inset:0 嘅尺寸，會變成一張磚都唔畫嘅白地圖（實測） */
-  #map{position:absolute; top:0; left:0; width:100%; height:100%; z-index:1}
+  /* Google Maps 喺 grid 百分比欄入面量唔到 inset:0 或者 100% 嘅尺寸，
+     會變成一張磚都唔畫嘅白地圖（實測 Maps JS 3.66）。
+     所以尺寸由 JS 用 px 寫死（sizeMap()），並用 ResizeObserver 同步。 */
+  #map{position:absolute; top:0; left:0; z-index:1}
 
   /* ============ sidebar ============ */
   .brand{display:flex; align-items:center; gap:7px; padding:13px 14px 11px; font-weight:700; font-size:15px; letter-spacing:-.02em}
@@ -515,7 +516,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v10-6';
+  var APP_VER='20260914-v11-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1325,34 +1326,36 @@
     return { url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg),
              scaledSize:new google.maps.Size(w,h), anchor:new google.maps.Point(w/2,h) };
   }
-  // 踢 Google 地圖重新量尺寸＋重畫
-  //
-  // 實測（2026-09-14，Maps JS 3.66）：#map 喺三欄 CSS Grid 嘅百分比欄入面，
-  // 地圖建立之後會有齊 73 個 div，但一張磚都唔貼，成塊白。
-  // google.maps.event.trigger(map,'resize') 同 ResizeObserver 都救唔到；
-  // 改 width/height:100% 都救唔到。
-  // 唯一可靠嘅解係令容器高度真真正正變過一次（1px 微動），佢就會重量並開始貼磚。
-  var gKickT=null;
-  function gNudge(){
-    var el=$('map'); if(!el) return;
-    requestAnimationFrame(function(){
-      el.style.height='calc(100% - 1px)';
-      requestAnimationFrame(function(){ el.style.height='100%'; });
-    });
+  // Google Maps 唔肯自己量 grid 百分比欄嘅尺寸，所以我哋寫死 px 畀佢。
+  // 實測（Maps JS 3.66）：inset:0 同 width/height:100% 都會出白地圖；
+  // resize event、ResizeObserver、1px 微動全部救唔到。寫死 px 一擊即中。
+  function sizeMap(){
+    var wrap=$('mapwrap'), el=$('map');
+    if(!wrap||!el) return false;
+    var r=wrap.getBoundingClientRect();
+    if(r.width<60 || r.height<60) return false;
+    var w=Math.round(r.width), h=Math.round(r.height);
+    if(el.__w!==w || el.__h!==h){
+      el.style.width=w+'px'; el.style.height=h+'px';
+      el.__w=w; el.__h=h;
+      if(gmap && window.google){ try{ google.maps.event.trigger(gmap,'resize'); }catch(e){} }
+    }
+    return true;
   }
+  var gKickT=null;
   function gKick(){
-    if(!gmap || !window.google) return;
     if(gKickT) clearTimeout(gKickT);
-    var go=function(){
-      try{ google.maps.event.trigger(gmap,'resize'); }catch(e){}
-      gNudge();
-    };
-    requestAnimationFrame(go);
-    gKickT=setTimeout(go, 300);
+    sizeMap();
+    gKickT=setTimeout(function(){ sizeMap(); }, 300);
   }
   function drawGMap(pts){
     var el=$('map');
     if(!gmap){
+      if(!sizeMap()){                      // 容器仲未有尺寸，下一格再嚟
+        if(!drawGMap.__wait){ drawGMap.__wait=1;
+          requestAnimationFrame(function(){ drawGMap.__wait=0; drawMap(); }); }
+        return;
+      }
       el.innerHTML='';
       gmap=new google.maps.Map(el,{
         center:{lat:22.3193,lng:114.1694}, zoom:11,
@@ -1365,9 +1368,10 @@
       // 所以一定要主動踢佢 resize，並且用 ResizeObserver 盯住之後任何尺寸變化。
       gKick();
       try{
-        if(window.ResizeObserver && !el.__ro){
-          el.__ro=new ResizeObserver(function(){ gKick(); });
-          el.__ro.observe(el);
+        var wrap=$('mapwrap');
+        if(window.ResizeObserver && wrap && !wrap.__ro){
+          wrap.__ro=new ResizeObserver(function(){ sizeMap(); });
+          wrap.__ro.observe(wrap);
         }
       }catch(e){}
     }
