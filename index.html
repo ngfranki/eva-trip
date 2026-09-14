@@ -83,10 +83,7 @@
   .side{background:var(--surf); border-right:1px solid var(--line); display:flex; flex-direction:column; overflow-y:auto; padding-bottom:10px}
   .doc{overflow-y:auto; overflow-x:hidden; background:var(--bg); touch-action:pan-y; overscroll-behavior-x:none}
   .mapwrap{position:relative; height:100%; min-height:0; background:var(--soft)}
-  /* Google Maps（3.66）喺 CSS Grid 欄裡面用 position:absolute 會攞到磚但唔貼，成塊白。
-     實測唯一穩定嘅做法係 position:fixed + JS 寫死 px 座標（sizeMap() 同步）。
-     Leaflet 兩種都得，所以呢個 fixed 方案兩邊通用。 */
-  #map{position:fixed; z-index:1}
+  #map{position:absolute; inset:0; z-index:1}
 
   /* ============ sidebar ============ */
   .brand{display:flex; align-items:center; gap:7px; padding:13px 14px 11px; font-weight:700; font-size:15px; letter-spacing:-.02em}
@@ -516,7 +513,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v11-2';
+  var APP_VER='20260914-v11-3';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1326,29 +1323,22 @@
     return { url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg),
              scaledSize:new google.maps.Size(w,h), anchor:new google.maps.Point(w/2,h) };
   }
-  // Google Maps 唔肯自己量 grid 百分比欄嘅尺寸，所以我哋寫死 px 畀佢。
-  // 實測（Maps JS 3.66）：inset:0 同 width/height:100% 都會出白地圖；
-  // resize event、ResizeObserver、1px 微動全部救唔到。寫死 px 一擊即中。
-  function sizeMap(){
-    var wrap=$('mapwrap'), el=$('map');
-    if(!wrap||!el) return false;
-    var r=wrap.getBoundingClientRect();
-    if(r.width<60 || r.height<60) return false;
-    var L=Math.round(r.left), T=Math.round(r.top), w=Math.round(r.width), h=Math.round(r.height);
-    if(el.__L!==L||el.__T!==T||el.__w!==w||el.__h!==h){
-      el.style.left=L+'px'; el.style.top=T+'px';
-      el.style.width=w+'px'; el.style.height=h+'px';
-      el.__L=L; el.__T=T; el.__w=w; el.__h=h;
-      if(gmap && window.google){ try{ google.maps.event.trigger(gmap,'resize'); }catch(e){} }
-      if(map && map.invalidateSize){ try{ map.invalidateSize(); }catch(e){} }
-    }
-    return true;
-  }
+  // 手機開合地圖／視窗變化之後通知兩個地圖庫重新量尺寸
   var gKickT=null;
+  function sizeMap(){
+    var wrap=$('mapwrap');
+    if(!wrap) return false;
+    var r=wrap.getBoundingClientRect();
+    return !(r.width<60 || r.height<60);
+  }
   function gKick(){
     if(gKickT) clearTimeout(gKickT);
-    sizeMap();
-    gKickT=setTimeout(function(){ sizeMap(); }, 300);
+    var go=function(){
+      if(gmap && window.google){ try{ google.maps.event.trigger(gmap,'resize'); }catch(e){} }
+      if(map && map.invalidateSize){ try{ map.invalidateSize(); }catch(e){} }
+    };
+    requestAnimationFrame(go);
+    gKickT=setTimeout(go, 300);
   }
   function drawGMap(pts){
     var el=$('map');
