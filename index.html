@@ -515,7 +515,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v12-3';
+  var APP_VER='20260914-v12-4';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1352,7 +1352,14 @@
     google.maps.event.addListenerOnce(gmap,'tilesloaded',function(){ ok=true; });
     setTimeout(function(){
       if(ok || !gmap) return;
-      if(gTries>=2){ setSync('err','Google 地圖畫唔出，撳一下任何地點就會出'); return; }
+      if(gTries>=2){
+        // 放棄 Google 底圖，自動退返 OSM —— 寧願底圖冇咁靚，都唔可以畀你睇住一塊白
+        gState='fail'; gmap=null; gmarks=[]; gInfo=null;
+        var e2=$('map'); if(e2) e2.innerHTML='';
+        setSync('err','Google 底圖畫唔出，已改用 OpenStreetMap');
+        drawMap();
+        return;
+      }
       gTries++;
       var el=$('map'); if(!el) return;
       gmap=null; gmarks=[]; gInfo=null; el.innerHTML='';
