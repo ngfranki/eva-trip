@@ -300,6 +300,22 @@
   .optseq div{display:flex; gap:10px; padding:4px 0; font-size:14px; align-items:baseline}
   .optseq b{width:18px; color:var(--muted); font-size:12px; font-weight:700; flex:0 0 auto}
 
+  /* 地點詳情卡 */
+  .pshot{margin:-22px -22px 14px; height:190px; overflow:hidden; border-radius:12px 12px 0 0; background:var(--soft)}
+  .pshot img{width:100%; height:100%; object-fit:cover; display:block}
+  .phead h3{font-size:23px; font-weight:700; letter-spacing:-.02em; line-height:1.2}
+  .pmeta{font-size:13.5px; color:var(--muted); margin-top:5px}
+  .pmeta b{font-weight:700}
+  .prate{color:#C9700A} .popen{color:var(--ok)} .pshut{color:var(--muted)}
+  .prows{margin:16px 0 4px; display:flex; flex-direction:column}
+  .prow{display:flex; gap:11px; padding:9px 0; border-top:1px solid var(--line2); font-size:14px; align-items:flex-start}
+  .prow:first-child{border-top:0}
+  .prow em{font-style:normal; width:18px; flex:0 0 auto; text-align:center}
+  .prow span,.prow a{flex:1; word-break:break-word; white-space:pre-wrap}
+  .prow a{color:var(--link); text-decoration:none; font-weight:600}
+  .prow a[data-act]{font-weight:700; margin-left:6px; cursor:pointer}
+  .phours{background:var(--soft); border-radius:10px; padding:11px 14px; margin-top:10px; font-size:13.5px; line-height:1.9}
+
   /* ============ sheet / modal ============ */
   .sheet{position:fixed; inset:0; z-index:60; display:none}
   .sheet.show{display:block}
@@ -450,7 +466,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v8-1';
+  var APP_VER='20260914-v9-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1533,6 +1549,66 @@
       '<div class="btnrow"><button class="btn ghost" data-act="relookup" data-id="'+x.id+'">🔍 重新定位</button>'+
       '<button class="btn acc" data-act="saveitem" data-id="'+x.id+'">儲存</button></div>');
   }
+  function todayHourLine(x){
+    if(!x.hours || !x.hours.length) return '';
+    var dow=new Date().getDay();
+    var idx=(dow===0)?6:dow-1;                       // Google 由 Monday 起
+    return x.hours[idx]||'';
+  }
+  function placeSheet(x){
+    if(!x) return;
+    var k=kd(x.kind), h='';
+    if(x.photoUrl) h+='<div class="pshot"><img src="'+esc(x.photoUrl)+'" alt=""></div>';
+    h+='<div class="phead"><h3 style="margin:0">'+esc(x.name)+'</h3>'+
+       '<div class="pmeta">'+k.i+' '+esc(k.n)+
+       (x.rating?' \u00b7 <b class="prate">\u2605 '+(+x.rating).toFixed(1)+'</b>'+(x.ratingCount?' <span>('+(+x.ratingCount).toLocaleString()+')</span>':''):'')+
+       (x.openNow===true?' \u00b7 <b class="popen">\u71df\u696d\u4e2d</b>':(x.openNow===false?' \u00b7 <b class="pshut">\u4f11\u606f</b>':''))+
+       '</div></div>';
+
+    var rows=[];
+    if(x.addr) rows.push(['\uD83D\uDCCD', esc(x.addr), x.lat? 'https://www.google.com/maps/search/?api=1&query='+x.lat+','+x.lng : '']);
+    var th=todayHourLine(x);
+    if(th) rows.push(['\uD83D\uDD52', esc(th)+(x.hours.length>1?' <a data-act="allhours">\u5168\u9031</a>':''), '']);
+    if(x.phone) rows.push(['\uD83D\uDCDE', esc(x.phone), 'tel:'+String(x.phone).replace(/[^0-9+]/g,'')]);
+    if(x.site) rows.push(['\uD83D\uDD17', esc(String(x.site).replace(/^https?:\/\//,'').slice(0,42)), x.site]);
+    if(x.time) rows.push(['\u23F0', esc((k.tl?k.tl+' ':'')+x.time), '']);
+    if(+x.cost) rows.push(['\uD83D\uDCB0', esc(fmtCcy(itemCcy(x), x.cost))+(itemCcy(x)!==cur()?' \u2248 '+esc(fmtCcy(cur(),toHome(x.cost,itemCcy(x)))):''), '']);
+    if(x.note) rows.push(['\uD83D\uDCDD', esc(x.note), '']);
+    if(rows.length){
+      h+='<div class="prows">';
+      rows.forEach(function(r){
+        h+='<div class="prow"><em>'+r[0]+'</em>'+
+           (r[2]? '<a href="'+esc(r[2])+'" target="_blank" rel="noopener">'+r[1]+'</a>' : '<span>'+r[1]+'</span>')+'</div>';
+      });
+      h+='</div>';
+    }
+    if(x.hours && x.hours.length>1)
+      h+='<div class="phours hide" id="pAllHours">'+x.hours.map(function(l){ return '<div>'+esc(l)+'</div>'; }).join('')+'</div>';
+
+    h+='<div class="btnrow">'+
+       (x.lat? '<button class="btn acc" data-act="nav" data-id="'+x.id+'">\u5c0e\u822a</button>':'')+
+       '<button class="btn ghost" data-act="edititem" data-id="'+x.id+'">\u6539</button></div>';
+    if(GOOG!==false && MODE==='cloud')
+      h+='<button class="btn ghost" data-act="enrich" data-id="'+x.id+'" style="margin-top:8px">'+
+         (x.placeId?'\u91cd\u65b0\u651d Google \u8cc7\u6599':'\u2728 \u651d Google \u8cc7\u6599\uff08\u76f8\uff0f\u8a55\u5206\uff0f\u6642\u9593\uff09')+'</button>';
+    openSheet(h);
+  }
+  function enrich(x, cb){
+    if(!x){ if(cb) cb(false); return; }
+    setSync('','\u6435 Google \u8cc7\u6599\u2026');
+    var c=tripCentre(), body={op:'autocomplete', q:x.name};
+    if(c){ body.lat=c.lat; body.lng=c.lng; }
+    gCall(body,function(j,err){
+      var s0=j&&j.suggestions&&j.suggestions[0];
+      if(err||!s0){ setSync('err','Google \u6435\u5514\u5230\u300c'+x.name+'\u300d'); if(cb) cb(false); return; }
+      gCall({op:'details',placeId:s0.placeId},function(d,e2){
+        if(e2||!d){ setSync('err','\u651d\u5514\u5230\u8a73\u60c5'); if(cb) cb(false); return; }
+        snap(); fillFromDetails(x,d); save(); setSync('ok','\u5df2\u88dc '+x.name);
+        if(x.photoName) photoUrl(x,function(){ render(); if(cb) cb(true); });
+        else if(cb) cb(true);
+      });
+    });
+  }
   function tripSheet(t){
     var isNew=!t; t=t||{id:null,name:'',dest:'',start:today(),end:shift(today(),4),cur:'HKD'};
     openSheet('<h3>'+(isNew?'開新旅程':'改旅程')+'</h3>'+
@@ -1641,7 +1717,20 @@
       var inp2=wrap.querySelector('input'), q=inp2.value.trim();
       addItem(sc, i>=0? (sugData[i].name||sugData[i].display_name||'').split(',')[0] : q, i>=0? sugData[i] : null);
     }
-    else if(act==='focus'){ var x=itemById(id); if(x){ hlId=x.id; render(); if(x.lat) flyTo(x); } }
+    else if(act==='focus'){ var x=itemById(id); if(x){ hlId=x.id; render(); if(x.lat) flyTo(x); placeSheet(x); } }
+    else if(act==='allhours'){ var e9=$('pAllHours'); if(e9) e9.className = e9.className.indexOf('hide')>=0? 'phours':'phours hide'; }
+    else if(act==='enrich'){ enrich(itemById(id), function(ok){ if(ok) placeSheet(itemById(id)); }); }
+    else if(act==='enrichall'){
+      var todo=tItems().filter(function(z){ return kd(z.kind).geo && !z.placeId; });
+      if(!todo.length){ alert('\u5168\u90e8\u90fd\u5df2\u7d93\u6709 Google \u8cc7\u6599'); return; }
+      if(!confirm('\u53bb Google \u88dc '+todo.length+' \u500b\u5730\u9ede\u5605\u8cc7\u6599\uff1f\u4e00\u79d2\u4e00\u500b\uff0c\u6703\u6162\u6162\u884c\u3002')) return;
+      closeSheet();
+      (function go(i){
+        if(i>=todo.length){ setSync('ok','\u88dc\u5b8c '+todo.length+' \u500b'); render(); return; }
+        setSync('','\u88dc\u8cc7\u6599\u2026\u5269 '+(todo.length-i));
+        enrich(todo[i], function(){ setTimeout(function(){ go(i+1); }, 900); });
+      })(0);
+    }
     else if(act==='tick'){ var x2=itemById(id); if(x2){ snap(); x2.done=!x2.done; save(); } }
     else if(act==='rowmenu'){
       var x3=itemById(id); if(!x3) return;
@@ -1885,7 +1974,8 @@
         '<div class="btnrow"><button class="btn acc" data-act="savegmk">儲存 key</button>'+
         (mapKey()?'<button class="btn ghost" data-act="clrgmk">清走，用返 OSM</button>':'')+'</div>'+
 
-        '<button class="btn ghost" data-act="exJson" style="margin-top:18px">匯出備份</button>'+
+        '<button class="btn ghost" data-act="enrichall" style="margin-top:18px">✨ 一次補齊所有地點嘅 Google 資料</button>'+
+        '<button class="btn ghost" data-act="exJson" style="margin-top:8px">匯出備份</button>'+
         (MODE==='cloud'?'<button class="btn warn" data-act="logout" style="margin-top:8px">登出</button>':''));
     }
     else if(act==='savegmk'){
