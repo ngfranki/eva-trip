@@ -513,7 +513,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v10-3';
+  var APP_VER='20260914-v10-4';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1323,9 +1323,19 @@
     return { url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg),
              scaledSize:new google.maps.Size(w,h), anchor:new google.maps.Point(w/2,h) };
   }
+  // 踢 Google 地圖重新量尺寸＋重畫
+  var gKickT=null;
+  function gKick(){
+    if(!gmap || !window.google) return;
+    if(gKickT) clearTimeout(gKickT);
+    var go=function(){ try{ google.maps.event.trigger(gmap,'resize'); }catch(e){} };
+    requestAnimationFrame(go);
+    gKickT=setTimeout(go, 260);
+  }
   function drawGMap(pts){
     var el=$('map');
     if(!gmap){
+      el.innerHTML='';
       gmap=new google.maps.Map(el,{
         center:{lat:22.3193,lng:114.1694}, zoom:11,
         mapTypeControl:false, streetViewControl:false, fullscreenControl:false,
@@ -1333,6 +1343,15 @@
         gestureHandling:'greedy'
       });
       gInfo=new google.maps.InfoWindow();
+      // 建立嗰刻容器尺寸未必 settle（三欄 grid 嘅 40% 欄）。Google 量到 0 就再也唔會重畫，
+      // 所以一定要主動踢佢 resize，並且用 ResizeObserver 盯住之後任何尺寸變化。
+      gKick();
+      try{
+        if(window.ResizeObserver && !el.__ro){
+          el.__ro=new ResizeObserver(function(){ gKick(); });
+          el.__ro.observe(el);
+        }
+      }catch(e){}
     }
     gmarks.forEach(function(m){ m.setMap(null); }); gmarks=[];
     if(!pts.length) return;
@@ -1365,9 +1384,10 @@
       gmarks.push(pl);
     });
     if(!gmap.__fit || mapDay!==gmap.__lastDay){
-      if(pts.length===1) { gmap.setCenter(bounds.getCenter()); gmap.setZoom(15); }
-      else gmap.fitBounds(bounds, 48);
+      if(pts.length===1 || bounds.isEmpty()){ gmap.setCenter(bounds.getCenter()); gmap.setZoom(15); }
+      else gmap.fitBounds(bounds, {top:64, right:44, bottom:44, left:44});
       gmap.__fit=1; gmap.__lastDay=mapDay;
+      gKick();
     }
   }
 
@@ -1942,7 +1962,8 @@
       document.querySelectorAll('#toc button').forEach(function(b){ b.classList.remove('on'); }); el.classList.add('on');
       sideOpen(false); }
     else if(act==='mapday'){ mapDay=el.getAttribute('data-d'); if(map) map.__fit=0; if(gmap) gmap.__fit=0; drawMap(); }
-    else if(act==='openmap'){ $('mapwrap').classList.add('open'); setTimeout(function(){ if(map) map.invalidateSize(); },80); }
+    else if(act==='openmap'){ $('mapwrap').classList.add('open');
+      setTimeout(function(){ if(map) map.invalidateSize(); gKick(); },80); }
     else if(act==='closemap'){ $('mapwrap').classList.remove('open'); }
     else if(act==='menu-side'){ sideOpen(!$('side').classList.contains('open')); }
     else if(act==='closeside'){ sideOpen(false); }
@@ -2134,7 +2155,7 @@
   });
   document.addEventListener('visibilitychange',function(){ if(!document.hidden) refreshIfChanged(); });
   setInterval(refreshIfChanged,45000);
-  addEventListener('resize',function(){ if(map) map.invalidateSize(); });
+  addEventListener('resize',function(){ if(map) map.invalidateSize(); gKick(); });
   addEventListener('online',function(){ setNet(); refreshIfChanged(); });
   addEventListener('offline',setNet);
   setNet();
