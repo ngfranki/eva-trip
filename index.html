@@ -179,6 +179,16 @@
   .chip{font-size:12.5px; font-weight:700; border-radius:5px; padding:3px 8px; background:var(--link-soft); color:var(--link); white-space:nowrap}
   .chip.cost{background:var(--soft2); color:var(--ink2); border:1px solid var(--line)}
   .chip.warn{background:var(--warn); color:#fff}
+  .thumb{width:86px; height:64px; flex:0 0 auto; border-radius:8px; overflow:hidden; background:var(--soft); margin-top:2px}
+  .thumb img{width:100%; height:100%; object-fit:cover; display:block}
+  .chip.rate{background:#FFF3E0; color:#C9700A}
+  .chip.open{background:#E7F5EC; color:#1F7A45}
+  .chip.shut{background:var(--soft2); color:var(--muted); border:1px solid var(--line)}
+  @media (prefers-color-scheme: dark){
+    .chip.rate{background:#3A2E1A; color:#E8B368}
+    .chip.open{background:#1E3326; color:#79C795}
+  }
+  @media (max-width:560px){ .thumb{width:64px; height:52px} }
   .rt{flex:0 0 auto; display:flex; align-items:center; gap:2px; padding-top:11px}
   .tick{width:24px; height:24px; border-radius:50%; border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:11px; color:transparent}
   .row:hover .tick{border-color:var(--muted2); color:var(--muted2)}
@@ -193,6 +203,7 @@
   .leg::before{content:""; position:absolute; left:12px; top:0; bottom:0; border-left:2px dotted var(--line)}
   .leg em{font-style:normal; font-size:13px}
   .leg a{color:var(--link); font-weight:700; text-decoration:none; margin-left:2px}
+  .leg .est{font-size:10.5px; background:var(--soft2); border:1px solid var(--line); color:var(--muted2); border-radius:4px; padding:0 4px; margin-left:2px}
 
   .checks{margin-top:7px; display:flex; flex-direction:column; gap:4px}
   .checks label{display:flex; gap:8px; font-size:14px; align-items:flex-start; cursor:pointer}
@@ -439,7 +450,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v6-1';
+  var APP_VER='20260914-v7-2';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -951,6 +962,39 @@
     if(b) b.className='netbar'+(off?' show':'');
   }
 
+  // ---------- 真路線（Google Routes，逐日 cache，簽名冇變就唔會再 call）----------
+  function routeSig(pts){ return pts.map(function(p){ return p.lat.toFixed(4)+','+p.lng.toFixed(4); }).join('|'); }
+  function dayRoute(d){
+    if(!state.routes) state.routes={};
+    var t=curTrip(); if(!t) return null;
+    return state.routes[t.id+'|'+d]||null;
+  }
+  function ensureRoute(d){
+    if(GOOG===false || MODE!=='cloud') return;
+    var t=curTrip(); if(!t) return;
+    var pts=dayItems(d).filter(function(x){ return kd(x.kind).geo && x.lat&&x.lng; }).map(function(x){ return {lat:x.lat,lng:x.lng}; });
+    if(pts.length<2) return;
+    var sig=routeSig(pts), k=t.id+'|'+d;
+    if(!state.routes) state.routes={};
+    var cur2=state.routes[k];
+    if(cur2 && cur2.sig===sig) return;
+    if(routeBusy[k]) return;
+    routeBusy[k]=1;
+    gCall({op:'route',points:pts,mode:'DRIVE'},function(j,err){
+      delete routeBusy[k];
+      if(err||!j||!j.legs){ return; }
+      state.routes[k]={sig:sig, legs:j.legs, mode:j.mode, at:Date.now()};
+      save(true); render();
+    });
+  }
+  var routeBusy={};
+  function legReal(d, i){
+    var r=dayRoute(d); if(!r||!r.legs||!r.legs[i]) return null;
+    var l=r.legs[i], mins=Math.max(1,Math.round(l.sec/60)), km=l.m/1000;
+    var t2 = mins>=60 ? Math.floor(mins/60)+' 小時'+(mins%60?' '+(mins%60)+' 分':'') : mins+' 分鐘';
+    return { ic:'🚗', t:t2+' · '+(km<10?km.toFixed(1):Math.round(km))+' km', real:1 };
+  }
+
   // ---------- render ----------
   function render(){
     if(!state) return;
@@ -1023,10 +1067,16 @@
       h+='<div class="panel" data-drop="day:'+d+'">';
       if(arr.length){
         h+='<div class="rows">';
-        var pn=0, prev=null;
+        var pn=0, prev=null, legIdx=0;
+        ensureRoute(d);
         arr.forEach(function(x){
           var idx=null; if(kd(x.kind).geo && x.lat){ pn++; idx={n:pn,c:c}; }
-          if(prev){ var lt=legTxt(prev,x); if(lt) h+='<div class="leg"><em>'+lt.ic+'</em>'+esc(lt.t)+'<a href="#" data-act="legnav" data-a="'+prev.id+'" data-b="'+x.id+'">路線</a></div>'; }
+          if(prev){
+            var lt = legReal(d, legIdx) || legTxt(prev,x);
+            if(lt) h+='<div class="leg"><em>'+lt.ic+'</em>'+esc(lt.t)+(lt.real?'':'<span class="est">估算</span>')+
+              '<a href="#" data-act="legnav" data-a="'+prev.id+'" data-b="'+x.id+'">路線</a></div>';
+            legIdx++;
+          }
           h+=rowHTML(x,idx);
           if(x.lat) prev=x;
         });
@@ -1052,9 +1102,15 @@
         return '<label class="'+(c.done?'on':'')+'"><input type="checkbox" data-act="chk" data-id="'+x.id+'" data-i="'+i+'"'+(c.done?' checked':'')+'><span>'+esc(c.t)+'</span></label>';
       }).join('')+'</div>';
     }
+    if(x.rating) chips.push('<span class="chip rate">★ '+(+x.rating).toFixed(1)+(x.ratingCount?' ('+x.ratingCount+')':'')+'</span>');
+    if(x.openNow===true) chips.push('<span class="chip open">營業中</span>');
+    else if(x.openNow===false) chips.push('<span class="chip shut">休息</span>');
     var badge = idx
       ? '<div class="idx" style="background:'+idx.c+'">'+idx.n+'</div>'
       : '<div class="idx" style="background:var(--muted2); font-size:12px">'+k.i+'</div>';
+    var thumb = x.photoUrl
+      ? '<div class="thumb"><img src="'+esc(x.photoUrl)+'" alt="" loading="lazy" data-act="rephoto" data-id="'+x.id+'"></div>'
+      : '';
     return '<div class="row'+(x.done?' done':'')+'" data-id="'+x.id+'" draggable="true">'+
       '<div class="grip">⠿</div>'+badge+
       '<div class="rcard">'+
@@ -1063,7 +1119,7 @@
         (x.addr?'<div class="ad">'+esc(x.addr)+'</div>':'')+
         (x.note?'<div class="nt">'+esc(x.note)+'</div>':'')+chk+
         (chips.length?'<div class="chips">'+chips.join('')+'</div>':'')+
-      '</div>'+
+      '</div>'+thumb+
       '<div class="rt">'+
         '<button class="tick" data-act="tick" data-id="'+x.id+'">✓</button>'+
         '<button class="kebab" data-act="rowmenu" data-id="'+x.id+'">⋯</button>'+
@@ -1193,6 +1249,61 @@
       });
     })(0);
   }
+  // ---------- Google（經 edge function 代理，key 唔喺前端）----------
+  var GOOG=null;           // null=未知 true=有 false=冇
+  var photoMem={};         // photoName → url（今次 session 用）
+  function gCall(body,cb){
+    if(MODE!=='cloud' || GOOG===false){ cb(null,'no-google'); return; }
+    fetch(AI_URL,{method:'POST',headers:{apikey:SBK,Authorization:'Bearer '+SBK,'x-client-info':KEY,'Content-Type':'application/json'},
+      body:JSON.stringify(body)})
+      .then(function(r){
+        if(r.status===501){ GOOG=false; throw new Error('no-google-key'); }
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        GOOG=true; return r.json();
+      })
+      .then(function(j){ cb(j,null); })
+      .catch(function(e){ cb(null,e.message||'err'); });
+  }
+  function tripCentre(){
+    var a=tItems().filter(function(x){ return x.lat&&x.lng; });
+    if(!a.length) return null;
+    return {lat:a.reduce(function(t,x){return t+x.lat;},0)/a.length, lng:a.reduce(function(t,x){return t+x.lng;},0)/a.length};
+  }
+  // 攞相：先睇 state 有冇存過 URL，再睇今 session memo，最後才問 Google
+  function photoUrl(x, cb){
+    if(x.photoUrl){ cb(x.photoUrl); return; }
+    if(!x.photoName){ cb(null); return; }
+    if(photoMem[x.photoName]){ cb(photoMem[x.photoName]); return; }
+    gCall({op:'photo',name:x.photoName,maxPx:400},function(j){
+      var u=j&&j.url; if(!u){ cb(null); return; }
+      photoMem[x.photoName]=u; x.photoUrl=u; save(true); cb(u);
+    });
+  }
+  // 由 Google details 填落 item
+  function fillFromDetails(x,d){
+    if(!d) return;
+    if(d.lat){ x.lat=+d.lat; x.lng=+d.lng; x.unverified=0; }
+    if(d.addr) x.addr=d.addr;
+    if(d.placeId) x.placeId=d.placeId;
+    if(d.rating!=null) x.rating=d.rating;
+    if(d.ratingCount!=null) x.ratingCount=d.ratingCount;
+    if(d.openNow!=null) x.openNow=d.openNow;
+    if(d.hours) x.hours=d.hours;
+    if(d.phone) x.phone=d.phone;
+    if(d.site) x.site=d.site;
+    if(d.photo) x.photoName=d.photo;
+    if(d.types && d.types.length) x.gtypes=d.types.slice(0,4);
+  }
+  // Google types → 我哋嘅 kind
+  function kindFromTypes(ts){
+    ts=ts||[];
+    var has=function(a){ return ts.some(function(t){ return a.indexOf(t)>=0; }); };
+    if(has(['lodging','hotel','motel','guest_house','resort_hotel'])) return 'stay';
+    if(has(['restaurant','cafe','bakery','bar','food','meal_takeaway','ramen_restaurant','japanese_restaurant'])) return 'eat';
+    if(has(['airport','train_station','subway_station','bus_station','transit_station','car_rental'])) return 'car';
+    if(has(['shopping_mall','store','department_store','supermarket','clothing_store'])) return 'buy';
+    return 'place';
+  }
   function nom(q,cb){
     fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&addressdetails=1&accept-language=zh-HK,zh,en&q='+encodeURIComponent(q))
       .then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(a){ cb(a||[]); }).catch(function(){ cb(null); });
@@ -1226,24 +1337,42 @@
     var h='<div class="sug">';
     h+='<button class="on" data-act="pick" data-i="-1"><span class="sic">'+KINDS[scopeKind(scope)].i+'</span><span><b>'+esc(q)+'</b><small>直接加，唔搵座標</small></span></button>';
     if(arr===null) h+='<div class="hd">搵唔到（可能離線）</div>';
-    else if(arr.length){ h+='<div class="hd">地圖搵到</div>';
-      arr.forEach(function(r,i){ h+='<button data-act="pick" data-i="'+i+'"><span class="sic">📍</span><span><b>'+esc((r.name||r.display_name||'').split(',')[0])+'</b><small>'+esc(shortAddr(r))+'</small></span></button>'; });
+    else if(arr.length){
+      h+='<div class="hd">'+(arr[0]&&arr[0].g?'Google 地點':'OpenStreetMap')+'</div>';
+      arr.forEach(function(r,i){
+        var nm = r.g? r.name : (r.name||r.display_name||'').split(',')[0];
+        var ad = r.g? (r.addr||'') : shortAddr(r);
+        var ic = r.g? KINDS[kindFromTypes(r.types)].i : '📍';
+        h+='<button data-act="pick" data-i="'+i+'"><span class="sic">'+ic+'</span><span><b>'+esc(nm)+'</b><small>'+esc(ad)+'</small></span></button>';
+      });
     }
     wrap.insertAdjacentHTML('beforeend', h+'</div>');
     sugSel=-1;
   }
   function addItem(scope, name, r){
     var t=curTrip(); if(!t||!name) return;
-    var k=scopeKind(scope), part=scope.split(':'), isDay=part[0]==='day';
+    var part=scope.split(':'), isDay=part[0]==='day';
+    var k=scopeKind(scope);
+    if(r && r.g && !pendKind[scope]) k=kindFromTypes(r.types);   // Google 幫你分類（除非你自己揀咗）
     var arr = isDay? dayItems(part[1]) : listItems(part[1]);
     var x={ id:uid(), tripId:t.id, kind:k, listId:isDay?null:part[1], date:isDay?part[1]:null,
             ord:nextOrd(arr), time:'', name:name, lat:null, lng:null, addr:'', note:'', cost:0, done:false, checks:[] };
-    if(r){ x.lat=+r.lat; x.lng=+r.lon; x.addr=shortAddr(r); }
+    if(r && !r.g){ x.lat=+r.lat; x.lng=+r.lon; x.addr=shortAddr(r); }
+    if(r && r.g){ x.placeId=r.placeId; x.addr=r.addr||''; }
     snap(); state.items.push(x); save();
     closeSug();
     var inp=document.querySelector('.add[data-scope="'+scope+'"] input');
     if(inp){ inp.value=''; inp.focus(); }
-    if(!x.lat && kd(k).geo) { geoQ.push(x.id); pumpGeo(); }
+    if(r && r.g){
+      setSync('','攞地點資料…');
+      gCall({op:'details',placeId:r.placeId},function(d,err){
+        if(!err && d){ fillFromDetails(x,d); save(); if(x.lat) flyTo(x); setSync('ok','已加 '+x.name);
+          if(x.photoName) photoUrl(x,function(){ render(); });
+        } else { geoQ.push(x.id); pumpGeo(); }
+      });
+      return;
+    }
+    if(!x.lat && kd(k).geo){ geoQ.push(x.id); pumpGeo(); }
     if(x.lat) flyTo(x);
   }
 
@@ -1356,11 +1485,19 @@
     if(!kd(scopeKind(scope)).geo){ showSug(scope,[],q); return; }
     showSug(scope,[],q);
     sugTimer=setTimeout(function(){
-      nomTry(q,function(arr){
-        var inp=document.querySelector('.add[data-scope="'+scope+'"] input');
-        if(inp && inp.value.trim()===q) showSug(scope,arr,q);
-      });
-    },480);
+      var alive=function(){ var inp=document.querySelector('.add[data-scope="'+scope+'"] input'); return inp && inp.value.trim()===q; };
+      if(GOOG!==false && MODE==='cloud'){
+        var c=tripCentre(), body={op:'autocomplete',q:q};
+        if(c){ body.lat=c.lat; body.lng=c.lng; }
+        gCall(body,function(j,err){
+          if(!err && j && j.suggestions){ if(alive()) showSug(scope, j.suggestions.map(function(r){
+            return {g:1, placeId:r.placeId, name:r.name, addr:r.addr, types:r.types}; }), q); return; }
+          nomTry(q,function(arr){ if(alive()) showSug(scope,arr,q); });
+        });
+      } else {
+        nomTry(q,function(arr){ if(alive()) showSug(scope,arr,q); });
+      }
+    },420);
   });
   document.addEventListener('keydown',function(e){
     var a=e.target.getAttribute&&e.target.getAttribute('data-act');
@@ -1552,6 +1689,11 @@
       var nc=($('nrC').value||'').trim().toUpperCase(), nv=parseFloat($('nrV').value);
       if(nc && nv>0) t10.rates[nc]=nv;
       save(); closeSheet();
+    }
+    else if(act==='rephoto'){
+      var xp=itemById(id); if(!xp||!xp.photoName) return;
+      xp.photoUrl=''; delete photoMem[xp.photoName];
+      photoUrl(xp,function(){ render(); });
     }
     else if(act==='legnav'){ ev.preventDefault();
       var A=itemById(el.getAttribute('data-a')), B=itemById(el.getAttribute('data-b'));
