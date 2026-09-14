@@ -450,7 +450,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v7-2';
+  var APP_VER='20260914-v8-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1184,6 +1184,79 @@
     return h+'</nav></div>';
   }
 
+  // ---------- Google Maps 底圖（要 browser key，存喺暗號閘後面嘅 row）----------
+  var gmap=null, gmarks=[], gInfo=null, gState='off';  // off | loading | on | fail
+  function mapKey(){ return (state && state.settings && state.settings.gmapKey) || ''; }
+  function loadGMaps(cb){
+    if(window.google && window.google.maps){ gState='on'; cb(); return; }
+    if(gState==='loading') return;
+    var k=mapKey(); if(!k){ gState='off'; return; }
+    gState='loading';
+    window.__gmapsReady=function(){ gState='on'; cb(); };
+    var sc=document.createElement('script');
+    sc.async=true;
+    sc.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(k)+
+           '&language=zh-HK&region=HK&loading=async&callback=__gmapsReady';
+    sc.onerror=function(){ gState='fail'; setSync('err','Google 地圖載入失敗，用返 OSM'); drawMap(); };
+    document.head.appendChild(sc);
+  }
+  function pinIcon(label,color,big){
+    var w=big?34:27, h=big?44:35;
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" viewBox="0 0 28 36">'+
+      '<path d="M14 0C6.3 0 0 6.3 0 14c0 9.9 14 22 14 22s14-12.1 14-22C28 6.3 21.7 0 14 0z" fill="'+color+'" stroke="#fff" stroke-width="2.2"/>'+
+      '<text x="14" y="19.5" font-size="'+(String(label).length>1?11:13)+'" font-weight="700" fill="#fff" '+
+      'text-anchor="middle" font-family="-apple-system,PingFang HK,sans-serif">'+String(label)+'</text></svg>';
+    return { url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg),
+             scaledSize:new google.maps.Size(w,h), anchor:new google.maps.Point(w/2,h) };
+  }
+  function drawGMap(pts){
+    var el=$('map');
+    if(!gmap){
+      gmap=new google.maps.Map(el,{
+        center:{lat:22.3193,lng:114.1694}, zoom:11,
+        mapTypeControl:false, streetViewControl:false, fullscreenControl:false,
+        clickableIcons:false, zoomControl:true,
+        gestureHandling:'greedy'
+      });
+      gInfo=new google.maps.InfoWindow();
+    }
+    gmarks.forEach(function(m){ m.setMap(null); }); gmarks=[];
+    if(!pts.length) return;
+    var bounds=new google.maps.LatLngBounds(), lines={};
+    pts.forEach(function(p){
+      var big=hlId===p.x.id;
+      var m=new google.maps.Marker({
+        position:{lat:p.x.lat,lng:p.x.lng}, map:gmap,
+        icon:pinIcon(p.n||'·', p.c, big), title:p.x.name, zIndex:big?999:1
+      });
+      m.addListener('click',function(){
+        hlId=p.x.id;
+        gInfo.setContent('<div style="font:14px -apple-system,PingFang HK,sans-serif;min-width:150px">'+
+          '<b style="display:block;margin-bottom:3px">'+esc(p.x.name)+'</b>'+
+          (p.x.rating?'<span style="color:#C9700A">★ '+(+p.x.rating).toFixed(1)+'</span> ':'')+
+          (p.x.addr?'<span style="color:#6C757D;font-size:12.5px">'+esc(p.x.addr)+'</span>':'')+
+          '<a href="https://www.google.com/maps/dir/?api=1&destination='+p.x.lat+','+p.x.lng+
+          '" target="_blank" rel="noopener" style="display:block;margin-top:6px;color:#3F52E3;font-weight:700;font-size:12.5px">導航 →</a></div>');
+        gInfo.open({anchor:m, map:gmap});
+        render(); scrollTo(p.x.id);
+      });
+      gmarks.push(m); bounds.extend(m.getPosition());
+      if(p.d){ (lines[p.d]=lines[p.d]||{c:p.c,a:[]}).a.push({lat:p.x.lat,lng:p.x.lng}); }
+    });
+    Object.keys(lines).forEach(function(d){
+      if(lines[d].a.length<2) return;
+      var pl=new google.maps.Polyline({ path:lines[d].a, map:gmap, strokeColor:lines[d].c,
+        strokeOpacity:0, zIndex:0,
+        icons:[{ icon:{path:'M 0,-1 0,1', strokeOpacity:.9, strokeWeight:3, scale:2}, offset:'0', repeat:'12px' }] });
+      gmarks.push(pl);
+    });
+    if(!gmap.__fit || mapDay!==gmap.__lastDay){
+      if(pts.length===1) { gmap.setCenter(bounds.getCenter()); gmap.setZoom(15); }
+      else gmap.fitBounds(bounds, 48);
+      gmap.__fit=1; gmap.__lastDay=mapDay;
+    }
+  }
+
   // ---------- map ----------
   function mapPoints(){
     var out=[], ds=days();
@@ -1197,7 +1270,21 @@
     });
     return out;
   }
+  function mapBar(){
+    var t=curTrip();
+    $('mapbar').innerHTML = t? ('<button data-act="mapday" data-d="all" class="'+(mapDay==='all'?'on':'')+'">全程</button>'+
+      days().map(function(d,i){ return '<button data-act="mapday" data-d="'+d+'" class="'+(mapDay===d?'on':'')+'">'+md(d)+'</button>'; }).join('')) : '';
+  }
   function drawMap(){
+    // 有 browser key 就行 Google，否則 Leaflet + OSM
+    if(mapKey() && gState!=='fail'){
+      if(gState!=='on'){ loadGMaps(function(){ drawMap(); }); 
+        if(gState==='loading'){ mapBar(); return; } }
+      if(gState==='on'){
+        if(map){ try{ map.remove(); }catch(e){} map=null; markers=[]; }
+        mapBar(); drawGMap(mapPoints()); return;
+      }
+    }
     if(!window.L) return;
     if(!map){
       map=L.map('map',{zoomControl:true});
@@ -1205,9 +1292,7 @@
       map.setView([22.3193,114.1694],10);
     }
     markers.forEach(function(m){ map.removeLayer(m); }); markers=[];
-    var t=curTrip();
-    $('mapbar').innerHTML = t? ('<button data-act="mapday" data-d="all" class="'+(mapDay==='all'?'on':'')+'">全程</button>'+
-      days().map(function(d,i){ return '<button data-act="mapday" data-d="'+d+'" class="'+(mapDay===d?'on':'')+'">'+md(d)+'</button>'; }).join('')) : '';
+    mapBar();
     var pts=mapPoints();
     if(!pts.length){ return; }
     var lines={}, ll=[];
@@ -1227,7 +1312,11 @@
     if(!map.__fit || mapDay!==map.__lastDay){ map.fitBounds(L.latLngBounds(ll).pad(.25)); if(ll.length===1) map.setZoom(14); map.__fit=1; map.__lastDay=mapDay; }
     setTimeout(function(){ map.invalidateSize(); },60);
   }
-  function flyTo(x){ if(!map||!x.lat) return; map.flyTo([x.lat,x.lng], Math.max(map.getZoom(),15), {duration:.6}); }
+  function flyTo(x){
+    if(!x.lat) return;
+    if(gState==='on' && gmap){ gmap.panTo({lat:x.lat,lng:x.lng}); if(gmap.getZoom()<15) gmap.setZoom(15); return; }
+    if(map) map.flyTo([x.lat,x.lng], Math.max(map.getZoom(),15), {duration:.6});
+  }
   function scrollTo(id){ var el=document.querySelector('.row[data-id="'+id+'"]'); if(el) el.scrollIntoView({block:'center',behavior:'smooth'}); }
 
   // ---------- geocode ----------
@@ -1639,7 +1728,7 @@
     else if(act==='go'){ var s3=$(el.getAttribute('data-s')); if(s3) s3.scrollIntoView({block:'start',behavior:'smooth'});
       document.querySelectorAll('#toc button').forEach(function(b){ b.classList.remove('on'); }); el.classList.add('on');
       $('side').classList.remove('open'); }
-    else if(act==='mapday'){ mapDay=el.getAttribute('data-d'); if(map) map.__fit=0; drawMap(); }
+    else if(act==='mapday'){ mapDay=el.getAttribute('data-d'); if(map) map.__fit=0; if(gmap) gmap.__fit=0; drawMap(); }
     else if(act==='openmap'){ $('mapwrap').classList.add('open'); setTimeout(function(){ if(map) map.invalidateSize(); },80); }
     else if(act==='closemap'){ $('mapwrap').classList.remove('open'); }
     else if(act==='menu-side'){ $('side').classList.toggle('open'); }
@@ -1778,9 +1867,38 @@
       fn(v);
     }
     else if(act==='settings'){
-      openSheet('<h3>設定</h3><div class="hint" style="margin-bottom:12px">模式：'+(MODE==='cloud'?'雲端同步':'本機模式')+'<br>版本 '+APP_VER+'</div>'+
-        '<button class="btn ghost" data-act="exJson">匯出備份</button>'+
+      var gp = GOOG===true? '✅ 已接通' : (GOOG===false? '⚠️ 未接通（用 OpenStreetMap）' : '－ 未試過');
+      var gm = mapKey()? (gState==='on'? '✅ Google 底圖' : (gState==='fail'? '⚠️ 載入失敗' : '⏳ 載入中')) : '－ 用 OpenStreetMap';
+      openSheet('<h3>設定</h3>'+
+        '<div class="hint" style="margin-bottom:14px">模式：'+(MODE==='cloud'?'雲端同步':'本機模式')+' · 版本 '+APP_VER+'</div>'+
+
+        '<div class="fld"><label>Google 地點資料（相／評分／真路線）</label>'+
+        '<div class="inp" style="background:var(--soft2)">'+gp+'</div>'+
+        '<div class="hint">呢個唔使喺呢度填。Key 要放喺 Supabase secret <code>GOOGLE_MAPS_KEY</code>，'+
+        '咁佢就完全唔會經過瀏覽器。</div></div>'+
+
+        '<div class="fld" style="margin-top:16px"><label>Google 底圖 key（browser key）</label>'+
+        '<input class="inp" id="gmk" type="password" autocomplete="off" placeholder="'+(mapKey()?'已設定 · 要換就貼新嘅':'貼 eva-trip browser (maps only) 條 key')+'">'+
+        '<div class="hint">狀態：'+gm+'<br>'+
+        '存喺你嘅 Supabase row（暗號閘後面），<b>唔會入 GitHub</b>。'+
+        'Google 規定底圖 key 一定要喺頁面度，所以呢條避唔開；已鎖 referrer 做 ngfranki.github.io。</div></div>'+
+        '<div class="btnrow"><button class="btn acc" data-act="savegmk">儲存 key</button>'+
+        (mapKey()?'<button class="btn ghost" data-act="clrgmk">清走，用返 OSM</button>':'')+'</div>'+
+
+        '<button class="btn ghost" data-act="exJson" style="margin-top:18px">匯出備份</button>'+
         (MODE==='cloud'?'<button class="btn warn" data-act="logout" style="margin-top:8px">登出</button>':''));
+    }
+    else if(act==='savegmk'){
+      var v=($('gmk').value||'').trim();
+      if(!v){ alert('冇貼嘢'); return; }
+      if(v.length<20){ alert('唔似係一條 key'); return; }
+      snap(); state.settings.gmapKey=v; save(); closeSheet();
+      gState='off'; if(map){ try{ map.remove(); }catch(e){} map=null; markers=[]; }
+      setSync('','載 Google 地圖…'); drawMap();
+    }
+    else if(act==='clrgmk'){
+      snap(); delete state.settings.gmapKey; save(); closeSheet();
+      gState='off'; gmap=null; gmarks=[]; drawMap();
     }
     else if(act==='logout'){ try{ localStorage.removeItem('tripKey'); localStorage.removeItem('tripCache'); }catch(e){} location.reload(); }
   });
