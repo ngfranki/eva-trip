@@ -543,7 +543,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v15-1';
+  var APP_VER='20260914-v15-2';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1244,7 +1244,12 @@
     var safe=String(file.name||'file').replace(/[^\w.\-]+/g,'_').slice(-60);
     var path=curTrip().id+'/'+x.id+'/'+uid()+'-'+safe;
     setSync('','\u4e0a\u8f09 '+file.name+'\u2026');
-    fetch(stUrl(path), {method:'POST', headers:stHdr({'Content-Type':file.type||'application/octet-stream'}), body:file})
+    // Cache-Control: no-store 好重要 —— 唔加嘅話檔案用啱暗號讀過一次之後，
+    // Supabase 個 CDN 會快取，期間知道路徑嘅人錯暗號都讀得到（實測過）。
+    // 加咗之後錯暗號一律 404。
+    fetch(stUrl(path), {method:'POST',
+      headers:stHdr({'Content-Type':file.type||'application/octet-stream', 'Cache-Control':'no-store'}),
+      body:file})
       .then(function(r){ if(!r.ok) return r.text().then(function(t){ throw new Error(r.status+' '+t.slice(0,80)); }); return r.json(); })
       .then(function(){
         snap(); if(!x.files) x.files=[];
