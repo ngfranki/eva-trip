@@ -466,7 +466,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v9-1';
+  var APP_VER='20260914-v9-2';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1048,9 +1048,9 @@
   function twoUp(){
     var counts={}; tItems().forEach(function(x){ counts[x.kind]=(counts[x.kind]||0)+1; });
     var order=['flight','stay','car','eat','place','check'];
-    var h='<div class="twoup"><div class="bkcard"><span class="cardlbl">預訂同項目</span><div class="bkrow">';
+    var h='<div class="twoup"><div class="bkcard"><span class="cardlbl">快速加</span><div class="bkrow">';
     order.forEach(function(k){
-      h+='<button data-act="jumpkind" data-k="'+k+'"><b>'+(counts[k]||'')+'</b><em>'+KINDS[k].i+'</em><span>'+KINDS[k].n+'</span></button>';
+      h+='<button data-act="addkind" data-k="'+k+'" title="加一個'+KINDS[k].n+'"><b>'+(counts[k]||'')+'</b><em>'+KINDS[k].i+'</em><span>'+KINDS[k].n+'</span></button>';
     });
     h+='</div></div>';
     h+='<div class="sumcard"><span class="cardlbl">預算</span><div class="bigno">'+esc(fmtCcy(cur(),homeTotal()))+'</div>'+
@@ -1609,6 +1609,23 @@
       });
     });
   }
+  // 由「快速加」建一個指定類型嘅項目，即刻開編輯器
+  function addOfKind(k){
+    var t=curTrip(); if(!t) return;
+    if(!KINDS[k]) k='place';
+    var ds=days();
+    var date = ds.length? (ds.indexOf(today())>=0? today() : ds[0]) : null;
+    var lid = date? null : ((tLists()[0]||{}).id||null);
+    if(!date && !lid){ ensureList(); lid=(tLists()[0]||{}).id||null; }
+    snap();
+    var x={ id:uid(), tripId:t.id, kind:k, listId:lid, date:date, ord:0, time:'',
+            name:'', lat:null, lng:null, addr:'', note:'', cost:0, ccy:'', done:false, checks:[] };
+    x.ord = nextOrd(date? dayItems(date) : listItems(lid));
+    x.name = '新'+KINDS[k].n;
+    state.items.push(x); save();
+    itemSheet(x);
+    setTimeout(function(){ try{ var e=$('eName'); e.focus(); e.select(); }catch(er){} }, 90);
+  }
   function tripSheet(t){
     var isNew=!t; t=t||{id:null,name:'',dest:'',start:today(),end:shift(today(),4),cur:'HKD'};
     openSheet('<h3>'+(isNew?'開新旅程':'改旅程')+'</h3>'+
@@ -1824,10 +1841,21 @@
     else if(act==='undo'){ undo(); }
     else if(act==='redo'){ redo(); }
     else if(act==='closesheet'){ closeSheet(); }
-    else if(act==='jumpkind'){
+    else if(act==='addkind'){
       var kk=el.getAttribute('data-k');
-      var hit=tItems().filter(function(x){ return x.kind===kk; })[0];
-      if(!hit){ alert('仲未有「'+KINDS[kk].n+'」項目'); return; }
+      var have=tItems().filter(function(z){ return z.kind===kk; });
+      if(have.length){
+        openMenu(ev,'<button data-act="addkind2" data-k="'+kk+'">＋ 加一個'+esc(KINDS[kk].n)+'</button>'+
+          '<hr><button data-act="jumpkind" data-k="'+kk+'">跳去第一個（共 '+have.length+' 個）</button>');
+        return;
+      }
+      addOfKind(kk);
+    }
+    else if(act==='addkind2'){ addOfKind(el.getAttribute('data-k')); }
+    else if(act==='jumpkind'){
+      var kj=el.getAttribute('data-k');
+      var hit=tItems().filter(function(z){ return z.kind===kj; })[0];
+      if(!hit) return;
       hlId=hit.id; render(); scrollTo(hit.id); if(hit.lat) flyTo(hit);
     }
     else if(act==='newexp'){
