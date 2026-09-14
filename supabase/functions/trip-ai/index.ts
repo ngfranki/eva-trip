@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       const id = String(body.placeId ?? "");
       if (!id) return json({ error: "empty placeId" }, 400);
       // Essentials + Pro 欄位；Atmosphere（評分／評論）要 Enterprise SKU，所以只攞 rating 呢個 Pro 欄位
-      const mask = "id,displayName,formattedAddress,location,types,rating,userRatingCount,regularOpeningHours,websiteUri,nationalPhoneNumber,photos";
+      const mask = "id,displayName,formattedAddress,location,types,rating,userRatingCount,regularOpeningHours,utcOffsetMinutes,websiteUri,nationalPhoneNumber,photos";
       const r = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(id)}`, {
         headers: { "X-Goog-Api-Key": GKEY(), "X-Goog-FieldMask": mask },
       });
@@ -94,6 +94,8 @@ Deno.serve(async (req) => {
         ratingCount: d.userRatingCount ?? null,
         hours: d.regularOpeningHours?.weekdayDescriptions ?? null,
         openNow: d.regularOpeningHours?.openNow ?? null,
+        utcOff: d.utcOffsetMinutes ?? null,   // 當地時區，算「而家開唔開」要用
+
         site: d.websiteUri ?? null,
         phone: d.nationalPhoneNumber ?? null,
         photo: d.photos?.[0]?.name ?? null,

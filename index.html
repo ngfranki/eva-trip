@@ -295,6 +295,7 @@
   .dayh .dd{font-size:13.5px; color:var(--muted)}
   .dayh .sp{flex:1}
   .dayh .tot{font-size:13px; color:var(--muted); font-weight:600}
+  .dayw{font-size:12.5px; color:var(--muted); margin:-4px 0 9px 18px; letter-spacing:.01em}
 
   /* ============ budget ============ */
   .bud{display:flex; flex-direction:column; gap:9px}
@@ -366,6 +367,10 @@
   .pmeta{font-size:13.5px; color:var(--muted); margin-top:5px}
   .pmeta b{font-weight:700}
   .prate{color:#C9700A} .popen{color:var(--ok)} .pshut{color:var(--muted)}
+  .ohint{color:var(--muted2); font-size:12.5px; margin-left:5px}
+  .bkbox{border:1px solid var(--line); border-radius:10px; padding:12px 13px 2px; margin:2px 0 14px; background:var(--soft)}
+  .bkh{font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; margin-bottom:9px}
+  .bkbox .inp{background:var(--bg)}
   .prows{margin:16px 0 4px; display:flex; flex-direction:column}
   .prow{display:flex; gap:11px; padding:9px 0; border-top:1px solid var(--line2); font-size:14px; align-items:flex-start}
   .prow:first-child{border-top:0}
@@ -422,6 +427,7 @@
     .sec,.day,.row{break-inside:avoid}
     .sech h2{font-size:15pt}
     .dayh h3{font-size:12pt}
+    .dayw{font-size:9pt; margin-left:0}
     .leg{padding-left:14px}
     #tripNote{border:1px solid #ddd}
     a{color:#000; text-decoration:none}
@@ -543,7 +549,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v15-2';
+  var APP_VER='20260914-v16-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -624,8 +630,205 @@
   function longD(s){ var d=pD(s); return (d.getMonth()+1)+'月'+d.getDate()+'日 星期'+dow(s); }
   function nowT(){ var d=new Date(); return pad(d.getHours())+':'+pad(d.getMinutes()); }
 
+  // ---------- 日出日落：純計算，唔用 API（任何日期都有，包括一年後）----------
+  // NOAA 簡化算法。校驗過：東京 2025-12-05 算出 06:37/16:29，實測 06:34/16:29。
+  function lngTz(lng){ return Math.round(+lng/15)*60; }
+  function sunTimes(lat, lng, ds, tzMin){
+    if(lat==null||lng==null||!ds) return null;
+    var RD=Math.PI/180, p=String(ds).split('-');
+    var y=+p[0], m=+p[1], d=+p[2];
+    if(!y||!m||!d) return null;
+    var a=Math.floor((14-m)/12), yy=y+4800-a, mm=m+12*a-3;
+    var jd=d+Math.floor((153*mm+2)/5)+365*yy+Math.floor(yy/4)-Math.floor(yy/100)+Math.floor(yy/400)-32045-0.5;
+    var n=jd-2451545.0+0.0008, Js=n-lng/360;
+    var M=(357.5291+0.98560028*Js)%360;
+    var C=1.9148*Math.sin(M*RD)+0.0200*Math.sin(2*M*RD)+0.0003*Math.sin(3*M*RD);
+    var L=(M+C+180+102.9372)%360;
+    var Jt=2451545.0+Js+0.0053*Math.sin(M*RD)-0.0069*Math.sin(2*L*RD);
+    var dec=Math.asin(Math.sin(L*RD)*Math.sin(23.44*RD))/RD;
+    var cw=(Math.sin(-0.833*RD)-Math.sin(lat*RD)*Math.sin(dec*RD))/(Math.cos(lat*RD)*Math.cos(dec*RD));
+    if(cw>1) return {polar:'night'};          // 極夜：全日唔出太陽
+    if(cw<-1) return {polar:'day'};           // 極晝
+    // tzMin 冇俾就用經度估（每 15° 一個鐘）。旅行嗰陣部機時區係出發地，
+    // 用佢算當地日落一定錯，所以寧可用經度估。
+    var w=Math.acos(cw)/RD, tz=(tzMin==null? lngTz(lng) : tzMin)/60;
+    function hm(J){
+      var f=(J-2451545.0)%1; if(f<0) f+=1;
+      var h=(f*24+tz)%24; if(h<0) h+=24;
+      var hh=Math.floor(h), mi=Math.round((h-hh)*60);
+      if(mi===60){ mi=0; hh=(hh+1)%24; }
+      return pad(hh)+':'+pad(mi);
+    }
+    return {rise:hm(Jt-w/360), set:hm(Jt+w/360)};
+  }
+
+  // ---------- 營業時間：解析 Google 嘅 weekdayDescriptions ----------
+  // 支援 "Monday: 9:00 AM – 5:00 PM"、"Closed"、"Open 24 hours"、多段時間、跨夜，
+  // 同中文版本（星期一: 上午9:00 至 下午5:00 / 休息 / 24 小時營業）。
+  function hoursIdx(ds){ var w=pD(ds).getDay(); return w===0?6:w-1; }   // Google 由星期一起
+  function parseHourLine(line){
+    if(!line) return null;
+    var t=String(line).replace(/^[^:：]*[:：]\s*/,'').trim();
+    if(!t) return null;
+    if(/closed|休息|定休|not open/i.test(t)) return {closed:true, raw:t};
+    if(/24\s*hours|24\s*小時|24小时/i.test(t)) return {all:true, raw:t};
+    var AP='[ap]\\.?m\\.?|上午|下午|中午|凌晨|晚上|早上';
+    var T='(?:('+AP+')\\s*)?(\\d{1,2})(?::(\\d{2}))?\\s*(?:('+AP+'))?';
+    var out=[], re=new RegExp(T+'\\s*(?:[–\\-~—至到]|to)\\s*'+T,'gi'), m;
+    while((m=re.exec(t))){
+      var k1=m[1]||m[4], k2=m[5]||m[8];
+      var A=toMin(m[2],m[3],k1||k2), B=toMin(m[6],m[7],k2||k1);
+      if(A==null||B==null) continue;
+      if(B<=A) B+=1440;                                   // 跨夜，例如 18:00–02:00
+      out.push([A,B]);
+    }
+    return out.length? {spans:out, raw:t} : {unknown:true, raw:t};
+    function toMin(h,mi,ap){
+      h=+h; mi=+(mi||0); if(isNaN(h)) return null;
+      ap=String(ap||'').toLowerCase().replace(/\./g,'');
+      if(ap==='pm'||ap==='下午'||ap==='晚上'){ if(h<12) h+=12; }
+      else if(ap==='am'||ap==='上午'||ap==='凌晨'||ap==='早上'){ if(h===12) h=0; }
+      else if(ap==='中午'){ if(h<12) h+=12; }
+      return h*60+mi;
+    }
+  }
+  function dayHours(x, ds){
+    if(!x || !x.hours || !x.hours.length || !ds) return null;
+    return parseHourLine(x.hours[hoursIdx(ds)]);
+  }
+  // 「你排咗嘅時間」同「營業時間」撞唔撞？回一句人話，冇問題就回空。
+  function hoursWarn(x){
+    if(!x || !x.date) return '';
+    var H=dayHours(x, x.date);
+    if(!H) return '';
+    if(H.closed) return '星期'+dow(x.date)+'休息';
+    if(!x.time || H.all || !H.spans) return '';
+    var p=x.time.split(':'), t=(+p[0])*60+(+p[1]||0);
+    var ok=H.spans.some(function(sp){ return (t>=sp[0]&&t<=sp[1]) || (t+1440>=sp[0]&&t+1440<=sp[1]); });
+    if(ok) return '';
+    var first=H.spans[0], last=H.spans[H.spans.length-1];
+    if(t<first[0]) return x.time+' 到，但 '+minHM(first[0])+' 才開';
+    if(t>last[1]) return x.time+' 到，但 '+minHM(last[1])+' 關門';
+    return x.time+' 唔喺營業時間內（'+H.spans.map(function(sp){ return minHM(sp[0])+'–'+minHM(sp[1]); }).join('、')+'）';
+  }
+  function minHM(m){ m=((m%1440)+1440)%1440; return pad(Math.floor(m/60))+':'+pad(m%60); }
+  // 即時開／關：有當地時區就用當地時間算，冇就用部機時間（會註明）
+  function openState(x){
+    var tz=(x&&x.utcOff!=null)? x.utcOff : null;
+    var now=new Date(), ds, cur;
+    if(tz!=null){
+      var l=new Date(now.getTime()+(tz*60 + now.getTimezoneOffset())*60000);
+      ds=fmtD(l); cur=l.getHours()*60+l.getMinutes();
+    } else { ds=today(); cur=now.getHours()*60+now.getMinutes(); }
+    var H=dayHours(x, ds);
+    if(!H) return null;
+    if(H.closed) return {open:false, local:tz!=null, why:'今日休息'};
+    if(H.all) return {open:true, local:tz!=null, why:'24 小時'};
+    if(!H.spans) return null;
+    var yH=dayHours(x, shift(ds,-1));                       // 昨晚跨夜嘅段
+    var hit=H.spans.filter(function(sp){ return cur>=sp[0] && cur<=sp[1]; })[0];
+    if(!hit && yH && yH.spans) hit=yH.spans.filter(function(sp){ return sp[1]>1440 && cur+1440>=sp[0] && cur+1440<=sp[1]; })[0];
+    if(hit) return {open:true, local:tz!=null, why:'至 '+minHM(hit[1])};
+    var nxt=H.spans.filter(function(sp){ return sp[0]>cur; })[0];
+    return {open:false, local:tz!=null, why: nxt? minHM(nxt[0])+' 開':'今日已關'};
+  }
+
+  // ---------- 天氣：Open-Meteo（免 key、免登記、非商業免費）----------
+  // 一個 call 同時攞到預報同當地時區 offset。預報只覆蓋未來 16 日；
+  // 超出範圍就只用純計算嘅日落時間。
+  // 當日自己嘅中心點。多城市行程唔可以全程用同一個中點 ——
+  // 札幌同東京嘅日落差 27 分鐘，天氣更係兩回事。
+  function dayPt(d){
+    var a=dayItems(d).filter(function(x){ return x.lat!=null; });
+    if(!a.length) return tripCentre();
+    var la=0, ln=0;
+    a.forEach(function(x){ la+=+x.lat; ln+=+x.lng; });
+    return {lat:la/a.length, lng:ln/a.length};
+  }
+  function wxKey(d){ var t=curTrip(); return t? t.id+'|'+d : ''; }
+  function wxGet(d){ return (state.wx||{})[wxKey(d)]||null; }
+  var wxBusy=false, wxFail=0;
+  function wxFetch(force){
+    var t=curTrip(); if(!t||!t.start) return;
+    if(!state.wx) state.wx={};
+    if(wxBusy) return;
+    if(!force){
+      if(t.wxAt && (Date.now()-t.wxAt)<3*3600*1000) return;          // 三個鐘內唔重複攞
+      if(wxFail && (Date.now()-wxFail)<5*60*1000) return;            // 撲街就等五分鐘先再試
+    }
+    var ds=days(); if(!ds.length) return;
+
+    // 逐日一個座標，重複嘅合埋（一個 request 攞齊）
+    var pts=[], seen={}, dayIdx={};
+    ds.forEach(function(d){
+      var pt=dayPt(d); if(!pt) return;
+      var k=pt.lat.toFixed(2)+','+pt.lng.toFixed(2);
+      if(seen[k]==null){ seen[k]=pts.length; pts.push(pt); }
+      dayIdx[d]=seen[k];
+    });
+    if(!pts.length) return;                                          // 一個地點都未定位，冇得計
+
+    var todayS=today(), maxD=fmtD(new Date(Date.now()+15*86400000));
+    var a=(ds[0]<todayS)? todayS : ds[0], b=ds[ds.length-1];
+    if(b>maxD) b=maxD;
+    var inRange = (a<=b && a<=maxD);
+
+    var url='https://api.open-meteo.com/v1/forecast'+
+      '?latitude='+pts.map(function(q){ return q.lat.toFixed(3); }).join(',')+
+      '&longitude='+pts.map(function(q){ return q.lng.toFixed(3); }).join(',')+
+      '&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,weather_code,sunrise,sunset'+
+      '&timezone=auto';
+    // 出發日仲遠過 16 日就攞唔到預報，但照打一次攞當地時區（日落要用）
+    url += inRange? ('&start_date='+a+'&end_date='+b) : '&forecast_days=1';
+
+    wxBusy=true;
+    fetch(url).then(function(r){ return r.ok? r.json() : null; }).then(function(j){
+      if(!j){ wxBusy=false; wxFail=Date.now(); return; }
+      var t2=curTrip(); if(!t2){ wxBusy=false; return; }
+      var arr = Array.isArray(j)? j : [j];                           // 一個座標嗰陣唔係 array
+      ds.forEach(function(d){
+        var loc=arr[dayIdx[d]]; if(!loc) return;
+        var rec=state.wx[t2.id+'|'+d]||{};
+        if(loc.utc_offset_seconds!=null) rec.tz=Math.round(loc.utc_offset_seconds/60);
+        var D=loc.daily, i=(D&&D.time)? D.time.indexOf(d) : -1;
+        if(i>=0){
+          rec.mn=D.temperature_2m_min[i]; rec.mx=D.temperature_2m_max[i];
+          rec.pr=D.precipitation_sum[i];  rec.sn=D.snowfall_sum[i];
+          rec.cd=D.weather_code[i];
+          rec.rise=(D.sunrise[i]||'').slice(11,16);
+          rec.set=(D.sunset[i]||'').slice(11,16);
+        }
+        state.wx[t2.id+'|'+d]=rec;
+      });
+      t2.wxAt=Date.now(); wxBusy=false;
+      save(true); render();
+    }).catch(function(){ wxBusy=false; wxFail=Date.now(); });
+  }
+  var WXI={0:'晴',1:'大致晴',2:'多雲',3:'密雲',45:'霧',48:'霧',51:'微雨',53:'微雨',55:'微雨',
+    61:'雨',63:'雨',65:'大雨',66:'凍雨',67:'凍雨',71:'雪',73:'雪',75:'大雪',77:'雪粒',
+    80:'雨',81:'雨',82:'大雨',85:'陣雪',86:'大陣雪',95:'雷雨',96:'雷雨',99:'雷雨'};
+  // 每日標題嗰行：氣溫 · 雪 · 天黑
+  function dayWx(d){
+    var t=curTrip(); if(!t) return '';
+    var w=wxGet(d), bits=[];
+    if(w){
+      if(w.mx!=null) bits.push(Math.round(w.mn)+'°~'+Math.round(w.mx)+'°');
+      if(WXI[w.cd]) bits.push(WXI[w.cd]);
+      if(+w.sn>0) bits.push('雪 '+(+w.sn).toFixed(0)+'cm');
+      else if(+w.pr>=1) bits.push('雨 '+(+w.pr).toFixed(0)+'mm');
+    }
+    var set = w&&w.set ? w.set : null;
+    if(!set){
+      var c=dayPt(d);
+      if(c){ var st=sunTimes(c.lat, c.lng, d, (w&&w.tz!=null)? w.tz : null);
+        if(st && st.set) set=st.set; else if(st && st.polar==='night') set='極夜'; }
+    }
+    if(set) bits.push('天黑 '+set);
+    return bits.join(' · ');
+  }
+
   // ---------- state / migration ----------
-  function defState(){ return {v:2, trips:[], lists:[], items:[], logs:{}, settings:{curTrip:null,updatedAt:null}, meta:{}}; }
+  function defState(){ return {v:2, trips:[], lists:[], items:[], logs:{}, settings:{curTrip:null,updatedAt:null}, meta:{}, wx:{}}; }
   function migrate(s){
     if(!s || typeof s!=='object') return defState();
     if(s.v===2){
@@ -633,6 +836,7 @@
       if(!Array.isArray(s.lists)) s.lists=[];
       if(!Array.isArray(s.items)) s.items=[];
       if(!s.logs) s.logs={}; if(!s.settings) s.settings={}; if(!s.meta) s.meta={};
+      if(!s.wx) s.wx={};
       return s;
     }
     // v1 → v2：stops 變 items，未排日期嘅入「想去」清單
@@ -874,8 +1078,9 @@
       .then(function(j){ cb(j&&j.text||'',null); })
       .catch(function(e){ cb(null,String(e.message||e)); });
   }
-  function parseStops(t){ if(!t) return null; var m=String(t).match(/\{[\s\S]*\}/); if(!m) return null;
-    try{ var j=JSON.parse(m[0]); return Array.isArray(j.stops)?j.stops:null; }catch(e){ return null; } }
+  function parseKey(t, key){ if(!t) return null; var m=String(t).match(/\{[\s\S]*\}/); if(!m) return null;
+    try{ var j=JSON.parse(m[0]); return Array.isArray(j[key])?j[key]:null; }catch(e){ return null; } }
+  function parseStops(t){ return parseKey(t,'stops'); }
   function importStops(arr,toList){
     var t=curTrip(), ds=days(), ids=[]; snap();
     var lid = toList ? (tLists()[0]||{}).id : null;
@@ -893,6 +1098,60 @@
     ids.forEach(function(i){ geoQ.push(i); }); pumpGeo();
     return ids.length;
   }
+
+  // ---------- 貼確認信 → 自動建航班／酒店項目 ----------
+  function bookPrompt(src){
+    var t=curTrip(), yr=(t&&t.start)? t.start.slice(0,4) : String(new Date().getFullYear());
+    return '下面係訂單確認信。抽出裡面嘅訂單，只回一個 JSON object：\n'+
+      '{"bookings":[{"cat":"flight|stay|car","name":"","date":"YYYY-MM-DD","time":"HH:MM",'+
+      '"endDate":"","endTime":"","fno":"","conf":"","seat":"","term":"","addr":"","phone":"","cost":0,"ccy":"","note":""}]}\n'+
+      '規矩：\n'+
+      '1. 只可以寫信裡面真有嘅資料。冇嘅就留空字串或者 0，唔准估、唔准作、唔准填示例值。\n'+
+      '2. flight：name 寫「出發地 — 目的地」，date/time 係起飛當地日期時間，endDate/endTime 係降落，fno 係航班號，term 係航廈或閘口。\n'+
+      '3. stay：name 寫酒店名，date＝入住日、time＝check-in 時間，endDate＝退房日、endTime＝check-out 時間，addr 寫地址。\n'+
+      '4. car：火車、租車、機場接送都算。fno 寫車次或車牌。\n'+
+      '5. 日期一定要 YYYY-MM-DD。信裡面冇年份就當係 '+yr+'。時間用 24 小時制 HH:MM。\n'+
+      '6. conf 係確認／訂單編號。cost 只填數字，ccy 填三個字母（例 JPY）。\n'+
+      '只回 JSON，前後唔准有任何其他字。\n\n確認信：\n'+src;
+  }
+  function importBookings(arr){
+    var t=curTrip(); if(!t) return 0;
+    var ds=days(), lid=(tLists()[0]||{}).id, n=0, ids=[];
+    snap();
+    function mk(cat, name, date, time, extra){
+      var k = KINDS[cat]? cat : 'place';
+      var inTrip = date && ds.indexOf(date)>=0;
+      var x={ id:uid(), tripId:t.id, kind:k, listId:inTrip?null:lid, date:inTrip?date:null,
+              ord:nextOrd(inTrip?dayItems(date):listItems(lid)), time:time||'',
+              name:String(name||'').slice(0,120), lat:null,lng:null,addr:'', note:'',
+              cost:0, done:false, checks:[] };
+      Object.keys(extra||{}).forEach(function(kk){ if(extra[kk]) x[kk]=extra[kk]; });
+      if(date && !inTrip) x.note=(x.note?x.note+' · ':'')+'原定 '+date+'（唔喺旅程日期範圍內）';
+      state.items.push(x); ids.push(x.id); n++;
+      return x;
+    }
+    arr.forEach(function(r){
+      if(!r || !r.name) return;
+      var cat=String(r.cat||'').toLowerCase();
+      if(cat!=='flight' && cat!=='stay' && cat!=='car') cat='place';
+      var ex={ fno:r.fno, conf:r.conf, seat:r.seat, term:r.term, addr:r.addr, phone:r.phone,
+               note:String(r.note||'').slice(0,300) };
+      if(+r.cost>0) ex.cost=+r.cost;
+      if(r.ccy && String(r.ccy).toUpperCase()!==cur()) ex.ccy=String(r.ccy).toUpperCase().slice(0,4);
+      if(cat==='stay' && r.endDate && r.endDate!==r.date){
+        mk(cat, r.name, r.date, r.time, ex);
+        mk(cat, r.name+' 退房', r.endDate, r.endTime||'', {conf:r.conf, addr:r.addr, term:r.term});
+      } else {
+        var x=mk(cat, r.name, r.date, r.time, ex);
+        if(cat==='flight' && r.endTime) x.note=(x.note?x.note+' · ':'')+'降落 '+(r.endDate&&r.endDate!==r.date? r.endDate+' ':'')+r.endTime;
+      }
+    });
+    save();
+    ids.forEach(function(i){ var x=itemById(i); if(x && kd(x.kind).geo) geoQ.push(i); });
+    pumpGeo();
+    return n;
+  }
+
   function aiSheet(){
     var t=curTrip();
     openSheet('<h3>'+ic('spark',19,'inline')+' AI 助手</h3>'+
@@ -901,6 +1160,10 @@
       '<button class="btn acc" data-act="aiplan">排落' + (days().length||0) + '日行程（加喺現有嘢後面）</button>'+
       '<div class="fld" style="margin-top:16px"><label>貼文字抽地點</label><textarea class="inp" id="aiSrc" placeholder="貼 blog、IG caption、朋友清單…"></textarea></div>'+
       '<button class="btn ghost" data-act="aiextract">抽出嚟入清單</button>'+
+      '<div class="fld" style="margin-top:18px"><label>貼確認信 → 自動入行程</label>'+
+      '<textarea class="inp" id="aiBook" placeholder="貼整封機票／酒店／新幹線確認信（可以幾封一次貼）"></textarea></div>'+
+      '<button class="btn ghost" data-act="aibook">抽航班／酒店入行程</button>'+
+      '<div class="hint">會連航班號、確認編號、座位、航廈一齊入。日期對得上就自動排落嗰日。</div>'+
       '<div class="hint" id="aiMsg"></div>');
   }
   function aiRun(intent,prompt,onText){
@@ -1182,6 +1445,7 @@
     if(!t){ $('main').innerHTML='<div class="page" style="padding-top:60px"><div class="panel pad"><div class="empty">仲未有旅程<br>開一個先</div><button class="btn acc" data-act="newtrip">＋ 開新旅程</button></div></div>';
             $('toc').innerHTML=''; drawMap(); return; }
     ensureList();
+    if(MODE==='cloud') wxFetch();      // 自己有守衛，唔會每次 render 都打
     var h='<div class="page">';
     h+=hero(t);
     h+=twoUp();
@@ -1259,6 +1523,17 @@
       .catch(function(e){ setSync('err','\u4e0a\u8f09\u5931\u6557\uff1a'+(e.message||'')); if(cb) cb(false); });
   }
   function openFile(f){
+    // 先睇有冇離線副本（冇訊號都開得到）
+    if(window.caches){
+      caches.match(stUrl(f.p)).then(function(m){
+        if(m) m.blob().then(function(b){ var u=URL.createObjectURL(b); window.open(u,'_blank'); setTimeout(function(){URL.revokeObjectURL(u);},60000); });
+        else openFileNet(f);
+      }).catch(function(){ openFileNet(f); });
+      return;
+    }
+    openFileNet(f);
+  }
+  function openFileNet(f){
     if(!f) return;
     setSync('','\u958b\u7dca '+f.n+'\u2026');
     fetch(stUrl(f.p), {headers:stHdr()})
@@ -1390,10 +1665,12 @@
     var h='<div class="sec" id="s-itin"><div class="sech big">'+ic('chev',13,'chev')+'<h2>行程</h2><span class="n">'+ds.length+' 日</span></div>';
     ds.forEach(function(d,i){
       var arr=dayItems(d), c=dayColor(i), tot=sumCost(arr);
+      var wxl=dayWx(d);
       h+='<div class="day" id="s-d'+i+'"><div class="dayh"><span class="dot" style="background:'+c+'"></span>'+
          '<h3>第'+(i+1)+'日</h3><span class="dd">'+longD(d)+'</span><span class="sp"></span>'+
          (tot?'<span class="tot">'+money(tot)+'</span>':'')+
-         '<button class="kebab" data-act="daymenu" data-d="'+d+'">⋯</button></div>';
+         '<button class="kebab" data-act="daymenu" data-d="'+d+'">⋯</button></div>'+
+         (wxl?'<div class="dayw">'+esc(wxl)+'</div>':'');
       h+='<div class="panel" data-drop="day:'+d+'">';
       if(arr.length){
         h+='<div class="rows">';
@@ -1424,7 +1701,7 @@
     var tl = x.time ? (k.tl? k.tl+' '+x.time : x.time) : '';
     var chips=[];
     if(tl) chips.push('<span class="chip">'+esc(tl)+'</span>');
-    if(+x.cost) chips.push('<span class="chip cost">'+esc(cur())+' '+Math.round(x.cost).toLocaleString()+'</span>');
+    if(+x.cost) chips.push('<span class="chip cost">'+esc(fmtCcy(itemCcy(x), x.cost))+'</span>');
     if((x.files||[]).length) chips.push('<span class="chip file">'+ic('note',11,'inline')+' '+x.files.length+'</span>');
     if(x.unverified) chips.push('<span class="chip warn" title="地圖搵唔到呢個名，AI 可能作嘅">⚠ 查唔到</span>');
     var chk='';
@@ -1434,8 +1711,12 @@
       }).join('')+'</div>';
     }
     if(x.rating) chips.push('<span class="chip rate">'+ic('star',11,'inline')+' '+(+x.rating).toFixed(1)+(x.ratingCount?' ('+(+x.ratingCount).toLocaleString()+')':'')+'</span>');
-    if(x.openNow===true) chips.push('<span class="chip open">營業中</span>');
-    else if(x.openNow===false) chips.push('<span class="chip shut">休息</span>');
+    // 唔再顯示 openNow —— 佢係加地點嗰刻寫死嘅，出發時已經過期。
+    // 改為比對你排嘅時間同當日營業時間，有撞才嘈。
+    var hw=hoursWarn(x);
+    if(hw) chips.push('<span class="chip shut" title="Google 營業時間">'+ic('clock',11,'inline')+' '+esc(hw)+'</span>');
+    if(x.fno) chips.push('<span class="chip">'+esc(x.fno)+'</span>');
+    if(x.conf) chips.push('<span class="chip">'+ic('check',11,'inline')+' '+esc(x.conf)+'</span>');
     var badge = idx
       ? '<div class="idx" style="background:'+idx.c+'">'+idx.n+'</div>'
       : '<div class="idx kico" style="background:var(--muted2)">'+kico(x.kind,14)+'</div>';
@@ -1770,6 +2051,7 @@
     if(d.ratingCount!=null) x.ratingCount=d.ratingCount;
     if(d.openNow!=null) x.openNow=d.openNow;
     if(d.hours) x.hours=d.hours;
+    if(d.utcOff!=null) x.utcOff=d.utcOff;
     if(d.phone) x.phone=d.phone;
     if(d.site) x.site=d.site;
     if(d.photo) x.photoName=d.photo;
@@ -1912,18 +2194,39 @@
     days().forEach(function(d,i){ h+='<option value="day:'+d+'"'+(x.date===d?' selected':'')+'>第'+(i+1)+'日 · '+md(d)+'（'+dow(d)+'）</option>'; });
     return h+'</optgroup>';
   }
+  // ---------- 訂單資料：同一組 field，按類型改個叫法 ----------
+  var BK={
+    flight:{fno:['航班號','HX606'], conf:['確認編號','ABC123'], seat:['座位','32K'], term:['航廈／閘口','T1 · Gate 60']},
+    stay:  {fno:['房型','Twin 禁煙'], conf:['訂房編號','1234567'], seat:['房號',''], term:['Check-out','11:00']},
+    car:   {fno:['車次／車牌','のぞみ 231'], conf:['確認編號',''], seat:['車廂／座位','8 号車 3A'], term:['上車站／櫃位','東京駅 八重洲口']},
+    other: {fno:['編號',''], conf:['確認編號',''], seat:['位',''], term:['地點補充','']}
+  };
+  function bkLab(kind){ return BK[kind]||BK.other; }
+  function bkHTML(x){
+    var L=bkLab(x.kind);
+    var always = (x.kind==='flight'||x.kind==='stay'||x.kind==='car');
+    if(!always && !x.fno && !x.conf && !x.seat && !x.term) return '';   // 普通地點唔亂加欄
+    function f(id,key){
+      return '<div class="fld"><label>'+esc(L[key][0])+'</label><input class="inp" id="'+id+'" value="'+
+        esc(x[key]||'')+'" placeholder="'+esc(L[key][1])+'"></div>';
+    }
+    return '<div class="bkbox"><div class="bkh">訂單資料</div>'+
+      '<div class="two">'+f('eFno','fno')+f('eConf','conf')+'</div>'+
+      '<div class="two">'+f('eSeat','seat')+f('eTerm','term')+'</div></div>';
+  }
   function itemSheet(x){
     var k=kd(x.kind);
-    openSheet('<h3>'+k.i+' 改項目</h3>'+
+    openSheet('<h3>'+kico(x.kind,18,'inline')+' 改項目</h3>'+
       '<div class="fld"><label>名</label><input class="inp" id="eName" value="'+esc(x.name)+
         '" placeholder="'+esc(x.kind==='flight'?'香港 — 東京 HX606':(x.kind==='stay'?'Hotel Granvia Kyoto':'打個名，例：清水寺'))+'"></div>'+
       '<div class="fld"><label>類型</label><div class="kinds" id="eKinds" style="gap:5px">'+
-        KORDER.map(function(kk){ return '<button data-k="'+kk+'" class="'+(x.kind===kk?'on':'')+'" style="width:auto;padding:0 11px;height:34px;font-size:13px">'+KINDS[kk].i+' '+KINDS[kk].n+'</button>'; }).join('')+'</div></div>'+
+        KORDER.map(function(kk){ return '<button data-k="'+kk+'" class="'+(x.kind===kk?'on':'')+'" style="width:auto;padding:0 11px;height:34px;font-size:13px">'+ic(KINDS[kk].i,15,'inline')+' '+KINDS[kk].n+'</button>'; }).join('')+'</div></div>'+
       '<div class="two"><div class="fld"><label>'+(k.tl||'時間')+'</label><input class="inp" id="eTime" type="time" value="'+esc(x.time||'')+'"></div>'+
       '<div class="fld"><label>使費</label><div style="display:flex;gap:7px">'+
         '<input class="inp" id="eCcy" value="'+esc(itemCcy(x))+'" style="width:78px;text-transform:uppercase">'+
         '<input class="inp" id="eCost" type="number" inputmode="decimal" value="'+(x.cost||'')+'" placeholder="0"></div></div></div>'+
       '<div class="fld"><label>擺喺邊</label><select class="inp" id="eScope">'+scopeOpts(x)+'</select></div>'+
+      bkHTML(x)+
       '<div class="fld"><label>備註</label><textarea class="inp" id="eNote">'+esc(x.note||'')+'</textarea></div>'+
       '<div class="fld"><label>附件</label>'+filesHTML(x,true)+'</div>'+
       (x.kind==='check'? '<div class="fld"><label>清單（一行一項）</label><textarea class="inp" id="eChecks">'+esc((x.checks||[]).map(function(c){return c.t;}).join('\n'))+'</textarea></div>':'')+
@@ -1944,13 +2247,21 @@
     h+='<div class="phead"><h3 style="margin:0">'+esc(x.name)+'</h3>'+
        '<div class="pmeta">'+kico(x.kind,14,'inline')+' '+esc(k.n)+
        (x.rating?' \u00b7 <b class="prate">'+ic('star',12,'inline')+' '+(+x.rating).toFixed(1)+'</b>'+(x.ratingCount?' <span>('+(+x.ratingCount).toLocaleString()+')</span>':''):'')+
-       (x.openNow===true?' \u00b7 <b class="popen">\u71df\u696d\u4e2d</b>':(x.openNow===false?' \u00b7 <b class="pshut">\u4f11\u606f</b>':''))+
+       (function(){ var o=openState(x); if(!o) return '';
+          return ' \u00b7 <b class="'+(o.open?'popen':'pshut')+'">'+(o.open?'營業中':'休息')+'</b>'+
+                 '<span class="ohint">'+esc(o.why)+(o.local?'':'（按你部機時間）')+'</span>'; })()+
        '</div></div>';
 
     var rows=[];
     if(x.addr) rows.push([ic('pin',17), esc(x.addr), x.lat? 'https://www.google.com/maps/search/?api=1&query='+x.lat+','+x.lng : '']);
     var th=todayHourLine(x);
     if(th) rows.push([ic('clock',17), esc(th)+(x.hours.length>1?' <a data-act="allhours">\u5168\u9031</a>':''), '']);
+    var hw2=hoursWarn(x);
+    if(hw2) rows.push([ic('clock',17), '<b class="pshut">'+esc(hw2)+'</b>', '']);
+    if(x.fno) rows.push([kico(x.kind,17), esc(x.fno), '']);
+    if(x.conf) rows.push([ic('check',17), '確認編號 '+esc(x.conf), '']);
+    if(x.seat) rows.push([ic('check',17), '座位 '+esc(x.seat), '']);
+    if(x.term) rows.push([ic('pin',17), esc(x.term), '']);
     if(x.phone) rows.push([ic('phone',17), esc(x.phone), 'tel:'+String(x.phone).replace(/[^0-9+]/g,'')]);
     if(x.site) rows.push([ic('link',17), esc(String(x.site).replace(/^https?:\/\//,'').slice(0,42)), x.site]);
     if(x.time) rows.push([ic('clock',17), esc((k.tl?k.tl+' ':'')+x.time), '']);
@@ -2040,8 +2351,198 @@
       '<button class="btn ghost" data-act="exCsv" style="margin-top:8px">CSV（Excel 開得）</button>'+
       '<button class="btn ghost" data-act="exShare" style="margin-top:8px">分享頁 data.json</button>'+
       '<button class="btn ghost" data-act="exGmap" style="margin-top:8px">Google Maps 路線（今日）</button>'+
+      '<button class="btn ghost" data-act="exIcs" style="margin-top:8px">'+ic('clock',15,'inline')+' 行事曆 .ics（入 iPhone 日曆）</button>'+
+      '<div class="hint">.ics 用當地牆上時間，唔會換算成香港時間。</div>'+
+      '<button class="btn ghost" data-act="offline" style="margin-top:12px">'+ic('note',15,'inline')+' 離線準備（預載附件）</button>'+
       '<div class="hint">路線最優化喺每一日個 ⋯ 選單度。</div>');
   }
+
+  // ---------- .ics：入 iPhone 行事曆 ----------
+  // 用 floating local time（唔加 Z、唔加 TZID）—— 旅行嗰陣你想見到當地牆上時間，
+  // 唔係換算成香港時間。大部分行事曆都照當地時間顯示。
+  function icsEsc(v){ return String(v==null?'':v).replace(/\\/g,'\\\\').replace(/[;,]/g,function(c){return '\\'+c;}).replace(/\r?\n/g,'\\n'); }
+  function icsFold(l){                       // RFC 5545：一行最多 75 octet
+    // 一定要按字元邊界折，唔可以直接切 byte —— 切爛一個中文字就成份 .ics 廢咗
+    var chars = Array.from? Array.from(l) : l.split('');
+    var lines=[], cur='', n=0, lim=73;       // 留位俾續行開頭嗰個空格
+    chars.forEach(function(ch){
+      var b=unescape(encodeURIComponent(ch)).length;
+      if(n+b>lim){ lines.push(cur); cur=''; n=1; }
+      cur+=ch; n+=b;
+    });
+    lines.push(cur);
+    return lines.join('\r\n ');
+  }
+  function icsOut(){
+    var t=curTrip(); if(!t) return '';
+    var L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//eva-trip//'+APP_VER+'//EN','CALSCALE:GREGORIAN',
+           'X-WR-CALNAME:'+icsEsc(t.name||'旅程')];
+    var st=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+    var n=0;
+    days().forEach(function(d){
+      dayItems(d).forEach(function(x){
+        var bits=[];
+        var Lb=bkLab(x.kind);
+        if(x.fno)  bits.push(Lb.fno[0]+'：'+x.fno);
+        if(x.conf) bits.push(Lb.conf[0]+'：'+x.conf);
+        if(x.seat) bits.push(Lb.seat[0]+'：'+x.seat);
+        if(x.term) bits.push(Lb.term[0]+'：'+x.term);
+        if(x.phone) bits.push('電話：'+x.phone);
+        if(+x.cost) bits.push('使費：'+fmtCcy(itemCcy(x), x.cost));
+        if(x.note) bits.push(x.note);
+        if(x.site) bits.push(x.site);
+        L.push('BEGIN:VEVENT');
+        L.push('UID:'+x.id+'@eva-trip');
+        L.push('DTSTAMP:'+st);
+        var dz=d.replace(/-/g,'');
+        if(x.time){
+          var pp=x.time.split(':'), h=+pp[0], mi=+(pp[1]||0);
+          var dur = (x.kind==='flight')? 150 : (x.kind==='eat'? 90 : (x.kind==='stay'? 30 : 75));
+          var e=h*60+mi+dur, eh=Math.floor(e/60), ed=dz;
+          if(eh>=24){ eh-=24; ed=shift(d,1).replace(/-/g,''); }
+          L.push('DTSTART:'+dz+'T'+pad(h)+pad(mi)+'00');
+          L.push('DTEND:'+ed+'T'+pad(eh)+pad(e%60)+'00');
+        } else {
+          L.push('DTSTART;VALUE=DATE:'+dz);
+          L.push('DTEND;VALUE=DATE:'+shift(d,1).replace(/-/g,''));
+        }
+        L.push('SUMMARY:'+icsEsc((kd(x.kind).tl? kd(x.kind).tl+' ' : '')+x.name));
+        if(x.addr) L.push('LOCATION:'+icsEsc(x.addr));
+        if(bits.length) L.push('DESCRIPTION:'+icsEsc(bits.join('\n')));
+        if(x.lat) L.push('GEO:'+(+x.lat).toFixed(6)+';'+(+x.lng).toFixed(6));
+        L.push('END:VEVENT');
+        n++;
+      });
+    });
+    L.push('END:VCALENDAR');
+    icsOut.n=n;
+    return L.map(icsFold).join('\r\n')+'\r\n';
+  }
+
+  // ---------- 整日推移／複製 ----------
+  function moveDay(d, n){
+    var ds=days(), i=ds.indexOf(d), j=i+n;
+    if(i<0) return '搵唔到呢日';
+    if(j<0||j>=ds.length) return '出咗旅程範圍，先改返出發／返程日';
+    var from=dayItems(d), to=ds[j];
+    if(!from.length) return '呢日本來冇嘢';
+    var there=dayItems(to).length;
+    // 推去一個已經有安排嘅日子 = 兩日合併，唔好靜靜雞做
+    if(there && !confirm('第'+(j+1)+'日（'+md(to)+'）本來已經有 '+there+' 個項目。\n'+
+       '推過去會兩日合埋一齊（'+(there+from.length)+' 個）。繼續？')) return '';
+    snap();
+    var base=nextOrd(dayItems(to));
+    from.forEach(function(x,k){ x.date=to; x.ord=base+k*10; });
+    save();
+    return '';
+  }
+  function dupDay(d, to){
+    var from=dayItems(d);
+    if(!from.length) return '呢日本來冇嘢';
+    snap();
+    var base=nextOrd(dayItems(to)), ids=[];
+    from.forEach(function(x,k){
+      var c=JSON.parse(JSON.stringify(x));
+      c.id=uid(); c.date=to; c.listId=null; c.ord=base+k*10; c.done=false;
+      delete c.files;                                  // 附件唔跟去，免得兩份指同一個檔
+      state.items.push(c); ids.push(c.id);
+    });
+    save();
+    return '';
+  }
+  function dupDaySheet(d){
+    var ds=days();
+    openSheet('<h3>複製 '+md(d)+'（星期'+dow(d)+'）去邊日</h3>'+
+      '<div class="hint" style="margin-bottom:12px">會複製 '+dayItems(d).length+' 個項目（附件唔會跟去）。</div>'+
+      ds.filter(function(x){ return x!==d; }).map(function(x,i){
+        return '<button class="btn ghost" data-act="dupday2" data-d="'+d+'" data-t="'+x+'" style="text-align:left;margin-bottom:7px">第'+
+          (ds.indexOf(x)+1)+'日 · '+longD(x)+'<span style="color:var(--muted);font-weight:500"> · 現有 '+dayItems(x).length+' 個</span></button>';
+      }).join('') || '<div class="empty">冇第二日可以揀</div>');
+  }
+  function dupTrip(t){
+    if(!t) return;
+    snap();
+    var nt=JSON.parse(JSON.stringify(t));
+    nt.id=uid(); nt.name=(t.name||'旅程')+'（複本）';
+    delete nt.wxAt; delete nt.cover;
+    state.trips.push(nt);
+    var lmap={};
+    state.lists.filter(function(l){ return l.tripId===t.id; }).forEach(function(l){
+      var nl=JSON.parse(JSON.stringify(l)); nl.id=uid(); nl.tripId=nt.id; lmap[l.id]=nl.id; state.lists.push(nl);
+    });
+    state.items.filter(function(x){ return x.tripId===t.id; }).forEach(function(x){
+      var c=JSON.parse(JSON.stringify(x));
+      c.id=uid(); c.tripId=nt.id; c.done=false;
+      if(c.listId) c.listId=lmap[c.listId]||null;
+      delete c.files;
+      state.items.push(c);
+    });
+    state.settings.curTrip=nt.id;
+    save(); closeSheet();
+  }
+
+  // ---------- 附件離線預載 ----------
+  // 出發前喺 wifi 撳一次，登機證／確認信就唔靠訊號。存喺瀏覽器 Cache，
+  // 淨係呢部機睇得到；擺低嘅係未加密嘅檔案本體，同任何離線 app 一樣。
+  var ATTC='trip-att';
+  function tripFiles(){
+    var out=[];
+    tItems().forEach(function(x){ (x.files||[]).forEach(function(f){ out.push({x:x,f:f}); }); });
+    return out;
+  }
+  function precacheFiles(){
+    if(!window.caches){ alert('呢個瀏覽器唔支援離線儲存'); return; }
+    var all=tripFiles();
+    if(!all.length){ alert('呢個旅程冇附件'); return; }
+    var ok=0, fail=0;
+    setSync('','預載附件…0/'+all.length);
+    caches.open(ATTC).then(function(c){
+      (function go(i){
+        if(i>=all.length){
+          setSync(fail?'err':'ok', fail? ('預載完，'+ok+' 成功 '+fail+' 失敗') : ('已預載 '+ok+' 個附件'));
+          if($('pan').innerHTML) offlineSheet();
+          return;
+        }
+        setSync('','預載附件…'+(i+1)+'/'+all.length);
+        var u=stUrl(all[i].f.p);
+        fetch(u,{headers:stHdr()}).then(function(r){
+          if(!r.ok) throw 0;
+          return r.blob().then(function(b){
+            return c.put(u, new Response(b,{headers:{'Content-Type':all[i].f.t||'application/octet-stream'}}));
+          });
+        }).then(function(){ ok++; go(i+1); }).catch(function(){ fail++; go(i+1); });
+      })(0);
+    });
+  }
+  function clearPrecache(){
+    if(!window.caches) return;
+    caches.delete(ATTC).then(function(){ setSync('ok','已清走離線附件'); offlineSheet(); });
+  }
+  function offlineSheet(){
+    var all=tripFiles();
+    var h='<h3>離線準備</h3>'+
+      '<div class="hint" style="margin-bottom:14px">出門前喺 wifi 做一次。之後冇訊號都開得到登機證同確認信。</div>';
+    if(!window.caches){
+      h+='<div class="empty">呢個瀏覽器唔支援離線儲存</div>';
+    } else if(!all.length){
+      h+='<div class="empty">呢個旅程仲未有附件<br>去項目度加機票／酒店確認信先</div>';
+    } else {
+      h+='<div class="fld"><label>呢個旅程嘅附件</label><div class="inp" style="background:var(--soft2)" id="offN">'+all.length+' 個 · 查緊已存幾多…</div></div>'+
+         '<button class="btn acc" data-act="precache">預載全部（'+all.length+' 個）</button>'+
+         '<button class="btn ghost" data-act="clrprecache" style="margin-top:8px">清走離線附件</button>'+
+         '<div class="hint">離線檔案係未加密咁擺喺瀏覽器度，同任何離線 app 一樣。唔想留喺部機就清走佢。</div>';
+    }
+    h+='<div class="hint" style="margin-top:16px">地圖：出門前喺 wifi 慢慢碌一次個地圖，睇過嘅範圍就會存低。</div>';
+    openSheet(h);
+    if(window.caches && all.length) caches.open(ATTC).then(function(c){
+      var n=0;
+      (function go(i){
+        if(i>=all.length){ var e=$('offN'); if(e) e.textContent=all.length+' 個 · 已離線 '+n+' 個'; return; }
+        c.match(stUrl(all[i].f.p)).then(function(m){ if(m) n++; go(i+1); });
+      })(0);
+    });
+  }
+
   function dl(name,txt,type){
     var b=new Blob([txt],{type:type||'application/json'}), u=URL.createObjectURL(b);
     var a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click();
@@ -2171,7 +2672,11 @@
       var d=el.getAttribute('data-d');
       openMenu(ev,'<button data-act="optday" data-d="'+d+'">'+ic('route',15,'inline')+' 路線最優化</button>'+
         '<button data-act="journal" data-d="'+d+'">'+ic('book',15,'inline')+' 寫日誌</button>'+
-        '<button data-act="sortday" data-d="'+d+'">按時間排</button><hr><button class="dz" data-act="clearday" data-d="'+d+'">清空呢日</button>');
+        '<button data-act="sortday" data-d="'+d+'">按時間排</button><hr>'+
+        '<button data-act="shiftday" data-d="'+d+'" data-n="1">整日推後一日</button>'+
+        '<button data-act="shiftday" data-d="'+d+'" data-n="-1">整日推前一日</button>'+
+        '<button data-act="dupday" data-d="'+d+'">'+ic('copy',15,'inline')+' 複製呢日去…</button><hr>'+
+        '<button class="dz" data-act="clearday" data-d="'+d+'">清空呢日</button>');
     }
     else if(act==='listmenu'){
       openMenu(ev,'<button data-act="renlist" data-id="'+id+'">改名</button><hr><button class="dz" data-act="dellist" data-id="'+id+'">刪清單</button>');
@@ -2186,6 +2691,10 @@
       var on=$('eKinds').querySelector('.on'); if(on) x4.kind=on.getAttribute('data-k');
       x4.time=$('eTime').value||''; x4.cost=+$('eCost').value||0; x4.note=($('eNote').value||'').trim();
       var cc=($('eCcy').value||'').trim().toUpperCase(); x4.ccy = (cc && cc!==cur())? cc : '';
+      ['fno','conf','seat','term'].forEach(function(key){
+        var el2=$('e'+key.charAt(0).toUpperCase()+key.slice(1));
+        if(el2) x4[key]=(el2.value||'').trim();
+      });
       var sc2=$('eScope').value.split(':');
       if(sc2[0]==='day'){ x4.date=sc2[1]; x4.listId=null; } else { x4.date=null; x4.listId=sc2[1]; }
       var ec=$('eChecks');
@@ -2241,9 +2750,32 @@
         h+='<button class="btn ghost" data-act="picktrip" data-id="'+t3.id+'" style="text-align:left;margin-bottom:7px">'+
            (t3.id===state.settings.curTrip?'● ':'')+esc(t3.name)+' <span style="color:var(--muted);font-weight:500">'+(t3.start?md(t3.start)+'–'+md(t3.end):'')+'</span></button>';
       });
-      openSheet(h+'<button class="btn acc" data-act="newtrip">＋ 開新旅程</button>');
+      var ct=curTrip();
+      openSheet(h+'<button class="btn acc" data-act="newtrip">＋ 開新旅程</button>'+
+        (ct?'<button class="btn ghost" data-act="duptrip" data-id="'+ct.id+'" style="margin-top:8px">'+
+            ic('copy',15,'inline')+' 複製「'+esc(ct.name)+'」做下次嘅底稿</button>':''));
     }
     else if(act==='picktrip'){ state.settings.curTrip=id; mapDay='all'; if(map) map.__fit=0; save(); closeSheet(); }
+    else if(act==='duptrip'){ dupTrip(tripById(id)); }
+    else if(act==='shiftday'){
+      var msg=moveDay(el.getAttribute('data-d'), +el.getAttribute('data-n'));
+      if(msg) setSync('err',msg);
+    }
+    else if(act==='dupday'){ dupDaySheet(el.getAttribute('data-d')); }
+    else if(act==='dupday2'){
+      var msg2=dupDay(el.getAttribute('data-d'), el.getAttribute('data-t'));
+      if(msg2) setSync('err',msg2); else closeSheet();
+    }
+    else if(act==='exIcs'){
+      var txt=icsOut();
+      if(!icsOut.n){ setSync('err','行程度仲未有排落日子嘅項目'); return; }
+      var tn=(curTrip()||{}).name||'trip';
+      dl(tn.replace(/[^\w\u4e00-\u9fa5-]+/g,'_')+'.ics', txt, 'text/calendar;charset=utf-8');
+      setSync('ok','出咗 '+icsOut.n+' 個行事曆項目');
+    }
+    else if(act==='offline'){ offlineSheet(); }
+    else if(act==='precache'){ precacheFiles(); }
+    else if(act==='clrprecache'){ clearPrecache(); }
     else if(act==='go'){ var s3=$(el.getAttribute('data-s')); if(s3) s3.scrollIntoView({block:'start',behavior:'smooth'});
       document.querySelectorAll('#toc button').forEach(function(b){ b.classList.remove('on'); }); el.classList.add('on');
       sideOpen(false); }
@@ -2399,14 +2931,26 @@
         '每日 3–6 個地點，順路排。只可以回覆 JSON：\n'+
         '{"stops":[{"day":1,"time":"09:30","name":"地點名（連城市）","cat":"place|eat|stay|car","note":"一句","cost":0}]}\n'+
         'cost 用 '+cur()+' 每人大約，唔知就 0。';
-      aiRun('plan',pr2,function(txt){ var a=parseStops(txt); if(!a){ manualSheet(pr2,arguments.callee,'回覆唔係 JSON'); return; }
+      aiRun('plan',pr2,function onPlan(txt){ var a=parseStops(txt); if(!a){ manualSheet(pr2,onPlan,'回覆唔係 JSON'); return; }
         var n=importStops(a,false); setSync('ok','AI 加咗 '+n+' 項'); });
     }
     else if(act==='aiextract'){
       var src=($('aiSrc').value||'').trim(); if(!src){ alert('未貼嘢'); return; }
       var pr3='從下面段文字抽出所有值得去嘅地點，只可以回覆 JSON：\n{"stops":[{"name":"地點名（連城市）","cat":"place|eat|stay|car","note":"一句","cost":0}]}\n\n文字：\n<<<\n'+src.slice(0,6000)+'\n>>>';
-      aiRun('extract',pr3,function(txt){ var a=parseStops(txt); if(!a){ manualSheet(pr3,arguments.callee,'回覆唔係 JSON'); return; }
+      aiRun('extract',pr3,function onEx(txt){ var a=parseStops(txt); if(!a){ manualSheet(pr3,onEx,'回覆唔係 JSON'); return; }
         var n=importStops(a,true); setSync('ok','AI 加咗 '+n+' 項落清單'); });
+    }
+    else if(act==='aibook'){
+      var bsrc=($('aiBook').value||'').trim(); if(!bsrc){ alert('未貼確認信'); return; }
+      if(!days().length){ alert('先入返出發／返程日期'); return; }
+      var pr4=bookPrompt(bsrc.slice(0,9000));
+      aiRun('extract',pr4,function onBk(txt){
+        var a=parseKey(txt,'bookings');
+        if(!a){ manualSheet(pr4,onBk,'回覆唔係 JSON'); return; }
+        var n=importBookings(a);
+        if(!n){ setSync('err','抽唔到訂單，試下貼多啲內容'); return; }
+        setSync('ok','入咗 '+n+' 項訂單'); closeSheet();
+      });
     }
     else if(act==='copyprompt'){ var ta2=$('mPrompt'); ta2.select();
       if(navigator.clipboard) navigator.clipboard.writeText(ta2.value); else try{document.execCommand('copy');}catch(e){}
@@ -2435,7 +2979,8 @@
         '<div class="btnrow"><button class="btn acc" data-act="savegmk">儲存 key</button>'+
         (mapKey()?'<button class="btn ghost" data-act="clrgmk">清走，用返 OSM</button>':'')+'</div>'+
 
-        '<button class="btn ghost" data-act="enrichall" style="margin-top:18px">'+ic('spark',15,'inline')+' 一次補齊所有地點嘅 Google 資料</button>'+
+        '<button class="btn ghost" data-act="offline" style="margin-top:18px">'+ic('note',15,'inline')+' 離線準備（預載附件）</button>'+
+        '<button class="btn ghost" data-act="enrichall" style="margin-top:8px">'+ic('spark',15,'inline')+' 一次補齊所有地點嘅 Google 資料</button>'+
         '<button class="btn ghost" data-act="exJson" style="margin-top:8px">匯出備份</button>'+
         (MODE==='cloud'?'<button class="btn warn" data-act="logout" style="margin-top:8px">登出</button>':''));
     }
