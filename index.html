@@ -117,7 +117,45 @@
   .sech .n{font-size:13px; color:var(--muted); font-weight:600}
   .sech .sp{flex:1}
   .panel{padding:0}
-  .panel.pad{background:var(--soft2); border:1px solid var(--line2); border-radius:10px; padding:16px}
+  .panel.pad{background:var(--soft); border-radius:16px; padding:16px}
+  .sech h2{font-size:22px}
+  .sech.big h2{font-size:32px}
+  .pill{background:var(--line2); color:var(--ink2); border-radius:24px; padding:7px 16px; font-size:14px; font-weight:600; display:inline-flex; align-items:center; gap:6px}
+  .pill:hover{background:var(--line)}
+  .pill.acc{background:var(--acc); color:#fff; font-weight:700}
+  .pill.acc:hover{background:var(--acc-d)}
+  .pill.bare{background:none; border-radius:20px; color:var(--muted); font-size:13.5px; padding:6px 12px}
+  .pill.bare:hover{background:var(--soft)}
+
+  /* 概覽兩格卡 */
+  .twoup{display:flex; gap:16px; margin-bottom:26px; flex-wrap:wrap}
+  .bkcard{flex:2 1 330px; background:var(--soft); border-radius:16px; padding:16px}
+  .sumcard{flex:1 1 170px; background:var(--soft); border-radius:16px; padding:16px}
+  .cardlbl{font-size:16px; font-weight:700; display:block; margin-bottom:8px}
+  .bkrow{display:flex; gap:0; flex-wrap:wrap}
+  .bkrow button{width:58px; display:flex; flex-direction:column; align-items:center; gap:1px; padding:2px 0}
+  .bkrow button b{font-size:13px; font-weight:700; height:16px; color:var(--ink)}
+  .bkrow button em{font-style:normal; font-size:17px}
+  .bkrow button span{font-size:11.5px; color:var(--muted)}
+  .bkrow button:hover em{transform:scale(1.14)}
+  .bigno{font-size:24px; font-weight:400; color:var(--muted); letter-spacing:-.02em; line-height:1.2}
+  .sumcard a{display:block; margin-top:8px; font-size:13.5px; color:var(--link); font-weight:700; cursor:pointer}
+
+  /* 開支帳 */
+  .exptot{background:var(--soft); border-radius:16px; padding:16px 24px; display:flex; align-items:flex-start; gap:18px; flex-wrap:wrap}
+  .exptot .amt{font-size:36px; font-weight:400; letter-spacing:-.03em; line-height:1.1; flex:1 1 180px}
+  .exptot .amt small{display:block; font-size:13px; color:var(--muted); font-weight:600; letter-spacing:0; margin-top:3px}
+  .exphead{display:flex; align-items:baseline; gap:10px; margin:24px 0 8px}
+  .exphead h3{margin:0; font-size:22px; font-weight:700; letter-spacing:-.02em}
+  .exphead .sp{flex:1}
+  .exp{display:flex; align-items:center; gap:12px; padding:11px 2px; border-bottom:1px solid var(--line2)}
+  .exp:last-child{border-bottom:0}
+  .exp .ic{width:30px; height:30px; border-radius:50%; background:var(--soft); display:flex; align-items:center; justify-content:center; font-size:14px; flex:0 0 auto}
+  .exp .bd{flex:1; min-width:0}
+  .exp .bd b{display:block; font-size:14.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .exp .bd span{font-size:12.5px; color:var(--muted)}
+  .exp .amt{font-weight:700; font-size:14.5px; white-space:nowrap; font-variant-numeric:tabular-nums}
+  .exp .amt i{display:block; font-style:normal; font-size:11.5px; color:var(--muted); font-weight:600}
   .empty{color:var(--muted); font-size:14px; padding:16px 2px; line-height:1.75}
 
   /* ============ item rows ============ */
@@ -401,7 +439,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v5-2';
+  var APP_VER='20260914-v6-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -585,6 +623,24 @@
   function nextOrd(arr){ var m=0; arr.forEach(function(x){ if((x.ord||0)>m) m=x.ord||0; }); return m+10; }
   function cur(){ var t=curTrip(); return (t&&t.cur)||'HKD'; }
   function money(n){ return cur()+' '+Math.round(+n||0).toLocaleString(); }
+  function rates(){ var t=curTrip(); if(!t) return {}; if(!t.rates) t.rates={}; return t.rates; }
+  function itemCcy(x){ return x.ccy || cur(); }
+  // 換算去旅程主幣種。匯率係你自己喺旅程設定入面填（唔駁 API，離線都準）。
+  function toHome(amt, ccy){
+    amt=+amt||0; if(!ccy || ccy===cur()) return amt;
+    var r=rates()[ccy]; return r? amt*(+r) : amt;
+  }
+  function fmtCcy(ccy, n){
+    n=+n||0;
+    var dp = (Math.abs(n)<100 && n%1!==0) ? 2 : 0;
+    return ccy+' '+n.toLocaleString(undefined,{minimumFractionDigits:dp,maximumFractionDigits:dp});
+  }
+  function homeTotal(){ return tItems().reduce(function(a,x){ return a+toHome(x.cost, itemCcy(x)); },0); }
+  function unknownCcys(){
+    var out={}, h=cur();
+    tItems().forEach(function(x){ var c=itemCcy(x); if(+x.cost>0 && c!==h && !rates()[c]) out[c]=1; });
+    return Object.keys(out);
+  }
   function sumCost(arr){ return arr.reduce(function(a,x){ return a+(+x.cost||0); },0); }
   function hav(a,b){
     var R=6371, dLat=(b[0]-a[0])*Math.PI/180, dLon=(b[1]-a[1])*Math.PI/180;
@@ -905,6 +961,7 @@
     ensureList();
     var h='<div class="page">';
     h+=hero(t);
+    h+=twoUp();
     h+=notesSec(t);
     tLists().forEach(function(l){ h+=listSec(l); });
     h+='<div style="margin:0 0 26px"><button class="tbtn" data-act="newlist">＋ 新清單</button></div>';
@@ -925,8 +982,20 @@
       '<div><b class="num">'+it.length+'</b><span>項目</span></div>'+
       '<div><b class="num">'+done+'</b><span>已完成</span></div>'+
       '<div><b class="num">'+it.filter(function(x){return !x.date;}).length+'</b><span>未排期</span></div>'+
-      '<div><b class="num">'+Math.round(sumCost(it)).toLocaleString()+'</b><span>'+esc(cur())+'</span></div>'+
+      '<div><b class="num">'+Math.round(homeTotal()).toLocaleString()+'</b><span>'+esc(cur())+'</span></div>'+
       '</div></div>';
+  }
+  function twoUp(){
+    var counts={}; tItems().forEach(function(x){ counts[x.kind]=(counts[x.kind]||0)+1; });
+    var order=['flight','stay','car','eat','place','check'];
+    var h='<div class="twoup"><div class="bkcard"><span class="cardlbl">預訂同項目</span><div class="bkrow">';
+    order.forEach(function(k){
+      h+='<button data-act="jumpkind" data-k="'+k+'"><b>'+(counts[k]||'')+'</b><em>'+KINDS[k].i+'</em><span>'+KINDS[k].n+'</span></button>';
+    });
+    h+='</div></div>';
+    h+='<div class="sumcard"><span class="cardlbl">預算</span><div class="bigno">'+esc(fmtCcy(cur(),homeTotal()))+'</div>'+
+       '<a data-act="go" data-s="s-bud">查看明細</a></div>';
+    return h+'</div>';
   }
   function notesSec(t){
     return '<div class="sec" id="s-note"><div class="sech"><span class="chev">▾</span><h2>筆記</h2></div>'+
@@ -944,7 +1013,7 @@
   function itinSec(){
     var ds=days();
     if(!ds.length) return '<div class="sec" id="s-itin"><div class="sech"><span class="chev">▾</span><h2>行程</h2></div><div class="panel pad"><div class="empty">未定日期<br>撳 hero 右上角「改」入返出發／返程日</div></div></div>';
-    var h='<div class="sec" id="s-itin"><div class="sech"><span class="chev">▾</span><h2>行程</h2><span class="n">'+ds.length+' 日</span></div>';
+    var h='<div class="sec" id="s-itin"><div class="sech big"><span class="chev">▾</span><h2>行程</h2><span class="n">'+ds.length+' 日</span></div>';
     ds.forEach(function(d,i){
       var arr=dayItems(d), c=dayColor(i), tot=sumCost(arr);
       h+='<div class="day" id="s-d'+i+'"><div class="dayh"><span class="dot" style="background:'+c+'"></span>'+
@@ -1008,17 +1077,41 @@
       '</div></div></div>';
   }
   function budgetSec(){
-    var it=tItems().filter(function(x){return +x.cost>0;});
-    if(!it.length) return '<div class="sec" id="s-bud"><div class="sech"><span class="chev">▾</span><h2>預算</h2></div><div class="panel pad"><div class="empty">未有使費<br>喺項目度填個價錢就會自動計</div></div></div>';
-    var by={}, tot=0;
-    it.forEach(function(x){ var k=x.kind; by[k]=(by[k]||0)+(+x.cost||0); tot+=+x.cost||0; });
-    var ks=Object.keys(by).sort(function(a,b){ return by[b]-by[a]; });
-    var h='<div class="sec" id="s-bud"><div class="sech"><span class="chev">▾</span><h2>預算</h2></div><div class="panel pad"><div class="bud">';
+    var it=tItems().filter(function(x){ return +x.cost>0; });
+    var h='<div class="sec" id="s-bud"><div class="sech big"><span class="chev">\u25be</span><h2>預算</h2><span class="sp"></span>'+
+      '<button class="pill acc" data-act="newexp">＋ 加開支</button></div>';
+    var tot=homeTotal(), n=days().length;
+    h+='<div class="exptot"><div class="amt">'+esc(fmtCcy(cur(),tot))+
+       '<small>'+it.length+' 筆'+(n?' · 平均每日 '+esc(fmtCcy(cur(),tot/n)):'')+'</small></div>'+
+       '<button class="pill" data-act="rateset">匯率設定</button></div>';
+    var miss=unknownCcys();
+    if(miss.length) h+='<div class="hint err">'+esc(miss.join('、'))+' 未設匯率，總數當 1:1 計。撳「匯率設定」填返。</div>';
+    if(!it.length){ h+='<div class="empty">未有使費<br>喺項目度填個價錢，或者撳「＋ 加開支」</div></div>'; return h; }
+
+    // 按分類分佈
+    var by={}; it.forEach(function(x){ by[x.kind]=(by[x.kind]||0)+toHome(x.cost,itemCcy(x)); });
+    var ks=Object.keys(by).sort(function(p,q){ return by[q]-by[p]; });
+    h+='<div class="exphead"><h3>分佈</h3></div><div class="bud">';
     ks.forEach(function(k,i){
       h+='<div class="r"><span>'+kd(k).i+' '+kd(k).n+'</span><span class="bar"><i style="width:'+Math.round(by[k]/tot*100)+'%;background:'+dayColor(i)+'"></i></span><b>'+Math.round(by[k]).toLocaleString()+'</b></div>';
     });
-    h+='</div><div class="budtot"><span>總數</span><b class="num">'+money(tot)+'</b></div>';
-    var n=days().length; if(n) h+='<div class="hint">平均每日 '+money(tot/n)+'</div>';
+    h+='</div>';
+
+    // 開支明細：新到舊
+    var sorted=it.slice().sort(function(p,q){
+      var dp=p.date||'9999', dq=q.date||'9999';
+      if(dp!==dq) return dp<dq?1:-1;
+      return (q.cost||0)-(p.cost||0);
+    });
+    h+='<div class="exphead"><h3>開支</h3><span class="sp"></span><span style="font-size:13px;color:var(--muted)">日期（新到舊）</span></div><div class="panel pad">';
+    sorted.forEach(function(x){
+      var c=itemCcy(x), conv = c!==cur();
+      h+='<div class="exp"><div class="ic">'+kd(x.kind).i+'</div><div class="bd">'+
+         '<b>'+esc(x.name)+'</b><span>'+(x.date? md(x.date)+' · ':'未排期 · ')+esc(kd(x.kind).n)+'</span></div>'+
+         '<div class="amt">'+esc(fmtCcy(c,x.cost))+
+         (conv?'<i>≈ '+esc(fmtCcy(cur(),toHome(x.cost,c)))+'</i>':'')+'</div>'+
+         '<button class="kebab" data-act="edititem" data-id="'+x.id+'" style="opacity:1">⋯</button></div>';
+    });
     return h+'</div></div>';
   }
   function toc(){
@@ -1212,7 +1305,9 @@
       '<div class="fld"><label>類型</label><div class="kinds" id="eKinds" style="gap:5px">'+
         KORDER.map(function(kk){ return '<button data-k="'+kk+'" class="'+(x.kind===kk?'on':'')+'" style="width:auto;padding:0 11px;height:34px;font-size:13px">'+KINDS[kk].i+' '+KINDS[kk].n+'</button>'; }).join('')+'</div></div>'+
       '<div class="two"><div class="fld"><label>'+(k.tl||'時間')+'</label><input class="inp" id="eTime" type="time" value="'+esc(x.time||'')+'"></div>'+
-      '<div class="fld"><label>使費（'+esc(cur())+'）</label><input class="inp" id="eCost" type="number" inputmode="decimal" value="'+(x.cost||'')+'"></div></div>'+
+      '<div class="fld"><label>使費</label><div style="display:flex;gap:7px">'+
+        '<input class="inp" id="eCcy" value="'+esc(itemCcy(x))+'" style="width:78px;text-transform:uppercase">'+
+        '<input class="inp" id="eCost" type="number" inputmode="decimal" value="'+(x.cost||'')+'" placeholder="0"></div></div></div>'+
       '<div class="fld"><label>擺喺邊</label><select class="inp" id="eScope">'+scopeOpts(x)+'</select></div>'+
       '<div class="fld"><label>備註</label><textarea class="inp" id="eNote">'+esc(x.note||'')+'</textarea></div>'+
       (x.kind==='check'? '<div class="fld"><label>清單（一行一項）</label><textarea class="inp" id="eChecks">'+esc((x.checks||[]).map(function(c){return c.t;}).join('\n'))+'</textarea></div>':'')+
@@ -1345,6 +1440,7 @@
       x4.name=($('eName').value||'').trim()||x4.name;
       var on=$('eKinds').querySelector('.on'); if(on) x4.kind=on.getAttribute('data-k');
       x4.time=$('eTime').value||''; x4.cost=+$('eCost').value||0; x4.note=($('eNote').value||'').trim();
+      var cc=($('eCcy').value||'').trim().toUpperCase(); x4.ccy = (cc && cc!==cur())? cc : '';
       var sc2=$('eScope').value.split(':');
       if(sc2[0]==='day'){ x4.date=sc2[1]; x4.listId=null; } else { x4.date=null; x4.listId=sc2[1]; }
       var ec=$('eChecks');
@@ -1413,6 +1509,50 @@
     else if(act==='undo'){ undo(); }
     else if(act==='redo'){ redo(); }
     else if(act==='closesheet'){ closeSheet(); }
+    else if(act==='jumpkind'){
+      var kk=el.getAttribute('data-k');
+      var hit=tItems().filter(function(x){ return x.kind===kk; })[0];
+      if(!hit){ alert('仲未有「'+KINDS[kk].n+'」項目'); return; }
+      hlId=hit.id; render(); scrollTo(hit.id); if(hit.lat) flyTo(hit);
+    }
+    else if(act==='newexp'){
+      var t8=curTrip(), ds8=days();
+      snap();
+      var x8={id:uid(),tripId:t8.id,kind:'eat',listId:ds8.length?null:(tLists()[0]||{}).id,
+              date:ds8.length?(ds8.indexOf(today())>=0?today():ds8[0]):null,
+              ord:0,time:'',name:'新開支',lat:null,lng:null,addr:'',note:'',cost:0,ccy:'',done:false,checks:[]};
+      x8.ord=nextOrd(x8.date?dayItems(x8.date):listItems(x8.listId));
+      state.items.push(x8); save(); itemSheet(x8);
+      setTimeout(function(){ try{ var e=$('eName'); e.focus(); e.select(); }catch(e){} },80);
+    }
+    else if(act==='rateset'){
+      var t9=curTrip(), rr=rates(), all={};
+      tItems().forEach(function(x){ var c=itemCcy(x); if(c!==cur()) all[c]=1; });
+      Object.keys(rr).forEach(function(c){ all[c]=1; });
+      var list=Object.keys(all);
+      var h9='<h3>匯率設定</h3><div class="hint" style="margin-bottom:14px">1 單位外幣 ＝ 幾多 '+esc(cur())+
+        '。自己填，唔駁 API，所以離線都準、唔會突然變。</div>';
+      if(!list.length) h9+='<div class="empty">而家所有使費都係 '+esc(cur())+'<br>喺項目度改幣種就會出現喺呢度</div>';
+      list.forEach(function(c){
+        h9+='<div class="fld"><label>1 '+esc(c)+' = ? '+esc(cur())+'</label><input class="inp rate" data-c="'+esc(c)+'" type="number" step="0.0001" inputmode="decimal" value="'+(rr[c]||'')+'" placeholder="例：0.052"></div>';
+      });
+      h9+='<div class="fld"><label>加一個幣種</label><div style="display:flex;gap:7px">'+
+          '<input class="inp" id="nrC" placeholder="JPY" style="width:88px;text-transform:uppercase">'+
+          '<input class="inp" id="nrV" type="number" step="0.0001" placeholder="0.052"></div></div>'+
+          '<button class="btn acc" data-act="saverates">儲存</button>';
+      openSheet(h9);
+    }
+    else if(act==='saverates'){
+      var t10=curTrip(); if(!t10) return; snap();
+      if(!t10.rates) t10.rates={};
+      $('pan').querySelectorAll('.rate').forEach(function(i){
+        var c=i.getAttribute('data-c'), v=parseFloat(i.value);
+        if(v>0) t10.rates[c]=v; else delete t10.rates[c];
+      });
+      var nc=($('nrC').value||'').trim().toUpperCase(), nv=parseFloat($('nrV').value);
+      if(nc && nv>0) t10.rates[nc]=nv;
+      save(); closeSheet();
+    }
     else if(act==='legnav'){ ev.preventDefault();
       var A=itemById(el.getAttribute('data-a')), B=itemById(el.getAttribute('data-b'));
       if(A&&B&&A.lat&&B.lat) window.open('https://www.google.com/maps/dir/?api=1&origin='+A.lat+','+A.lng+'&destination='+B.lat+','+B.lng,'_blank','noopener'); }
