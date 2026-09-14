@@ -515,7 +515,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v10-5';
+  var APP_VER='20260914-v10-6';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1326,13 +1326,29 @@
              scaledSize:new google.maps.Size(w,h), anchor:new google.maps.Point(w/2,h) };
   }
   // 踢 Google 地圖重新量尺寸＋重畫
+  //
+  // 實測（2026-09-14，Maps JS 3.66）：#map 喺三欄 CSS Grid 嘅百分比欄入面，
+  // 地圖建立之後會有齊 73 個 div，但一張磚都唔貼，成塊白。
+  // google.maps.event.trigger(map,'resize') 同 ResizeObserver 都救唔到；
+  // 改 width/height:100% 都救唔到。
+  // 唯一可靠嘅解係令容器高度真真正正變過一次（1px 微動），佢就會重量並開始貼磚。
   var gKickT=null;
+  function gNudge(){
+    var el=$('map'); if(!el) return;
+    requestAnimationFrame(function(){
+      el.style.height='calc(100% - 1px)';
+      requestAnimationFrame(function(){ el.style.height='100%'; });
+    });
+  }
   function gKick(){
     if(!gmap || !window.google) return;
     if(gKickT) clearTimeout(gKickT);
-    var go=function(){ try{ google.maps.event.trigger(gmap,'resize'); }catch(e){} };
+    var go=function(){
+      try{ google.maps.event.trigger(gmap,'resize'); }catch(e){}
+      gNudge();
+    };
     requestAnimationFrame(go);
-    gKickT=setTimeout(go, 260);
+    gKickT=setTimeout(go, 300);
   }
   function drawGMap(pts){
     var el=$('map');
