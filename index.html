@@ -168,6 +168,22 @@
   .bigno{font-size:24px; font-weight:400; color:var(--muted); letter-spacing:-.02em; line-height:1.2}
   .sumcard a{display:block; margin-top:8px; font-size:13.5px; color:var(--link); font-weight:700; cursor:pointer}
 
+  /* 探索卡（照 Wanderlog 橫向相片卡）*/
+  .excards{display:flex; gap:12px; overflow-x:auto; padding:2px 0 8px; scrollbar-width:none}
+  .excards::-webkit-scrollbar{display:none}
+  .excard{flex:0 0 198px; background:var(--surf); border:1px solid var(--line2); border-radius:12px; overflow:hidden; position:relative}
+  .excard .ph{height:118px; background:var(--soft); position:relative}
+  .excard .ph img{width:100%; height:100%; object-fit:cover; display:block}
+  .excard .ph .ld{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted2)}
+  .excard .bd{padding:10px 11px 12px}
+  .excard .nm{font-size:14px; font-weight:700; line-height:1.3; letter-spacing:-.01em}
+  .excard .rt{font-size:12px; color:#C9700A; font-weight:700; margin-top:3px; display:flex; align-items:center; gap:3px}
+  .excard .wy{font-size:12.5px; color:var(--muted); margin-top:5px; line-height:1.45}
+  .excard .add{position:absolute; top:8px; right:8px; width:30px; height:30px; border-radius:50%;
+    background:rgba(255,255,255,.94); box-shadow:var(--sh2); display:flex; align-items:center; justify-content:center; color:var(--ink); padding:0}
+  .excard .add:hover{background:var(--acc); color:#fff}
+  .excard.done .add{background:var(--ok); color:#fff}
+
   /* 開支帳 */
   .exptot{background:var(--soft); border-radius:16px; padding:16px 24px; display:flex; align-items:flex-start; gap:18px; flex-wrap:wrap}
   .exptot .amt{font-size:36px; font-weight:400; letter-spacing:-.03em; line-height:1.1; flex:1 1 180px}
@@ -515,7 +531,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v13-1';
+  var APP_VER='20260914-v14-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1157,6 +1173,7 @@
     var h='<div class="page">';
     h+=hero(t);
     h+=twoUp();
+    h+=exploreSec();
     h+=notesSec(t);
     tLists().forEach(function(l){ h+=listSec(l); });
     h+='<div style="margin:0 0 26px"><button class="tbtn" data-act="newlist">＋ 新清單</button></div>';
@@ -1202,6 +1219,84 @@
     h+='<div class="sumcard"><span class="cardlbl">預算</span><div class="bigno">'+esc(fmtCcy(cur(),homeTotal()))+'</div>'+
        '<a data-act="go" data-s="s-bud">查看明細</a></div>';
     return h+'</div>';
+  }
+  // ---------- 探索：AI 推介 + Google 相／評分 ----------
+  function exList(){ var t=curTrip(); if(!t) return null; return (state.explore||{})[t.id]||null; }
+  function exploreSec(){
+    var t=curTrip(); if(!t) return '';
+    var ex=exList();
+    var busy=!!exBusy;
+    var h='<div class="sec" id="s-explore"><div class="sech">'+ic('chev',13,'chev')+'<h2>探索</h2>'+
+      (ex&&ex.items?'<span class="n">'+ex.items.length+'</span>':'')+'<span class="sp"></span>'+
+      '<button class="pill acc" data-act="explore"'+(busy?' disabled':'')+'>'+ic('spark',15,'inline')+' '+
+      (busy?'搵緊…':(ex?'換一批':'搵下有咩好去'))+'</button></div>';
+    if(!ex || !ex.items || !ex.items.length){
+      h+='<div class="panel pad"><div class="empty">'+
+         (busy?'<span class="spin"></span>AI 揀地方，再去 Google 攞相同評分…'
+              :'叫 AI 照住「'+esc(t.dest||t.name)+'」推介，再由 Google 補相同評分')+'</div></div>';
+      return h+'</div>';
+    }
+    h+='<div class="excards">';
+    ex.items.forEach(function(r,i){
+      var added=tItems().some(function(x){ return x.placeId? x.placeId===r.placeId : x.name===r.name; });
+      h+='<div class="excard'+(added?' done':'')+'">'+
+        '<div class="ph">'+(r.photoUrl?'<img src="'+esc(r.photoUrl)+'" alt="" loading="lazy">':'<div class="ld">'+ic(r.kind||'pin',20)+'</div>')+'</div>'+
+        '<button class="add" data-act="exadd" data-i="'+i+'" title="'+(added?'已加':'加落想去')+'">'+ic(added?'check':'plus',16)+'</button>'+
+        '<div class="bd"><div class="nm">'+esc(r.name)+'</div>'+
+        (r.rating?'<div class="rt">'+ic('star',11)+(+r.rating).toFixed(1)+(r.ratingCount?' <span style="color:var(--muted);font-weight:600">('+(+r.ratingCount).toLocaleString()+')</span>':'')+'</div>':'')+
+        (r.why?'<div class="wy">'+esc(r.why)+'</div>':'')+
+        '</div></div>';
+    });
+    return h+'</div></div>';
+  }
+  var exBusy=false;
+  function runExplore(){
+    var t=curTrip(); if(!t || exBusy) return;
+    if(MODE!=='cloud'){ alert('要雲端模式先用得 AI'); return; }
+    exBusy=true; render();
+    var have=tItems().map(function(x){ return x.name; }).join('、');
+    var pr='你係旅程顧問。幫我推介「'+(t.dest||t.name)+'」值得去嘅地方。\n'+
+      (have?'我已經有：'+have+'（唔好重複）\n':'')+
+      (t.note?'我嘅筆記：'+String(t.note).slice(0,300)+'\n':'')+
+      '要 10 個，混合景點、餐廳、住宿都可以。\n'+
+      '【重要】只可以用你有信心真實存在嘅地方，用當地語言正式名。唔肯定就唔好寫。\n'+
+      '只可以回覆 JSON，唔准有其他字：\n'+
+      '{"stops":[{"name":"地點名（連城市）","cat":"place|eat|stay|buy","note":"一句：點解值得去"}]}';
+    aiCall('plan', pr, function(txt, err){
+      var arr=err?null:parseStops(txt);
+      if(!arr || !arr.length){ exBusy=false; setSync('err','AI 推介唔到，再試一次'); render(); return; }
+      if(!state.explore) state.explore={};
+      state.explore[t.id]={ at:Date.now(), items:arr.slice(0,10).map(function(r){
+        return { name:String(r.name||'').slice(0,80), why:String(r.note||'').slice(0,90),
+                 kind:(KINDS[r.cat]?r.cat:'place') };
+      })};
+      save(); setSync('','去 Google 攞相…');
+      // 逐個補 Google 相／評分，一秒一個，唔會轟人
+      var list=state.explore[t.id].items;
+      (function go(i){
+        if(i>=list.length){ exBusy=false; setSync('ok','推介好咗'); render(); return; }
+        var r=list[i];
+        var c=tripCentre(), body={op:'autocomplete', q:r.name};
+        if(c){ body.lat=c.lat; body.lng=c.lng; }
+        gCall(body,function(j){
+          var s0=j&&j.suggestions&&j.suggestions[0];
+          if(!s0){ setTimeout(function(){ go(i+1); }, 250); return; }
+          r.placeId=s0.placeId;
+          gCall({op:'details',placeId:s0.placeId},function(d){
+            if(d){ r.rating=d.rating; r.ratingCount=d.ratingCount; r.addr=d.addr;
+                   r.lat=d.lat; r.lng=d.lng; r.photoName=d.photo;
+                   if(d.types) r.kind=kindFromTypes(d.types); }
+            if(r.photoName){
+              gCall({op:'photo',name:r.photoName,maxPx:400},function(pj){
+                if(pj&&pj.url) r.photoUrl=pj.url;
+                save(true); render();
+                setTimeout(function(){ go(i+1); }, 700);
+              });
+            } else { save(true); render(); setTimeout(function(){ go(i+1); }, 700); }
+          });
+        });
+      })(0);
+    });
   }
   function notesSec(t){
     return '<div class="sec" id="s-note"><div class="sech">'+ic('chev',13,'chev')+'<h2>筆記</h2></div>'+
@@ -1335,6 +1430,7 @@
   function toc(){
     var t=curTrip(); if(!t) return '';
     var h='<div class="sgrp"><h4>'+ic('chev',12,'chev')+'概覽</h4><nav>';
+    h+='<button data-act="go" data-s="s-explore">探索'+(exList()&&exList().items?'<i>'+exList().items.length+' 個推介</i>':'')+'</button>';
     h+='<button data-act="go" data-s="s-note">筆記</button>';
     tLists().forEach(function(l){ h+='<button data-act="go" data-s="s-'+l.id+'">'+esc(l.name)+'<i>'+listItems(l.id).length+' 項</i></button>'; });
     h+='<button data-act="go" data-s="s-bud">預算<i>'+money(sumCost(tItems()))+'</i></button>';
@@ -2084,6 +2180,22 @@
       addOfKind(kk);
     }
     else if(act==='addkind2'){ addOfKind(el.getAttribute('data-k')); }
+    else if(act==='explore'){ runExplore(); }
+    else if(act==='exadd'){
+      var ex=exList(); if(!ex) return;
+      var r=ex.items[+el.getAttribute('data-i')]; if(!r) return;
+      var t7=curTrip(); ensureList();
+      var lid=(tLists()[0]||{}).id; if(!lid) return;
+      if(tItems().some(function(x){ return r.placeId? x.placeId===r.placeId : x.name===r.name; })){ setSync('ok','已經加過'); return; }
+      snap();
+      var x={ id:uid(), tripId:t7.id, kind:r.kind||'place', listId:lid, date:null,
+              ord:nextOrd(listItems(lid)), time:'', name:r.name, lat:r.lat||null, lng:r.lng||null,
+              addr:r.addr||'', note:r.why||'', cost:0, ccy:'', done:false, checks:[],
+              placeId:r.placeId||'', rating:r.rating, ratingCount:r.ratingCount,
+              photoName:r.photoName||'', photoUrl:r.photoUrl||'' };
+      state.items.push(x); save(); setSync('ok','加咗 '+x.name+' 落想去');
+      if(!x.lat){ geoQ.push(x.id); pumpGeo(); }
+    }
     else if(act==='jumpkind'){
       var kj=el.getAttribute('data-k');
       var hit=tItems().filter(function(z){ return z.kind===kj; })[0];
