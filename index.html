@@ -83,10 +83,10 @@
   .side{background:var(--surf); border-right:1px solid var(--line); display:flex; flex-direction:column; overflow-y:auto; padding-bottom:10px}
   .doc{overflow-y:auto; overflow-x:hidden; background:var(--bg); touch-action:pan-y; overscroll-behavior-x:none}
   .mapwrap{position:relative; height:100%; min-height:0; background:var(--soft)}
-  /* Google Maps 喺 grid 百分比欄入面量唔到 inset:0 或者 100% 嘅尺寸，
-     會變成一張磚都唔畫嘅白地圖（實測 Maps JS 3.66）。
-     所以尺寸由 JS 用 px 寫死（sizeMap()），並用 ResizeObserver 同步。 */
-  #map{position:absolute; top:0; left:0; z-index:1}
+  /* Google Maps（3.66）喺 CSS Grid 欄裡面用 position:absolute 會攞到磚但唔貼，成塊白。
+     實測唯一穩定嘅做法係 position:fixed + JS 寫死 px 座標（sizeMap() 同步）。
+     Leaflet 兩種都得，所以呢個 fixed 方案兩邊通用。 */
+  #map{position:fixed; z-index:1}
 
   /* ============ sidebar ============ */
   .brand{display:flex; align-items:center; gap:7px; padding:13px 14px 11px; font-weight:700; font-size:15px; letter-spacing:-.02em}
@@ -516,7 +516,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v11-1';
+  var APP_VER='20260914-v11-2';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1334,11 +1334,13 @@
     if(!wrap||!el) return false;
     var r=wrap.getBoundingClientRect();
     if(r.width<60 || r.height<60) return false;
-    var w=Math.round(r.width), h=Math.round(r.height);
-    if(el.__w!==w || el.__h!==h){
+    var L=Math.round(r.left), T=Math.round(r.top), w=Math.round(r.width), h=Math.round(r.height);
+    if(el.__L!==L||el.__T!==T||el.__w!==w||el.__h!==h){
+      el.style.left=L+'px'; el.style.top=T+'px';
       el.style.width=w+'px'; el.style.height=h+'px';
-      el.__w=w; el.__h=h;
+      el.__L=L; el.__T=T; el.__w=w; el.__h=h;
       if(gmap && window.google){ try{ google.maps.event.trigger(gmap,'resize'); }catch(e){} }
+      if(map && map.invalidateSize){ try{ map.invalidateSize(); }catch(e){} }
     }
     return true;
   }
@@ -1442,6 +1444,7 @@
       }
     }
     if(!window.L) return;
+    sizeMap();
     if(!map){
       map=L.map('map',{zoomControl:true});
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
@@ -2177,7 +2180,8 @@
   });
   document.addEventListener('visibilitychange',function(){ if(!document.hidden) refreshIfChanged(); });
   setInterval(refreshIfChanged,45000);
-  addEventListener('resize',function(){ if(map) map.invalidateSize(); gKick(); });
+  addEventListener('resize',gKick);
+  addEventListener('orientationchange',gKick);
   addEventListener('online',function(){ setNet(); refreshIfChanged(); });
   addEventListener('offline',setNet);
   setNet();
