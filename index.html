@@ -515,7 +515,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v11-4';
+  var APP_VER='20260914-v12-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1342,6 +1342,20 @@
     requestAnimationFrame(go);
     gKickT=setTimeout(go, 300);
   }
+  // 由 bounds 算出啱嘅 zoom（Mercator），代替 fitBounds
+  function fitZoom(b){
+    var el=$('map'); if(!el) return 12;
+    var W=Math.max(200, el.clientWidth-88), H=Math.max(200, el.clientHeight-108);
+    var ne=b.getNorthEast(), sw=b.getSouthWest();
+    var latRad=function(la){ var sn=Math.sin(la*Math.PI/180); return Math.log((1+sn)/(1-sn))/2; };
+    var latFrac=Math.abs(latRad(ne.lat())-latRad(sw.lat()))/(2*Math.PI);
+    var lngDiff=ne.lng()-sw.lng(); if(lngDiff<0) lngDiff+=360;
+    var lngFrac=lngDiff/360;
+    var z=19;
+    if(latFrac>1e-9) z=Math.min(z, Math.floor(Math.log(H/256/latFrac)/Math.LN2));
+    if(lngFrac>1e-9) z=Math.min(z, Math.floor(Math.log(W/256/lngFrac)/Math.LN2));
+    return Math.max(2, Math.min(17, z));
+  }
   function drawGMap(pts){
     var el=$('map');
     if(!gmap){
@@ -1400,10 +1414,16 @@
       gmarks.push(pl);
     });
     if(!gmap.__fit || mapDay!==gmap.__lastDay){
-      if(pts.length===1 || bounds.isEmpty()){ gmap.setCenter(bounds.getCenter()); gmap.setZoom(15); }
-      else gmap.fitBounds(bounds, {top:64, right:44, bottom:44, left:44});
+      // 唔用 fitBounds：實測 Maps 3.66 喺初始 fitBounds 之後唔會畫磚（成塊白），
+      // 但任何之後嘅 setCenter/setZoom（例如撳個地點 flyTo）就即刻正常。
+      // 所以自己由 bounds 算 center + zoom，直接 setCenter/setZoom。
+      gmap.setCenter(bounds.getCenter());
+      gmap.setZoom(pts.length===1 ? 15 : fitZoom(bounds));
       gmap.__fit=1; gmap.__lastDay=mapDay;
-      gKick();
+      // 再補一下極細嘅鏡頭移動，逼佢一定重畫
+      google.maps.event.addListenerOnce(gmap,'idle',function(){
+        try{ gmap.panBy(0,1); gmap.panBy(0,-1); }catch(e){}
+      });
     }
   }
 
