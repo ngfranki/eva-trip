@@ -286,8 +286,10 @@
   .pin b{transform:rotate(45deg); font-size:11.5px; font-weight:700}
   .pin.big{width:34px; height:34px; z-index:900 !important}
   .pin.big b{font-size:14px}
-  .mapbar{position:absolute; top:12px; left:12px; right:12px; z-index:5; display:flex; gap:5px; flex-wrap:wrap}
-  .mapbar button{background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:6px 12px; font-size:13px; font-weight:700; color:var(--ink2)}
+  .mapbar{position:absolute; top:12px; left:12px; right:12px; z-index:5; display:flex; gap:5px;
+    flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px}
+  .mapbar::-webkit-scrollbar{display:none}
+  .mapbar button{flex:0 0 auto; background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:6px 12px; font-size:13px; font-weight:700; color:var(--ink2)}
   .mapbar button.on{background:var(--ink); color:var(--surf)}
   .leaflet-popup-content{margin:11px 13px; font-size:14px}
   .leaflet-popup-content b{display:block; margin-bottom:3px; font-size:14.5px; font-weight:700}
@@ -513,7 +515,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v11-3';
+  var APP_VER='20260914-v11-4';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1652,7 +1654,7 @@
     $('sidebd').className = 'sidebd'+(on?' show':'');
   }
   function openSheet(h){ $('pan').innerHTML='<button class="close" data-act="closesheet">關</button>'+h; $('sheet').className='sheet show'; }
-  function closeSheet(){ $('sheet').className='sheet'; $('pan').innerHTML=''; }
+  function closeSheet(){ $('sheet').className='sheet'; $('pan').innerHTML=''; dropPendingNew(); }
   function closeMenu(){ var m=document.querySelector('.menu'); if(m) m.remove(); }
   function openMenu(ev,h){
     closeMenu();
@@ -1672,7 +1674,8 @@
   function itemSheet(x){
     var k=kd(x.kind);
     openSheet('<h3>'+k.i+' 改項目</h3>'+
-      '<div class="fld"><label>名</label><input class="inp" id="eName" value="'+esc(x.name)+'"></div>'+
+      '<div class="fld"><label>名</label><input class="inp" id="eName" value="'+esc(x.name)+
+        '" placeholder="'+esc(x.kind==='flight'?'香港 — 東京 HX606':(x.kind==='stay'?'Hotel Granvia Kyoto':'打個名，例：清水寺'))+'"></div>'+
       '<div class="fld"><label>類型</label><div class="kinds" id="eKinds" style="gap:5px">'+
         KORDER.map(function(kk){ return '<button data-k="'+kk+'" class="'+(x.kind===kk?'on':'')+'" style="width:auto;padding:0 11px;height:34px;font-size:13px">'+KINDS[kk].i+' '+KINDS[kk].n+'</button>'; }).join('')+'</div></div>'+
       '<div class="two"><div class="fld"><label>'+(k.tl||'時間')+'</label><input class="inp" id="eTime" type="time" value="'+esc(x.time||'')+'"></div>'+
@@ -1758,10 +1761,22 @@
     var x={ id:uid(), tripId:t.id, kind:k, listId:lid, date:date, ord:0, time:'',
             name:'', lat:null, lng:null, addr:'', note:'', cost:0, ccy:'', done:false, checks:[] };
     x.ord = nextOrd(date? dayItems(date) : listItems(lid));
-    x.name = '新'+KINDS[k].n;
+    x.name = '';
     state.items.push(x); save();
+    pendingNew=x.id;                       // 閂窗都未填名就清走，唔會留「新航班」呢類廢項目
     itemSheet(x);
-    setTimeout(function(){ try{ var e=$('eName'); e.focus(); e.select(); }catch(er){} }, 90);
+    setTimeout(function(){ try{ $('eName').focus(); }catch(er){} }, 90);
+  }
+  // 未命名嘅新項目：離開編輯器就清走
+  var pendingNew=null;
+  function dropPendingNew(){
+    if(!pendingNew) return;
+    var id=pendingNew; pendingNew=null;
+    var x=itemById(id); if(!x) return;
+    if(!String(x.name||'').trim() && !x.time && !+x.cost && !String(x.note||'').trim() && !x.lat){
+      state.items=state.items.filter(function(z){ return z.id!==id; });
+      save();
+    }
   }
   function tripSheet(t){
     var isNew=!t; t=t||{id:null,name:'',dest:'',start:today(),end:shift(today(),4),cur:'HKD'};
@@ -1911,7 +1926,9 @@
     else if(act==='saveitem'){
       var x4=itemById(id); if(!x4) return;
       snap();
-      x4.name=($('eName').value||'').trim()||x4.name;
+      var nm4=($('eName').value||'').trim();
+      if(!nm4){ $('eName').focus(); return; }
+      x4.name=nm4; pendingNew=null;
       var on=$('eKinds').querySelector('.on'); if(on) x4.kind=on.getAttribute('data-k');
       x4.time=$('eTime').value||''; x4.cost=+$('eCost').value||0; x4.note=($('eNote').value||'').trim();
       var cc=($('eCcy').value||'').trim().toUpperCase(); x4.ccy = (cc && cc!==cur())? cc : '';
