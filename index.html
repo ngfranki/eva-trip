@@ -515,7 +515,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v12-5';
+  var APP_VER='20260914-v13-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -661,14 +661,60 @@
     if(pTimer) clearTimeout(pTimer);
     pTimer=setTimeout(persist,600);
   }
+  // 兩部機同時用嘅時候，舊 state 唔可以盲目覆蓋新 state。
+  // 以 id 做 union：兩邊新增嘅都保留；同一個 id 兩邊都改過就以伺服器（較新）為準。
+  function mergeStates(mine, theirs){
+    var out=JSON.parse(JSON.stringify(theirs));
+    ['trips','lists','items'].forEach(function(k){
+      if(!Array.isArray(out[k])) out[k]=[];
+      var seen={}; out[k].forEach(function(x){ seen[x.id]=1; });
+      (mine[k]||[]).forEach(function(x){ if(x&&x.id&&!seen[x.id]) out[k].push(x); });
+    });
+    out.logs=out.logs||{};
+    Object.keys(mine.logs||{}).forEach(function(k){
+      var a=mine.logs[k], b=out.logs[k];
+      if(!b) out.logs[k]=a;
+      else if(a&&a.updatedAt&&(!b.updatedAt||a.updatedAt>b.updatedAt)) out.logs[k]=a;
+    });
+    out.chat=Object.assign({}, out.chat||{}, mine.chat||{});
+    out.settings=out.settings||{};
+    var ms=mine.settings||{};
+    if(ms.curTrip) out.settings.curTrip=ms.curTrip;              // 本機正在睇邊個行程
+    if(ms.gmapKey && !out.settings.gmapKey) out.settings.gmapKey=ms.gmapKey;
+    return out;
+  }
+  var pRetry=0;
   function persist(){
     if(!state||MODE!=='cloud'||!KEY) return;
     var ts=new Date().toISOString();
-    fetch(SB+'/rest/v1/'+TABLE+'?on_conflict=id',{method:'POST',
-      headers:Object.assign(hdr(),{Prefer:'resolution=merge-duplicates,return=representation'}),
-      body:JSON.stringify([{id:'main',state:state,updated_at:ts}])})
+    // 第一次（表仲未有 row）→ upsert
+    if(!lastUpdated){
+      fetch(SB+'/rest/v1/'+TABLE+'?on_conflict=id',{method:'POST',
+        headers:Object.assign(hdr(),{Prefer:'resolution=merge-duplicates,return=representation'}),
+        body:JSON.stringify([{id:'main',state:state,updated_at:ts}])})
+      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(rows){ dirty=false; pRetry=0; if(rows&&rows[0]) lastUpdated=rows[0].updated_at; cacheSave(); setSync('ok','已儲低 '+nowT()); })
+      .catch(function(){ setSync('err','離線，資料未同步'); setTimeout(persist,8000); });
+      return;
+    }
+    // 之後每次都帶住「我讀到嘅版本」做條件，唔啱就唔覆蓋
+    fetch(SB+'/rest/v1/'+TABLE+'?id=eq.main&updated_at=eq.'+encodeURIComponent(lastUpdated),
+      {method:'PATCH', headers:Object.assign(hdr(),{Prefer:'return=representation'}),
+       body:JSON.stringify({state:state, updated_at:ts})})
     .then(function(r){ if(!r.ok) throw 0; return r.json(); })
-    .then(function(rows){ dirty=false; if(rows&&rows[0]) lastUpdated=rows[0].updated_at; cacheSave(); setSync('ok','已儲低 '+nowT()); })
+    .then(function(rows){
+      if(rows && rows[0]){ dirty=false; pRetry=0; lastUpdated=rows[0].updated_at; cacheSave(); setSync('ok','已儲低 '+nowT()); return; }
+      // 0 row ＝ 其他裝置喺我讀完之後寫過 → 合併，唔可以覆蓋
+      if(pRetry>=4){ setSync('err','同步衝突，撳一下狀態重試'); return; }
+      pRetry++;
+      setSync('','其他裝置有改動，合併緊…');
+      fetchRow(function(row){
+        if(!row){ setTimeout(persist,3000); return; }
+        state=mergeStates(state, migrate(row.state||{}));
+        lastUpdated=row.updated_at; cacheSave(); render();
+        setTimeout(persist,150);
+      });
+    })
     .catch(function(){ setSync('err','離線，資料未同步'); setTimeout(persist,8000); });
   }
   function fetchRow(cb){
