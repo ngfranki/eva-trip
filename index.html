@@ -515,7 +515,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v12-2';
+  var APP_VER='20260914-v12-3';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1342,6 +1342,24 @@
     requestAnimationFrame(go);
     gKickT=setTimeout(go, 300);
   }
+  // Maps 3.66 喺呢個版面下，初始化之後有機會永遠唔貼磚（成塊白）。
+  // 實測過嘅事實：另起一個 Map 實例，原本嗰個就即刻畫。
+  // 所以裝個 watchdog —— 2.5 秒內冇 tilesloaded 就拆掉重建，最多兩次。
+  var gTries=0;
+  function gWatch(){
+    if(!gmap || !window.google) return;
+    var ok=false;
+    google.maps.event.addListenerOnce(gmap,'tilesloaded',function(){ ok=true; });
+    setTimeout(function(){
+      if(ok || !gmap) return;
+      if(gTries>=2){ setSync('err','Google 地圖畫唔出，撳一下任何地點就會出'); return; }
+      gTries++;
+      var el=$('map'); if(!el) return;
+      gmap=null; gmarks=[]; gInfo=null; el.innerHTML='';
+      drawMap();
+    }, 2500);
+  }
+
   // 由 bounds 算出啱嘅 zoom（Mercator），代替 fitBounds
   function fitZoom(b){
     var el=$('map'); if(!el) return 12;
@@ -1372,6 +1390,7 @@
         gestureHandling:'greedy'
       });
       gInfo=new google.maps.InfoWindow();
+      gWatch();                            // 磚唔出就自我重建（見 gWatch 註解）
       // 建立嗰刻容器尺寸未必 settle（三欄 grid 嘅 40% 欄）。Google 量到 0 就再也唔會重畫，
       // 所以一定要主動踢佢 resize，並且用 ResizeObserver 盯住之後任何尺寸變化。
       gKick();
