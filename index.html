@@ -168,6 +168,18 @@
   .bigno{font-size:24px; font-weight:400; color:var(--muted); letter-spacing:-.02em; line-height:1.2}
   .sumcard a{display:block; margin-top:8px; font-size:13.5px; color:var(--link); font-weight:700; cursor:pointer}
 
+  /* 附件 */
+  .files{display:flex; flex-direction:column; gap:6px}
+  .fitem{display:flex; align-items:center; gap:8px; background:var(--soft); border-radius:9px; padding:8px 10px}
+  .fitem .fic{display:flex; color:var(--muted); flex:0 0 auto}
+  .fitem .fn{flex:1; min-width:0; text-align:left; font-size:13.5px; font-weight:600; color:var(--link);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .fitem .fsz{font-size:11.5px; color:var(--muted); flex:0 0 auto}
+  .fadd{display:flex; align-items:center; gap:7px; padding:9px 11px; border:1px dashed var(--line);
+    border-radius:9px; font-size:13px; color:var(--muted); cursor:pointer}
+  .fadd:hover{border-color:var(--acc); color:var(--acc)}
+  .chip.file{background:var(--soft2); color:var(--ink2); border:1px solid var(--line)}
+
   /* 探索卡（照 Wanderlog 橫向相片卡）*/
   .excards{display:flex; gap:12px; overflow-x:auto; padding:2px 0 8px; scrollbar-width:none}
   .excards::-webkit-scrollbar{display:none}
@@ -531,7 +543,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v14-1';
+  var APP_VER='20260914-v15-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1220,6 +1232,62 @@
        '<a data-act="go" data-s="s-bud">查看明細</a></div>';
     return h+'</div>';
   }
+  // ---------- 附件（Supabase Storage · trip-files · 同一個暗號閘）----------
+  var BUCKET='trip-files', MAXMB=10;
+  function stUrl(path){ return SB+'/storage/v1/object/'+BUCKET+'/'+path.split('/').map(encodeURIComponent).join('/'); }
+  function stHdr(extra){ return Object.assign({apikey:SBK, Authorization:'Bearer '+SBK, 'x-client-info':KEY}, extra||{}); }
+  function fmtSize(b){ b=+b||0; return b<1024?b+' B':(b<1048576?(b/1024).toFixed(0)+' KB':(b/1048576).toFixed(1)+' MB'); }
+  function fileIcon(t){ return String(t||'').indexOf('image')>=0 ? 'pin' : 'note'; }
+  function uploadFile(x, file, cb){
+    if(MODE!=='cloud'){ alert('要雲端模式先上載得到附件'); if(cb) cb(false); return; }
+    if(file.size > MAXMB*1048576){ alert('\u300c'+file.name+'\u300d\u6709 '+fmtSize(file.size)+'\uff0c\u5927\u904e '+MAXMB+'MB \u4e0a\u9650'); if(cb) cb(false); return; }
+    var safe=String(file.name||'file').replace(/[^\w.\-]+/g,'_').slice(-60);
+    var path=curTrip().id+'/'+x.id+'/'+uid()+'-'+safe;
+    setSync('','\u4e0a\u8f09 '+file.name+'\u2026');
+    fetch(stUrl(path), {method:'POST', headers:stHdr({'Content-Type':file.type||'application/octet-stream'}), body:file})
+      .then(function(r){ if(!r.ok) return r.text().then(function(t){ throw new Error(r.status+' '+t.slice(0,80)); }); return r.json(); })
+      .then(function(){
+        snap(); if(!x.files) x.files=[];
+        x.files.push({p:path, n:file.name, s:file.size, t:file.type||'', at:Date.now()});
+        save(); setSync('ok','\u4e0a\u8f09\u5b8c '+file.name); if(cb) cb(true);
+      })
+      .catch(function(e){ setSync('err','\u4e0a\u8f09\u5931\u6557\uff1a'+(e.message||'')); if(cb) cb(false); });
+  }
+  function openFile(f){
+    if(!f) return;
+    setSync('','\u958b\u7dca '+f.n+'\u2026');
+    fetch(stUrl(f.p), {headers:stHdr()})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); })
+      .then(function(b){
+        var u=URL.createObjectURL(b.type? b : new Blob([b],{type:f.t||'application/octet-stream'}));
+        window.open(u,'_blank','noopener');
+        setTimeout(function(){ URL.revokeObjectURL(u); }, 60000);
+        setSync('ok','');
+      })
+      .catch(function(e){ setSync('err','\u958b\u5514\u5230\uff1a'+(e.message||'')); });
+  }
+  function delFile(x, i){
+    var f=(x.files||[])[i]; if(!f) return;
+    if(!confirm('\u522a\u5497\u300c'+f.n+'\u300d\uff1f\u96f2\u7aef\u6a94\u6848\u6703\u6c38\u4e45\u79fb\u9664\u3002')) return;
+    fetch(stUrl(f.p), {method:'DELETE', headers:stHdr()})
+      .then(function(){ snap(); x.files.splice(i,1); save(); setSync('ok','\u522a\u5497 '+f.n); })
+      .catch(function(){ setSync('err','\u522a\u5514\u5230'); });
+  }
+  function filesHTML(x, editable){
+    var fs=x.files||[], h='<div class="files">';
+    fs.forEach(function(f,i){
+      h+='<div class="fitem"><span class="fic">'+ic(fileIcon(f.t),16)+'</span>'+
+         '<button class="fn" data-act="openfile" data-id="'+x.id+'" data-i="'+i+'">'+esc(f.n)+'</button>'+
+         '<span class="fsz">'+fmtSize(f.s)+'</span>'+
+         (editable?'<button class="kebab" data-act="delfile" data-id="'+x.id+'" data-i="'+i+'" style="opacity:1">'+ic('x',14)+'</button>':'')+
+         '</div>';
+    });
+    if(editable)
+      h+='<label class="fadd">'+ic('plus',15)+' \u52a0\u9644\u4ef6\uff08\u6a5f\u7968\u3001\u78ba\u8a8d\u4fe1\u2026\u6700\u5927 '+MAXMB+'MB\uff09'+
+         '<input type="file" multiple hidden data-act="pickfile" data-id="'+x.id+'"></label>';
+    return h+'</div>';
+  }
+
   // ---------- 探索：AI 推介 + Google 相／評分 ----------
   function exList(){ var t=curTrip(); if(!t) return null; return (state.explore||{})[t.id]||null; }
   function exploreSec(){
@@ -1352,6 +1420,7 @@
     var chips=[];
     if(tl) chips.push('<span class="chip">'+esc(tl)+'</span>');
     if(+x.cost) chips.push('<span class="chip cost">'+esc(cur())+' '+Math.round(x.cost).toLocaleString()+'</span>');
+    if((x.files||[]).length) chips.push('<span class="chip file">'+ic('note',11,'inline')+' '+x.files.length+'</span>');
     if(x.unverified) chips.push('<span class="chip warn" title="地圖搵唔到呢個名，AI 可能作嘅">⚠ 查唔到</span>');
     var chk='';
     if(x.kind==='check' && x.checks && x.checks.length){
@@ -1851,6 +1920,7 @@
         '<input class="inp" id="eCost" type="number" inputmode="decimal" value="'+(x.cost||'')+'" placeholder="0"></div></div></div>'+
       '<div class="fld"><label>擺喺邊</label><select class="inp" id="eScope">'+scopeOpts(x)+'</select></div>'+
       '<div class="fld"><label>備註</label><textarea class="inp" id="eNote">'+esc(x.note||'')+'</textarea></div>'+
+      '<div class="fld"><label>附件</label>'+filesHTML(x,true)+'</div>'+
       (x.kind==='check'? '<div class="fld"><label>清單（一行一項）</label><textarea class="inp" id="eChecks">'+esc((x.checks||[]).map(function(c){return c.t;}).join('\n'))+'</textarea></div>':'')+
       '<div class="hint" id="eGeo">'+(x.lat? ic('pin',14,'inline')+' '+(+x.lat).toFixed(4)+', '+(+x.lng).toFixed(4)+(x.addr?' · '+esc(x.addr):'') : '冇座標，地圖上唔會出現')+'</div>'+
       '<div class="btnrow"><button class="btn ghost" data-act="relookup" data-id="'+x.id+'">🔍 重新定位</button>'+
@@ -1889,6 +1959,7 @@
       });
       h+='</div>';
     }
+    if((x.files||[]).length) h+='<div class="fld" style="margin-top:14px"><label>附件</label>'+filesHTML(x,false)+'</div>';
     if(x.hours && x.hours.length>1)
       h+='<div class="phours hide" id="pAllHours">'+x.hours.map(function(l){ return '<div>'+esc(l)+'</div>'; }).join('')+'</div>';
 
@@ -2031,6 +2102,17 @@
     if((e.metaKey||e.ctrlKey)&&e.key==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
   });
   document.addEventListener('change',function(e){
+    if(e.target.getAttribute&&e.target.getAttribute('data-act')==='pickfile'){
+      var xp=itemById(e.target.getAttribute('data-id'));
+      var fl=[].slice.call(e.target.files||[]);
+      e.target.value='';
+      if(!xp||!fl.length) return;
+      (function go(i){
+        if(i>=fl.length){ if($('sheet').className.indexOf('show')>=0) itemSheet(itemById(xp.id)); return; }
+        uploadFile(xp, fl[i], function(){ go(i+1); });
+      })(0);
+      return;
+    }
     if(e.target.getAttribute&&e.target.getAttribute('data-act')==='chk'){
       var x=itemById(e.target.getAttribute('data-id')); if(!x) return;
       var i=+e.target.getAttribute('data-i'); if(!x.checks[i]) return;
@@ -2180,6 +2262,8 @@
       addOfKind(kk);
     }
     else if(act==='addkind2'){ addOfKind(el.getAttribute('data-k')); }
+    else if(act==='openfile'){ var xf=itemById(id); if(xf) openFile((xf.files||[])[+el.getAttribute('data-i')]); }
+    else if(act==='delfile'){ var xd=itemById(id); if(xd) delFile(xd, +el.getAttribute('data-i')); }
     else if(act==='explore'){ runExplore(); }
     else if(act==='exadd'){
       var ex=exList(); if(!ex) return;
