@@ -136,6 +136,12 @@ Deno.serve(async (req) => {
       //   Essentials 每月 10,000 免費 / Pro（TRAFFIC_AWARE）每月 5,000 免費
       if (body.traffic === true) {
         payload.routingPreference = "TRAFFIC_AWARE";
+        // departureTime 一定要係未來（Google 規定），所以 client 只喺未來日期才傳。
+        // 有傳就係「預測當日嗰個鐘數嘅路況」，冇傳就係「而家嘅路況」。
+        const dep = typeof body.departureTime === "string" ? body.departureTime : "";
+        if (dep && !isNaN(Date.parse(dep)) && Date.parse(dep) > Date.now() + 60_000) {
+          payload.departureTime = new Date(dep).toISOString();
+        }
       }
       const r = await gPost(
         "https://routes.googleapis.com/directions/v2:computeRoutes",

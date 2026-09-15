@@ -423,6 +423,14 @@
   .fld{margin-bottom:12px}
   .fld label{display:block; font-size:12.5px; color:var(--muted); margin:0 0 5px 1px; font-weight:700}
   .inp{width:100%; background:var(--surf); border:1px solid var(--line); border-radius:8px; padding:10px 12px; outline:none; font-size:14.5px}
+  /* 🔴 iOS Safari：一 focus 字細過 16px 嘅輸入欄就會自動放大成個頁，而且唔會自己縮返。
+     揿類型 icon 會自動 focus 個輸入欄，所以症狀係「揿完 icon 畫面放大縮唔返」。
+     唔可以用 maximum-scale=1 解決（會連手指放大都禁埋，唔應該）。正解係觸控裝置一律 16px。 */
+  @media (pointer:coarse){
+    .inp, .addbar .fi input, .aiin textarea,
+    input:not([type=checkbox]):not([type=radio]), select, textarea{font-size:16px}
+    .inp{padding:11px 12px}
+  }
   .inp:focus{border-color:var(--acc)}
   textarea.inp{resize:vertical; min-height:80px; line-height:1.55}
   .two{display:grid; grid-template-columns:1fr 1fr; gap:10px}
@@ -581,7 +589,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v17-3';
+  var APP_VER='20260915-v18-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -787,6 +795,53 @@
   }
   function wxKey(d){ var t=curTrip(); return t? t.id+'|'+d : ''; }
   function wxGet(d){ return (state.wx||{})[wxKey(d)]||null; }
+  // 出發日仲遠過 16 日就攞唔到預報。但「12 月北海道凍到幾多、落唔落雪」呢個
+  // 問題，往年同期嘅實際數字已經答得到 —— 而且係免 key 嘅歷史 API。
+  // 三個 request（過去三年），一次過攞晒所有地點（archive API 同 forecast 一樣
+  // 支援多座標）。歷史數據唔會變，所以 cache 一個月。
+  function yearOf(ds, Y){ return Y+ds.slice(4); }        // '2026-12-01' → '2023-12-01'
+  var histBusy=false;
+  function wxHist(pts, dayIdx, ds, tid){
+    if(histBusy) return;
+    var t=curTrip(); if(!t) return;
+    if(t.histAt && (Date.now()-t.histAt)<30*86400000) return;
+    var y0=+ds[0].slice(0,4), yrs=[y0-1,y0-2,y0-3];
+    var lat=pts.map(function(q){ return q.lat.toFixed(3); }).join(',');
+    var lng=pts.map(function(q){ return q.lng.toFixed(3); }).join(',');
+    var acc={}, left=yrs.length;
+    histBusy=true;
+    yrs.forEach(function(Y){
+      var a=yearOf(ds[0], Y), b=shift(a, ds.length-1);
+      var u='https://archive-api.open-meteo.com/v1/archive?latitude='+lat+'&longitude='+lng+
+        '&start_date='+a+'&end_date='+b+
+        '&daily=temperature_2m_max,temperature_2m_min,snowfall_sum&timezone=Asia%2FTokyo';
+      fetch(u).then(function(r){ return r.ok? r.json():null; }).then(function(j){
+        if(j){
+          var arr=Array.isArray(j)? j : [j];
+          ds.forEach(function(dd,i){
+            var loc=arr[dayIdx[dd]]; if(!loc||!loc.daily) return;
+            var D=loc.daily; if(D.temperature_2m_max[i]==null) return;
+            var o=acc[dd]||(acc[dd]={mn:[],mx:[],sn:[]});
+            o.mx.push(D.temperature_2m_max[i]);
+            o.mn.push(D.temperature_2m_min[i]);
+            if(D.snowfall_sum[i]!=null) o.sn.push(D.snowfall_sum[i]);
+          });
+        }
+        if(--left) return;
+        histBusy=false;
+        var t2=curTrip(); if(!t2) return;
+        var avg=function(a){ return a.length? a.reduce(function(x,y){return x+y;},0)/a.length : null; };
+        var n=0;
+        Object.keys(acc).forEach(function(dd){
+          var o=acc[dd], rec=state.wx[t2.id+'|'+dd]||{};
+          rec.h={ mn:avg(o.mn), mx:avg(o.mx), sn:avg(o.sn), n:o.mx.length };
+          state.wx[t2.id+'|'+dd]=rec; n++;
+        });
+        if(n){ t2.histAt=Date.now(); save(true); render(); }
+      }).catch(function(){ if(--left<=0) histBusy=false; });
+    });
+  }
+
   var wxBusy=false, wxFail=0;
   function wxFetch(force){
     var t=curTrip(); if(!t||!t.start) return;
@@ -842,6 +897,9 @@
       });
       t2.wxAt=Date.now(); wxBusy=false;
       save(true); render();
+      // 有日子超出預報窗 → 補往年同期
+      if(ds.some(function(dd){ return !(state.wx[t2.id+'|'+dd]||{}).mx; }))
+        wxHist(pts, dayIdx, ds, t2.id);
     }).catch(function(){ wxBusy=false; wxFail=Date.now(); });
   }
   var WXI={0:'晴',1:'大致晴',2:'多雲',3:'密雲',45:'霧',48:'霧',51:'微雨',53:'微雨',55:'微雨',
@@ -867,16 +925,21 @@
   function dayWx(d){
     var t=curTrip(); if(!t) return '';
     var w=wxGet(d), bits=[];
-    var dr=dayDrive(d);
-    if(dr) bits.push('車程 '+minsTxt(dr.sec)+' · '+(dr.m/1000).toFixed(dr.m<10000?1:0)+'km'+(dr.real?'':'（估）'));
-    if(w){
-      if(w.mx!=null) bits.push(Math.round(w.mn)+'°~'+Math.round(w.mx)+'°');
+    var dr=dayDrive(d), rr=dayRoute(d);
+    if(dr) bits.push('車程 '+minsTxt(dr.sec)+' · '+(dr.m/1000).toFixed(dr.m<10000?1:0)+'km'+
+      (dr.real? (rr&&rr.traffic? '（計路況）':'') : '（估）'));
+    if(w && w.mx!=null){
+      bits.push(Math.round(w.mn)+'°~'+Math.round(w.mx)+'°');
       // 有具體雨雪量就唔好再講一次「雨」（舊版會出「雨 · 雨 24mm」）
       var amt='';
       if(+w.sn>0) amt='雪 '+(+w.sn).toFixed(0)+'cm';
       else if(+w.pr>=1) amt='雨 '+(+w.pr).toFixed(0)+'mm';
       if(amt) bits.push(amt);
       else if(WXI[w.cd]) bits.push(WXI[w.cd]);
+    } else if(w && w.h && w.h.mx!=null){
+      // 超出 16 日預報窗 → 用往年同期實際數字，並且講明係往年
+      bits.push('往年 '+Math.round(w.h.mn)+'°~'+Math.round(w.h.mx)+'°');
+      if(w.h.sn!=null && w.h.sn>=0.3) bits.push('雪 '+(w.h.sn<1? w.h.sn.toFixed(1) : w.h.sn.toFixed(0))+'cm');
     }
     var set = w&&w.set ? w.set : null;
     if(!set){
@@ -1527,6 +1590,12 @@
     }
     return null;
   }
+  // 砌一個帶時區 offset 嘅 RFC3339 時刻，例如 '2026-12-01T09:00:00+09:00'
+  function isoAt(ds, hm, tzMin){
+    var q=String(hm||'09:00').split(':');
+    var off = tzMin==null? 0 : tzMin, sg = off<0? '-' : '+', ao=Math.abs(off);
+    return ds+'T'+pad(+q[0]||0)+':'+pad(+(q[1]||0))+':00'+sg+pad(Math.floor(ao/60))+':'+pad(ao%60);
+  }
   function routeSig(pts){ return pts.map(function(p){ return p.lat.toFixed(4)+','+p.lng.toFixed(4); }).join('|'); }
   // 「由昨晚住嘅地方去今日第一站」嗰段
   function legFromPrev(d){
@@ -1555,18 +1624,31 @@
     var pts=own.map(function(x){ return {lat:x.lat,lng:x.lng}; });
     if(org) pts.unshift({lat:org.lat,lng:org.lng});
     if(pts.length<2) return;
-    var sig=routeSig(pts)+(org?'|o':''), k=t.id+'|'+d;
+    // 🔴 規劃期嘅路線本來唔計路況（TRAFFIC_UNAWARE），所以系統性低報。
+    // 實測新宿→箱根：唔計路況 107 分鐘 / 97.7km，計路況 133 分鐘 / 113.9km
+    // —— 差 26 分鐘，而且 Google 會揀另一條路。你撳「路線」跳去 Google Maps
+    // 睇到嘅係計路況嘅數，所以兩邊對唔上。
+    // 而家未來日期一律用 TRAFFIC_AWARE ＋ 當日出發時間做預測（Routes Pro SKU，
+    // 每月 5,000 次免費；一日一個 call，用唔到一成）。過去日期冇得預測，照舊。
+    var w0=wxGet(d);
+    var tz0 = (w0&&w0.tz!=null)? w0.tz : (pts[0]? lngTz(pts[0].lng) : null);
+    var firstT=(own.filter(function(x){ return x.time; })[0]||{}).time || '09:00';
+    var dep=isoAt(d, firstT, tz0);
+    var useTf = Date.parse(dep) > Date.now()+5*60000;
+    var sig=routeSig(pts)+(org?'|o':'')+(useTf?'|t'+firstT:''), k=t.id+'|'+d;
     if(!state.routes) state.routes={};
     var cur2=state.routes[k];
     if(cur2 && cur2.sig===sig) return;
     if(routeBusy[k]) return;
     routeBusy[k]=1;
-    gCall({op:'route',points:pts,mode:'DRIVE'},function(j,err){
+    gCall({op:'route',points:pts,mode:'DRIVE',
+           traffic:useTf, departureTime:useTf? dep : undefined},function(j,err){
       delete routeBusy[k];
       if(err||!j||!j.legs){ return; }
       // totalSec／totalM 係 Google 計好一併回嚟嘅，舊版只存 legs 就掉咗佢哋。
       state.routes[k]={sig:sig, legs:j.legs, mode:j.mode,
                        totalSec:j.totalSec||0, totalM:j.totalM||0,
+                       traffic:!!j.traffic, dep:useTf? dep : '',
                        fromPrev: org? org.name : '', at:Date.now()};
       save(true); render();
     });
