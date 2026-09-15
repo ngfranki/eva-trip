@@ -711,7 +711,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v25-0';
+  var APP_VER='20260915-v25-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -3017,19 +3017,23 @@
         if(c.nodeType===3) return;                       // 文字照留
         if(c.nodeType!==1){ c.remove(); return; }         // 註釋等一律掉
         var tag=c.tagName;
-        if(!MEMO_TAGS[tag]){                              // 唔准嘅標籤：留內容、拆殼
+        if(/^(SCRIPT|STYLE|TEMPLATE|NOSCRIPT|IFRAME|OBJECT|EMBED)$/.test(tag)){
+          c.remove(); return;                             // 呢啲連內容都唔留
+        }
+        if(!MEMO_TAGS[tag]){                              // 其他唔准嘅標籤：留文字、拆殼
           walk(c);
           var f=doc.createDocumentFragment();
           while(c.firstChild) f.appendChild(c.firstChild);
           c.replaceWith(f);
           return;
         }
-        // 屬性：除咗 a[href] 全部掉（on* / style / class 都唔准）
+        // ⚠️ href 一定要喺剝屬性之前攞，唔係讀到嘅係空（我第一版就中咗）
+        var href = tag==='A' ? String(c.getAttribute('href')||'') : '';
         [].slice.call(c.attributes).forEach(function(a){ c.removeAttribute(a.name); });
-        if(tag==='A'){
-          var href=String(c.getAttribute('href')||'');
-          if(!/^(https?:|mailto:|tel:)/i.test(href)) c.removeAttribute('href');
-          else { c.setAttribute('target','_blank'); c.setAttribute('rel','noopener'); }
+        if(tag==='A' && /^(https?:|mailto:|tel:)/i.test(href)){
+          c.setAttribute('href',href);
+          c.setAttribute('target','_blank');
+          c.setAttribute('rel','noopener');
         }
         walk(c);
       });
