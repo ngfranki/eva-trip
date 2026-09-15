@@ -7,6 +7,26 @@
 - 地圖同地點搜尋用 Google（Maps JS / Places / Routes），經 Edge Function 代理；冇 key 或者掛咗就自動退返 Leaflet + OpenStreetMap + Nominatim
 - AI 經 Supabase Edge Function 代理（OpenRouter），API key 唔會落到呢個 HTML 度；掛咗就自動轉「複製 prompt／貼返 JSON」手動模式
 
+## 首頁：行程格
+
+一格一個行程，封面用行程裡面最重要嘅地標。撳行程名前面個箭嘴，或者側欄最上「我嘅旅程」就返得到。
+
+**封面點揀**：唔可以只睇評分人數 —— 商場同機場嘅評分人數極多但唔係靚地標。實測純睇人數會揀「御殿場 Outlet」(★4.2 29,185) 而唔係「大石公園·富士山展望」(★4.5 23,657)。所以按類型加權：
+
+| 類型 | 權重 |
+|---|---|
+| 地點 | ×1 |
+| 食 | ×0.4 |
+| 住宿 | ×0.3 |
+| 購物 | ×0.22 |
+| 交通 | ×0.12 |
+
+Google types 有 `tourist_attraction`／`park`／`natural_feature` 再 ×1.6；有 `airport`／`train_station`／`parking`／`convenience_store` ×0.3。評分 <4 或者評分人數 <50 唔做封面。
+
+唔滿意就喺項目個 ⋯ 揀「用呢張相做封面」，`t.cover` 會蓋過自動揀。
+
+格上仲有：日期＋日數、完成進度條、項目數、總使費（按行程主幣種換算）、狀態章（進行中／仲有 N 日／N 個月前）。排序：進行中 → 快出發 → 已完成。
+
 ## 幾個頁
 
 | 頁 | 做乜 |
