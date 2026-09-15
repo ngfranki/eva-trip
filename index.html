@@ -778,7 +778,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260916-v30-0';
+  var APP_VER='20260916-v30-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -3740,7 +3740,8 @@
       var man = (a!==cur() && srcA==='man') || (b!==cur() && srcB==='man');
       h+='<div class="cvrow"><label>'+esc(a)+'</label><input class="inp cvin" id="cvA" type="text" inputmode="decimal" placeholder="0" value="'+esc(cv.a)+'"></div>'+
          '<div class="cvrow"><label>'+esc(b)+'</label><input class="inp cvin" id="cvB" type="text" inputmode="decimal" placeholder="0" value="'+esc(cv.b)+'"></div>'+
-         '<div class="cvquick">'+[1000,3000,5000,10000,30000].map(function(q){
+         // 快捷金額按幣種大細：JPY／KRW 用千位，USD／HKD 呢啲用十位百位
+         '<div class="cvquick">'+((cvUnit(a)>=0.5? [10,50,100,500,1000] : [1000,3000,5000,10000,30000])).map(function(q){
             return '<button class="cvq" data-act="cvq" data-v="'+q+'">'+esc(a)+' '+q.toLocaleString()+'</button>'; }).join('')+'</div>'+
          '<div class="cvrate">1 '+esc(a)+' = '+esc((+r).toFixed(r<0.1? 5 : (r<10? 4 : 2)))+' '+esc(b)+
            (man? ' <span class="rsrc man">自己入</span>'
