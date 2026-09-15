@@ -415,6 +415,19 @@
         letter-spacing:.03em; vertical-align:1px}
   .rsrc.auto{background:var(--link-soft); color:var(--link)}
   .rsrc.man{background:var(--soft2); color:var(--muted); border:1px solid var(--line)}
+  /* ── 換算器 ── */
+  .cvpair{display:flex; align-items:center; gap:10px; margin:2px 0 12px}
+  .cvsel{width:auto; min-width:96px; font-weight:800; font-size:16px}
+  .cvarrow{font-size:18px; color:var(--muted2)}
+  .cvhome{font-size:16px; font-weight:800}
+  .cvrow{display:flex; align-items:center; gap:10px; margin-bottom:8px}
+  .cvrow label{flex:none; width:44px; font-size:13px; font-weight:800; color:var(--muted)}
+  .cvin{flex:1; font-size:24px !important; font-weight:800; font-variant-numeric:tabular-nums; text-align:right; padding:10px 12px; min-height:52px}
+  .cvquick{display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 12px}
+  .cvq{padding:6px 10px; border:1px solid var(--line); border-radius:99px; background:var(--card); font-size:12.5px; font-weight:700; color:var(--ink2)}
+  .cvrate{font-size:13px; color:var(--muted); font-weight:600; margin-bottom:10px}
+  .cvdate{color:var(--muted2); font-weight:600}
+  .cvbtns{display:flex; gap:8px}
   /* contenteditable 編輯器：睇落同 textarea 一樣，但打粗體即刻見到粗體 */
   .rte{min-height:130px; max-height:320px; overflow:auto; text-align:left; line-height:1.6;
        white-space:pre-wrap; word-break:break-word; cursor:text}
@@ -752,7 +765,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v28-1';
+  var APP_VER='20260915-v29-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1412,17 +1425,18 @@
   // 自動匯率。Frankfurter 免 key、免登記、無 quota，資料來自 98 間央行（ECB 為底）。
   // 🔴 唔會蓋走你自己入嘅：ratesSrc[ccy]==='man' 就跳過。
   // ⚠️ ECB 嗰套冇台幣（TWD）等，攞唔到就留返手動。
-  var fxBusy=false;
-  function fxFetch(force){
-    var t=curTrip(); if(!t) return;
-    if(fxBusy) return;
-    if(!force && t.fxAt && (Date.now()-t.fxAt)<12*3600*1000) return;   // 匯率一日更新一次，半日內唔重複攞
+  var fxBusy=false, fxMiss={};                 // fxMiss：問過但央行冇嘅幣種（例：TWD），唔好每次都問
+  function fxFetch(force, extra, cb){
+    var t=curTrip(); if(!t){ if(cb) cb(false); return; }
+    if(fxBusy){ if(cb) cb(false); return; }
+    if(!force && t.fxAt && (Date.now()-t.fxAt)<12*3600*1000){ if(cb) cb(false); return; }   // 匯率一日更新一次，半日內唔重複攞
     var home=(t.cur||'HKD').toUpperCase();
     var need={}, src=rateSrc();
     tItems().forEach(function(x){ var c=itemCcy(x); if(c && c!==home) need[c.toUpperCase()]=1; });
     Object.keys(rates()).forEach(function(c){ need[c.toUpperCase()]=1; });
+    (extra||[]).forEach(function(c){ c=String(c||'').toUpperCase(); if(c && c!==home) need[c]=1; });
     var want=Object.keys(need).filter(function(c){ return src[c]!=='man'; });
-    if(!want.length) return;
+    if(!want.length){ if(cb) cb(false); return; }
     fxBusy=true;
     // base=home，回嚟係「1 home = N 外幣」，我哋要倒過嚟
     fetch('https://api.frankfurter.dev/v1/latest?base='+encodeURIComponent(home)+
@@ -1440,9 +1454,11 @@
           t2.rates[c]=1/per;                      // 1 外幣 = ? home
           t2.ratesSrc[c]='auto'; n++;
         });
+        want.forEach(function(c){ if(j.rates[c]==null) fxMiss[c]=1; else delete fxMiss[c]; });
         if(n){ t2.fxAt=Date.now(); t2.fxDate=j.date||''; save(true); render(); }
+        if(cb) cb(n>0);
       })
-      .catch(function(){ fxBusy=false; });
+      .catch(function(){ fxBusy=false; if(cb) cb(false); });
   }
   function itemCcy(x){ return x.ccy || cur(); }
   // 換算去旅程主幣種。匯率係你自己喺旅程設定入面填（唔駁 API，離線都準）。
@@ -2476,6 +2492,7 @@
     var tot=homeTotal(), n=days().length;
     h+='<div class="exptot"><div class="amt">'+esc(fmtCcy(cur(),tot))+
        '<small>'+it.length+' 筆'+(n?' · 平均每日 '+esc(fmtCcy(cur(),tot/n)):'')+'</small></div>'+
+       '<button class="pill acc" data-act="fxsheet">換算</button>'+
        '<button class="pill" data-act="rateset">匯率設定</button></div>';
     var miss=unknownCcys();
     if(miss.length) h+='<div class="hint err">'+esc(miss.join('、'))+' 未設匯率，總數當 1:1 計。撳「匯率設定」填返。</div>';
@@ -3674,19 +3691,71 @@
            '停留假設（景點 45 分、食飯 60 分）。想準就自己入時間。</div>';
   }
 
+  // ── 換算器：入 JPY 出 HKD，入 HKD 出 JPY，用自動匯率 ──
+  // 數字留喺 session（cv），30 秒重畫都唔會清走你打緊嘅嘢。
+  var CV_LIST=['JPY','HKD','USD','KRW','CNY','TWD','EUR','GBP','SGD','THB','MYR','AUD','CAD','MOP'];
+  var cv={ ccy:'', a:'', b:'' };
+  function cvCcy(){
+    if(cv.ccy) return cv.ccy;
+    var rr=rates(), ks=Object.keys(rr).filter(function(c){ return c!==cur(); });
+    cv.ccy = rr.JPY? 'JPY' : (ks[0] || (cur()==='JPY'? 'HKD':'JPY'));
+    return cv.ccy;
+  }
+  function cvFmt(n){
+    if(n==null || !isFinite(n)) return '';
+    var dp = Math.abs(n)<100? 2 : 0;
+    return (+n).toLocaleString(undefined,{minimumFractionDigits:dp, maximumFractionDigits:dp});
+  }
+  function fxHTML(){
+    var t=curTrip(); if(!t) return '<div class="empty">仲未有旅程</div>';
+    var home=cur(), c=cvCcy(), r=rates()[c], src=rateSrc()[c];
+    var list=CV_LIST.slice(); Object.keys(rates()).forEach(function(k){ if(list.indexOf(k)<0) list.push(k); });
+    if(list.indexOf(home)>=0) list.splice(list.indexOf(home),1);
+    var h='<div class="cvpair">'+
+      '<select class="inp cvsel" id="cvC">'+list.map(function(k){ return '<option value="'+k+'"'+(k===c?' selected':'')+'>'+k+'</option>'; }).join('')+'</select>'+
+      '<span class="cvarrow">⇄</span><b class="cvhome">'+esc(home)+'</b></div>';
+    if(r){
+      h+='<div class="cvrow"><label>'+esc(c)+'</label><input class="inp cvin" id="cvA" type="text" inputmode="decimal" placeholder="0" value="'+esc(cv.a)+'"></div>'+
+         '<div class="cvrow"><label>'+esc(home)+'</label><input class="inp cvin" id="cvB" type="text" inputmode="decimal" placeholder="0" value="'+esc(cv.b)+'"></div>'+
+         '<div class="cvquick">'+[1000,3000,5000,10000,30000].map(function(q){
+            return '<button class="cvq" data-act="cvq" data-v="'+q+'">'+esc(c)+' '+q.toLocaleString()+'</button>'; }).join('')+'</div>'+
+         '<div class="cvrate">1 '+esc(c)+' = '+esc((+r).toFixed(r<0.1? 5 : 4))+' '+esc(home)+
+           (src==='man'? ' <span class="rsrc man">自己入</span>'
+                       : ' <span class="rsrc auto">自動</span>'+(t.fxDate? ' <span class="cvdate">歐洲央行 '+esc(t.fxDate)+'</span>':''))+
+         '</div>'+
+         '<div class="cvbtns"><button class="btn ghost sm" data-act="cvfx">更新匯率</button>'+
+         '<button class="btn ghost sm" data-act="rateset">匯率設定</button></div>';
+    } else if(fxMiss[c]){
+      h+='<div class="empty">歐洲央行冇 '+esc(c)+' 嘅牌價（台幣、澳門幣都冇）。<br>'+
+         '去「匯率設定」自己入一個，之後喺呢度照用得。</div>'+
+         '<div class="cvbtns"><button class="btn ghost sm" data-act="rateset">匯率設定</button></div>';
+    } else {
+      h+='<div class="empty"><span class="spin"></span>攞緊 '+esc(c)+' 匯率…</div>';
+      fxFetch(true,[c],function(){ if($('pan').__now && nowTab==='fx') nowRender(); });
+    }
+    return h;
+  }
+  function cvCalc(from){
+    var c=cvCcy(), r=+rates()[c]; if(!r) return;
+    var A=$('cvA'), B=$('cvB'); if(!A||!B) return;
+    var num=function(v){ v=String(v||'').replace(/[^\d.]/g,''); return v===''? null : parseFloat(v); };
+    if(from==='A'){ cv.a=A.value; var a=num(A.value); cv.b = a==null? '' : cvFmt(a*r); B.value=cv.b; }
+    else { cv.b=B.value; var b=num(B.value); cv.a = b==null? '' : cvFmt(b/r); A.value=cv.a; }
+  }
   var nowTab='now';
   function nowSheet(tab){
     if(tab) nowTab=tab;
     openSheet('<div class="ntabs">'+
       '<button class="ntab'+(nowTab==='now'?' on':'')+'" data-act="nowtab" data-t="now">而家</button>'+
       '<button class="ntab'+(nowTab==='today'?' on':'')+'" data-act="nowtab" data-t="today">今日</button>'+
+      '<button class="ntab'+(nowTab==='fx'?' on':'')+'" data-act="nowtab" data-t="fx">換算</button>'+
       '</div><div id="nowBox" class="nowwrap"></div>');
     $('pan').__now=1;
     nowRender();
     if(nowTab==='now' && !gpsOn()) gpsStart(function(){ nowRender(); });
     if(nowTimer) clearInterval(nowTimer);
     nowTimer=setInterval(function(){
-      if($('pan').__now) nowRender();
+      if($('pan').__now){ if(nowTab==='now') nowRender(); }
       else { clearInterval(nowTimer); nowTimer=null; }
     }, 30000);
   }
@@ -3694,6 +3763,11 @@
   function nowRender(){
     var box=$('nowBox'); if(!box) return;
     if(nowTab==='today'){ box.innerHTML=todayHTML(); return; }
+    if(nowTab==='fx'){
+      box.innerHTML=fxHTML();
+      var A=$('cvA'); if(A && !cv.a && !cv.b) setTimeout(function(){ A.focus(); },80);
+      return;
+    }
     var t=curTrip();
     var h='';
     if(!t){ box.innerHTML='<div class="empty">仲未有旅程</div>'; return; }
@@ -4156,6 +4230,8 @@
       var t=curTrip(); if(!t) return; t.note=e.target.value;
       if(t.__nt) clearTimeout(t.__nt); t.__nt=setTimeout(function(){ save(true); },700); return;
     }
+    if(e.target.id==='cvA'){ cvCalc('A'); return; }
+    if(e.target.id==='cvB'){ cvCalc('B'); return; }
     if(a!=='addin') return;
     var scope=e.target.getAttribute('data-scope'), q=e.target.value.trim();
     if(sugTimer) clearTimeout(sugTimer);
@@ -4181,6 +4257,9 @@
         nomTry(q,function(arr){ if(alive()) showSug(scope,arr,q); });
       }
     },420);
+  });
+  document.addEventListener('change',function(e){
+    if(e.target.id==='cvC'){ cv.ccy=String(e.target.value||'').toUpperCase(); cv.a=''; cv.b=''; nowRender(); }
   });
   document.addEventListener('keydown',function(e){
     var a=e.target.getAttribute&&e.target.getAttribute('data-act');
@@ -4277,6 +4356,13 @@
     else if(act==='tick'){ var x2=itemById(id); if(x2){ snap(); x2.done=!x2.done; save();
       if($('pan').__now) nowRender(); } }
     else if(act==='nowtab'){ nowSheet(el.getAttribute('data-t')); }
+    else if(act==='fxsheet'){ nowSheet('fx'); }
+    else if(act==='cvq'){ cv.a=el.getAttribute('data-v'); var A0=$('cvA'); if(A0){ A0.value=cv.a; cvCalc('A'); } }
+    else if(act==='cvfx'){
+      var tf0=curTrip(); if(tf0) tf0.fxAt=0;
+      setSync('','攞匯率…');
+      fxFetch(true,[cvCcy()],function(ok){ setSync(ok?'ok':'err', ok?'匯率更新咗':'攞唔到匯率'); if($('pan').__now && nowTab==='fx') nowRender(); });
+    }
     else if(act==='tdday'){ var nd=el.getAttribute('data-d'); if(nd){ tdDay=nd; nowRender(); } }
     else if(act==='rowmenu'){
       var x3=itemById(id); if(!x3) return;
