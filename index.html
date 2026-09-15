@@ -644,7 +644,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v20-0';
+  var APP_VER='20260915-v20-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2393,6 +2393,10 @@
     if(!navigator.onLine){
       var el0=$('map');
       if(el0 && !(map && tileCacheN>0)){
+        // 一定要拆走現有地圖物件，唔係返返網之後 drawGMap 見到 gmap 仲存在就
+        // 跳過重建，但個 DOM 已經被我換走 → 地圖永遠唔返嚟。
+        if(gmap){ gmap=null; gmarks=[]; }
+        if(map){ try{ map.remove(); }catch(e){} map=null; markers=[]; }
         el0.innerHTML='<div class="mapoff">'+ic('map',30)+
           '<b>離線：地圖睇唔到</b>'+
           '<span>行程、地址、電話、筆記、預載咗嘅附件全部照樣睇得到。<br>'+
