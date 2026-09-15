@@ -589,7 +589,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v18-1';
+  var APP_VER='20260915-v18-2';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2591,18 +2591,24 @@
   function enrich(x, cb){
     if(!x){ if(cb) cb(false); return; }
     setSync('','\u6435 Google \u8cc7\u6599\u2026');
+    // 已經有 placeId（例如由 Wanderlog 匯入嘅）就直接攞詳情 ——
+    // 省一個 autocomplete call，而且唔會「搜返嚟係另一筆記錄」。
+    if(x.placeId){ details(x.placeId); return; }
     var c=tripCentre(), body={op:'autocomplete', q:x.name};
     if(c){ body.lat=c.lat; body.lng=c.lng; }
     gCall(body,function(j,err){
       var s0=j&&j.suggestions&&j.suggestions[0];
       if(err||!s0){ setSync('err','Google \u6435\u5514\u5230\u300c'+x.name+'\u300d'); if(cb) cb(false); return; }
-      gCall({op:'details',placeId:s0.placeId},function(d,e2){
+      details(s0.placeId);
+    });
+    function details(pid){
+      gCall({op:'details',placeId:pid},function(d,e2){
         if(e2||!d){ setSync('err','\u651d\u5514\u5230\u8a73\u60c5'); if(cb) cb(false); return; }
         snap(); fillFromDetails(x,d); save(); setSync('ok','\u5df2\u88dc '+x.name);
         if(x.photoName) photoUrl(x,function(){ render(); if(cb) cb(true); });
         else if(cb) cb(true);
       });
-    });
+    }
   }
   // 由「快速加」建一個指定類型嘅項目，即刻開編輯器
   function addOfKind(k){
