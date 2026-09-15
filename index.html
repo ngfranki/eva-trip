@@ -371,6 +371,35 @@
   .bkbox{border:1px solid var(--line); border-radius:10px; padding:12px 13px 2px; margin:2px 0 14px; background:var(--soft)}
   .bkh{font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; margin-bottom:9px}
   .bkbox .inp{background:var(--bg)}
+
+  /* 「而家」卡：車上乘客用。大字、行距鬆、唔使精細撳 */
+  .tbtn.now{background:var(--acc); color:#fff; border-color:var(--acc); font-weight:800}
+  .tbtn.now:hover{background:var(--acc-d); border-color:var(--acc-d)}
+  .nowwrap{padding-top:2px}
+  .nowtime{font-size:15px; color:var(--muted); font-weight:700; letter-spacing:.02em}
+  .nowtime span{font-size:12px; font-weight:600; color:var(--muted2); margin-left:6px}
+  .nowlbl{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.06em;
+          text-transform:uppercase; margin:16px 0 4px}
+  .nowbig{font-size:27px; font-weight:800; line-height:1.18; letter-spacing:-.025em; display:flex;
+          align-items:center; gap:9px; flex-wrap:wrap}
+  .nowbig .ico{flex:0 0 auto}
+  .nowsub{font-size:14.5px; color:var(--muted); margin-top:5px; line-height:1.4}
+  .nowrow{display:flex; align-items:center; gap:10px; font-size:16px; padding:11px 0;
+          border-top:1px solid var(--line2); line-height:1.35; flex-wrap:wrap}
+  .nowrow:first-of-type{border-top:0}
+  .nowrow .ico{flex:0 0 auto; color:var(--muted)}
+  .nowrow.big{font-size:20px; font-weight:700}
+  .nowrow em{font-style:normal; font-size:13px; font-weight:600; color:var(--muted); margin-left:2px}
+  .nowrow em.bad{color:var(--acc); font-weight:800}
+  .nowrow.warn{color:var(--acc); font-weight:700}
+  .nowrow.warn .ico{color:var(--acc)}
+  .nowrow.ok .ico{color:var(--ok)}
+  .nowrow a{color:var(--link); font-weight:700; display:flex; align-items:center; gap:10px}
+  .nowwx{margin:14px 0 2px; padding:12px 14px; border-radius:10px; background:var(--soft);
+         font-size:16px; font-weight:700; letter-spacing:.01em; line-height:1.4}
+  .nowbtns{margin-top:16px; display:flex; flex-direction:column; gap:8px}
+  .nowbtns .btn{text-align:center; text-decoration:none}
+  .tfbtn.on{background:var(--acc)!important; color:#fff!important; border-color:var(--acc)!important}
   .prows{margin:16px 0 4px; display:flex; flex-direction:column}
   .prow{display:flex; gap:11px; padding:9px 0; border-top:1px solid var(--line2); font-size:14px; align-items:flex-start}
   .prow:first-child{border-top:0}
@@ -512,6 +541,7 @@
     <div class="top">
       <span class="sync" id="sync">載緊…</span>
       <button class="tbtn mapbtn" data-act="menu-side" id="hamb" title="目錄"></button>
+      <button class="tbtn now" data-act="now" title="而家">而家</button>
       <button class="tbtn" id="bUndo" data-act="undo" title="復原"></button>
       <button class="tbtn" id="bRedo" data-act="redo" title="重做"></button>
       <button class="tbtn mapbtn" data-act="openmap"><span id="mapIc"></span> 地圖</button>
@@ -549,7 +579,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v16-1';
+  var APP_VER='20260915-v17-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -558,11 +588,12 @@
     stay: {i:'stay',   n:'住宿',  geo:1, tl:'Check in'},
     flight:{i:'flight',n:'航班',  geo:0, tl:'起飛'},
     car:  {i:'car',    n:'交通',  geo:1, tl:'Pick up'},
+    buy:  {i:'buy',    n:'購物',  geo:1},
     note: {i:'note',   n:'筆記',  geo:0},
     check:{i:'check',  n:'清單',  geo:0}
   };
   function kico(k, sz, extra){ return ic(kd(k).i, sz, extra); }
-  var KORDER=['place','eat','stay','flight','car','note','check'];
+  var KORDER=['place','eat','stay','flight','car','buy','note','check'];
   var DCOL=['--d1','--d2','--d3','--d4','--d5','--d6','--d7'];
 
   // ---------- 圖標：統一 24px monoline SVG，用 currentColor，唔用 emoji ----------
@@ -632,7 +663,14 @@
 
   // ---------- 日出日落：純計算，唔用 API（任何日期都有，包括一年後）----------
   // NOAA 簡化算法。校驗過：東京 2025-12-05 算出 06:37/16:29，實測 06:34/16:29。
-  function lngTz(lng){ return Math.round(+lng/15)*60; }
+  function lngTz(lng){ return Math.round(+lng/15)*60; }      // 回「分鐘」
+  // 把一個時刻換成「當地時區嘅牆上時間」。tzMin 單位係分鐘（Google utcOffsetMinutes
+  // 同 Open-Meteo utc_offset_seconds/60 都係分鐘）。
+  // ⚠️ getTimezoneOffset() 係 (UTC − 本機)，UTC+8 回 −480，所以要「加」佢。
+  function atTz(d, tzMin){
+    if(tzMin==null) return d;
+    return new Date(d.getTime() + (tzMin + d.getTimezoneOffset())*60000);
+  }
   function sunTimes(lat, lng, ds, tzMin){
     if(lat==null||lng==null||!ds) return null;
     var RD=Math.PI/180, p=String(ds).split('-');
@@ -717,7 +755,7 @@
     var tz=(x&&x.utcOff!=null)? x.utcOff : null;
     var now=new Date(), ds, cur;
     if(tz!=null){
-      var l=new Date(now.getTime()+(tz*60 + now.getTimezoneOffset())*60000);
+      var l=atTz(now, tz);
       ds=fmtD(l); cur=l.getHours()*60+l.getMinutes();
     } else { ds=today(); cur=now.getHours()*60+now.getMinutes(); }
     var H=dayHours(x, ds);
@@ -808,9 +846,25 @@
     61:'雨',63:'雨',65:'大雨',66:'凍雨',67:'凍雨',71:'雪',73:'雪',75:'大雪',77:'雪粒',
     80:'雨',81:'雨',82:'大雨',85:'陣雪',86:'大陣雪',95:'雷雨',96:'雷雨',99:'雷雨'};
   // 每日標題嗰行：氣溫 · 雪 · 天黑
+  // 全日總車程。真數（Google）先，冇就用逐段直線估算加埋並標明「估」。
+  function dayDrive(d){
+    var r=dayRoute(d);
+    if(r && r.totalSec) return {sec:r.totalSec, m:r.totalM||0, real:true};
+    var arr=dayItems(d).filter(function(x){ return kd(x.kind).geo && x.lat!=null; });
+    if(arr.length<2) return null;
+    var sec=0, m=0;
+    for(var i=1;i<arr.length;i++){
+      var km=hav([arr[i-1].lat,arr[i-1].lng],[arr[i].lat,arr[i].lng])*1.3;
+      var kmh = km<2?4.5 : (km<15?26 : (km<60?40:55));
+      sec+=km/kmh*3600; m+=km*1000;
+    }
+    return {sec:sec, m:m, real:false};
+  }
   function dayWx(d){
     var t=curTrip(); if(!t) return '';
     var w=wxGet(d), bits=[];
+    var dr=dayDrive(d);
+    if(dr) bits.push('車程 '+minsTxt(dr.sec)+' · '+(dr.m/1000).toFixed(dr.m<10000?1:0)+'km'+(dr.real?'':'（估）'));
     if(w){
       if(w.mx!=null) bits.push(Math.round(w.mn)+'°~'+Math.round(w.mx)+'°');
       if(WXI[w.cd]) bits.push(WXI[w.cd]);
@@ -828,7 +882,16 @@
   }
 
   // ---------- state / migration ----------
-  function defState(){ return {v:2, trips:[], lists:[], items:[], logs:{}, settings:{curTrip:null,updatedAt:null}, meta:{}, wx:{}}; }
+  function defState(){ return {v:2, trips:[], lists:[], items:[], logs:{}, settings:{curTrip:null,updatedAt:null}, meta:{}, wx:{}, del:{}}; }
+  // 墓碑：記住「刪過邊個 id」。冇呢樣嘅話 mergeStates 係純 id union ——
+  // 你喺 Mac 刪走 8 個點，iPhone 離線行完一日再上線，8 個會全部復活。
+  // 一定要喺 snap() 之後才叫，咁 undo 就連墓碑一齊還原。
+  function rmv(ids){
+    if(!state.del) state.del={};
+    var ts=new Date().toISOString();
+    (Array.isArray(ids)?ids:[ids]).forEach(function(id){ if(id) state.del[id]=ts; });
+  }
+  function DELCUT(){ return Date.now()-90*86400000; }   // 墓碑保留 90 日就夠
   function migrate(s){
     if(!s || typeof s!=='object') return defState();
     if(s.v===2){
@@ -837,6 +900,7 @@
       if(!Array.isArray(s.items)) s.items=[];
       if(!s.logs) s.logs={}; if(!s.settings) s.settings={}; if(!s.meta) s.meta={};
       if(!s.wx) s.wx={};
+      if(!s.del) s.del={};
       return s;
     }
     // v1 → v2：stops 變 items，未排日期嘅入「想去」清單
@@ -897,10 +961,17 @@
   // 以 id 做 union：兩邊新增嘅都保留；同一個 id 兩邊都改過就以伺服器（較新）為準。
   function mergeStates(mine, theirs){
     var out=JSON.parse(JSON.stringify(theirs));
+    // 兩邊嘅墓碑合埋，再剪走太舊嘅
+    var del=Object.assign({}, theirs.del||{}, mine.del||{});
+    var cut=DELCUT();
+    Object.keys(del).forEach(function(id){ var t=+new Date(del[id]); if(t && t<cut) delete del[id]; });
+    out.del=del;
+    // 規矩：刪贏改。一邊刪咗、另一邊改過，都當刪 —— 簡單、可預期。
     ['trips','lists','items'].forEach(function(k){
       if(!Array.isArray(out[k])) out[k]=[];
+      out[k]=out[k].filter(function(x){ return !(x && del[x.id]); });
       var seen={}; out[k].forEach(function(x){ seen[x.id]=1; });
-      (mine[k]||[]).forEach(function(x){ if(x&&x.id&&!seen[x.id]) out[k].push(x); });
+      (mine[k]||[]).forEach(function(x){ if(x&&x.id&&!seen[x.id]&&!del[x.id]) out[k].push(x); });
     });
     out.logs=out.logs||{};
     Object.keys(mine.logs||{}).forEach(function(k){
@@ -1010,7 +1081,11 @@
     var a=[]; for(var i=0;i<=n;i++) a.push(shift(t.start,i)); return a; }
   function tItems(){ var t=curTrip(); if(!t) return []; return state.items.filter(function(x){return x.tripId===t.id;}); }
   function tLists(){ var t=curTrip(); if(!t) return []; return state.lists.filter(function(l){return l.tripId===t.id;}).sort(function(a,b){return (a.ord||0)-(b.ord||0);}); }
-  function byOrd(a,b){ return (a.ord||0)-(b.ord||0); }
+  function byOrd(a,b){
+    var d=(a.ord||0)-(b.ord||0);
+    if(d) return d;
+    return String(a.time||'99:99')<String(b.time||'99:99')? -1 : 1;   // ord 打和就按時間
+  }
   function dayItems(d){ return tItems().filter(function(x){return x.date===d;}).sort(byOrd); }
   function listItems(id){ return tItems().filter(function(x){return x.listId===id && !x.date;}).sort(byOrd); }
   function itemById(id){ for(var i=0;i<state.items.length;i++) if(state.items[i].id===id) return state.items[i]; return null; }
@@ -1042,13 +1117,17 @@
     return 2*R*Math.asin(Math.sqrt(s));
   }
   function legTxt(a,b){
-    if(!a.lat||!b.lat) return null;
+    if(a.lat==null||b.lat==null) return null;   // 唔可以用 !a.lat：lat 0（赤道）係 falsy
     var km=hav([a.lat,a.lng],[b.lat,b.lng])*1.3;
     if(km<0.06) return null;
-    var mode, kmh;
-    if(km<2){ mode=ic('walk',15); kmh=4.5; }
-    else if(km<15){ mode=ic('car',15); kmh=26; }
-    else { mode=ic('train',15); kmh=65; }
+    // 2026-09-15 修：舊版 ≥15km 畫火車 icon ＋ 用 65km/h 計。呢個係自駕 app，
+    // 而呢個 fallback 正正喺山路冇訊號攞唔到 Routes 嗰陣出現 —— 即係最需要嗰刻講大話。
+    // 一律當開車。速度分級，長途當上高速；寧可估慢，唔好令你以為趕得切。
+    var mode=ic('car',15), kmh;
+    if(km<2){ mode=ic('walk',15); kmh=4.5; }      // 兩公里內真係行路
+    else if(km<15) kmh=26;                         // 市區
+    else if(km<60) kmh=40;                         // 一般道
+    else kmh=55;                                   // 多數有段高速
     var mins=Math.max(1,Math.round(km/kmh*60));
     var t = mins>=60 ? Math.floor(mins/60)+' \u5c0f\u6642'+(mins%60? ' '+(mins%60)+' \u5206':'') : mins+' \u5206\u9418';
     return { ic:mode, t:t+' \u00b7 '+(km<10?km.toFixed(1):Math.round(km))+' km' };
@@ -1088,14 +1167,17 @@
       if(!r||!r.name) return;
       var date=null;
       if(!toList && r.day){ var i=(+r.day)-1; if(i>=0&&i<ds.length) date=ds[i]; }
-      var k = KINDS[r.cat]? r.cat : (r.cat==='see'||r.cat==='buy'||r.cat==='etc'? 'place' : (r.cat==='go'?'car':'place'));
+      var k = KINDS[r.cat]? r.cat : (r.cat==='shop'||r.cat==='shopping'? 'buy' : (r.cat==='see'||r.cat==='etc'? 'place' : (r.cat==='go'?'car':'place')));
       var x={ id:uid(), tripId:t.id, kind:k, listId:date?null:lid, date:date,
               ord:nextOrd(date?dayItems(date):listItems(lid)), time:r.time||'', name:String(r.name).slice(0,120),
               lat:null,lng:null,addr:'', note:String(r.note||'').slice(0,400), cost:+r.cost||0, done:false, checks:[] };
       state.items.push(x); ids.push(x.id);
     });
     save(); closeSheet();
-    ids.forEach(function(i){ geoQ.push(i); }); pumpGeo();
+    // 一定要 filter geo：舊版會拎 Nominatim 去定位一個叫「香港 — 東京 HX606」嘅航班，
+    // 定位成功之後佢就變成一個路點，令之後每段車程對錯段。
+    ids.forEach(function(i){ var x=itemById(i); if(x && kd(x.kind).geo) geoQ.push(i); });
+    pumpGeo();
     return ids.length;
   }
 
@@ -1216,7 +1298,7 @@
       '如果要幫佢改行程，喺回覆最後加一個 JSON block（```json 開頭），格式：\n'+
       '{"ops":[ ... ]}\n'+
       'op 可以係：\n'+
-      '{"op":"add","to":"day:YYYY-MM-DD 或 list:<listId>","kind":"place|eat|stay|flight|car|note|check","name":"","time":"09:30","cost":0,"note":""}\n'+
+      '{"op":"add","to":"day:YYYY-MM-DD 或 list:<listId>","kind":"place|eat|stay|flight|car|buy|note|check","name":"","time":"09:30","cost":0,"note":""}\n'+
       '{"op":"set","id":"<id>","time":"","name":"","note":"","cost":0,"kind":"","done":true}\n'+
       '{"op":"move","id":"<id>","to":"day:YYYY-MM-DD 或 list:<listId>"}\n'+
       '{"op":"del","id":"<id>"}\n'+
@@ -1278,6 +1360,7 @@
           state.items.push(x); fresh.push(x.id); n++;
         }
         else if(o.op==='del'){ var b=state.items.length;
+          rmv(o.id);
           state.items=state.items.filter(function(i){ return i.id!==o.id; }); if(state.items.length<b) n++; }
         else if(o.op==='move'){ var x2=itemById(o.id); if(!x2||x2.tripId!==t.id) return;
           var q=String(o.to||'').split(':');
@@ -1375,15 +1458,25 @@
   function optimizeSheet(d){
     var r=optimizeDay(d);
     if(!r){ alert('呢日要至少 3 個有座標嘅地點先排到'); return; }
-    if(r.same){ openSheet('<h3>'+ic('route',19,'inline')+' 路線最優化</h3><div class="empty">而家嘅次序已經係最順<br>行程總長 '+r.before.toFixed(1)+' km，唔使改。</div>'); return; }
+    // 🔴 呢幾個數係「直線距離」，唔係車程。實測北海道路里程／直線係 1.12×（石狩平原）
+    // 到 2.08×（繞洞爺湖），所以舊版寫「行程總長 88 km」可能實際係 170 km。
+    // 唔改個演算法（實測排錯序嘅代價細），但一定要標明呢個係直線數，
+    // 同時把手上嘅真實車程一齊擺出嚟對照。
+    var dr0=dayDrive(d);
+    var realLine = dr0? ('<div class="hint" style="margin:8px 0 0">而家呢個次序嘅<b>實際車程</b>：'+
+        minsTxt(dr0.sec)+' · '+(dr0.m/1000).toFixed(dr0.m<10000?1:0)+'km'+
+        (dr0.real?'（Google 真路線）':'（估算）')+'</div>') : '';
+    if(r.same){ openSheet('<h3>'+ic('route',19,'inline')+' 路線最優化</h3><div class="empty">而家嘅次序已經係最順<br>直線總長 '+r.before.toFixed(1)+' km，唔使改。</div>'+realLine); return; }
     var saved=r.before-r.after, pct=Math.round(saved/r.before*100);
     openSheet('<h3>'+ic('route',19,'inline')+' 路線最優化 · '+longD(d)+'</h3>'+
-      '<div class="optbox"><div class="optrow"><span>而家</span><b class="num">'+r.before.toFixed(1)+' km</b></div>'+
-      '<div class="optrow ok"><span>重排之後</span><b class="num">'+r.after.toFixed(1)+' km</b></div>'+
-      '<div class="optsave">慳 '+saved.toFixed(1)+' km（'+pct+'%）</div></div>'+
+      '<div class="optbox"><div class="optrow"><span>而家（直線）</span><b class="num">'+r.before.toFixed(1)+' km</b></div>'+
+      '<div class="optrow ok"><span>重排之後（直線）</span><b class="num">'+r.after.toFixed(1)+' km</b></div>'+
+      '<div class="optsave">直線慳 '+saved.toFixed(1)+' km（'+pct+'%）</div></div>'+
+      '<div class="hint" style="margin:8px 0 0">⚠ 呢三個數係<b>直線距離</b>，唔係車程。'+
+      '北海道實際路里程係直線嘅 1.1–2.1 倍，繞湖／過山峠嗰段差得最遠。</div>'+realLine+
       '<div class="fld" style="margin-top:14px"><label>新次序</label><div class="optseq">'+
       r.seq.map(function(x,i){ return '<div><b>'+(i+1)+'</b> '+esc(x.name)+'</div>'; }).join('')+'</div></div>'+
-      '<div class="hint">第一個地點固定做起點。冇座標嘅項目（航班、筆記）位置唔會郁。時間會跟住個項目走，記得檢查返。</div>'+
+      '<div class="hint">第一個地點固定做起點。冇座標嘅項目（航班、筆記）位置唔會郁。<b>時間會留喺原本嘅時段</b>（唔會跟住地點走）。</div>'+
       '<div class="btnrow"><button class="btn ghost" data-act="closesheet">唔要</button>'+
       '<button class="btn acc" data-act="applyopt" data-d="'+d+'">套用</button></div>');
   }
@@ -1392,9 +1485,12 @@
     snap();
     // 只換有座標嗰啲項目所佔嘅位，冇座標嘅（航班／筆記）原地不動
     var slots=[]; r.all.forEach(function(x,i){ if(x.lat&&x.lng) slots.push(i); });
+    // 時間係釘住「時段」嘅，唔跟地點走。舊版搬 item 連 time 一齊搬，
+    // 結果重排完可以由上到下變 16:00 → 11:00 → 09:00，而 byOrd 唔會發現。
+    var times=r.all.map(function(x){ return x.time||''; });
     var out=r.all.slice();
     slots.forEach(function(pos,k){ out[pos]=r.seq[k]; });
-    out.forEach(function(x,i){ x.ord=(i+1)*10; });
+    out.forEach(function(x,i){ x.ord=(i+1)*10; x.time=times[i]; });
     save(); closeSheet(); setSync('ok','路線重排咗，慳 '+(r.before-r.after).toFixed(1)+' km');
   }
 
@@ -1425,7 +1521,9 @@
     gCall({op:'route',points:pts,mode:'DRIVE'},function(j,err){
       delete routeBusy[k];
       if(err||!j||!j.legs){ return; }
-      state.routes[k]={sig:sig, legs:j.legs, mode:j.mode, at:Date.now()};
+      // totalSec／totalM 係 Google 計好一併回嚟嘅，舊版只存 legs 就掉咗佢哋。
+      state.routes[k]={sig:sig, legs:j.legs, mode:j.mode,
+                       totalSec:j.totalSec||0, totalM:j.totalM||0, at:Date.now()};
       save(true); render();
     });
   }
@@ -1486,7 +1584,7 @@
   }
   function twoUp(){
     var counts={}; tItems().forEach(function(x){ counts[x.kind]=(counts[x.kind]||0)+1; });
-    var order=['flight','stay','car','eat','place','check'];
+    var order=['flight','stay','car','eat','place','buy','check'];
     var h='<div class="twoup"><div class="bkcard"><span class="cardlbl">快速加</span><div class="bkrow">';
     order.forEach(function(k){
       h+='<button data-act="addkind" data-k="'+k+'" title="加一個'+KINDS[k].n+'"><b>'+(counts[k]||'')+'</b><em>'+ic(KINDS[k].i,20)+'</em><span>'+KINDS[k].n+'</span></button>';
@@ -1685,7 +1783,8 @@
             legIdx++;
           }
           h+=rowHTML(x,idx);
-          if(x.lat) prev=x;
+          if(x.lat && kd(x.kind).geo) prev=x;   // 一定要同 ensureRoute 嘅 filter 一致，
+                                                 // 唔係嘅話被定位過嘅航班會令 legs 對錯段
         });
         h+='</div>';
       } else h+='<div class="empty">今日仲未有安排</div>';
@@ -1720,8 +1819,14 @@
     var badge = idx
       ? '<div class="idx" style="background:'+idx.c+'">'+idx.n+'</div>'
       : '<div class="idx kico" style="background:var(--muted2)">'+kico(x.kind,14)+'</div>';
+    // Google 嘅相 URL（lh3.googleusercontent.com）帶 token、唔係永久，
+    // 而舊版判斷條件只係「有冇 photoUrl」—— 死 URL 都係 truthy，所以會渲染一個
+    // 爛 <img>，出發第一日可能全部變空白框。加 onerror：清走死 URL、退返 icon，
+    // 下次 render 會自動重攞一次。
     var thumb = x.photoUrl
-      ? '<div class="thumb"><img src="'+esc(x.photoUrl)+'" alt="" loading="lazy" data-act="rephoto" data-id="'+x.id+'"></div>'
+      ? '<div class="thumb"><img src="'+esc(x.photoUrl)+'" alt="" loading="lazy" '+
+        'onerror="window.__phErr&&window.__phErr(this,\''+x.id+'\')" '+
+        'data-act="rephoto" data-id="'+x.id+'"></div>'
       : '';
     return '<div class="row'+(x.done?' done':'')+'" data-id="'+x.id+'" draggable="true">'+
       '<div class="grip">'+ic('grip',14)+'</div>'+badge+
@@ -1864,6 +1969,7 @@
     }, 2500);
   }
 
+  var gTraffic=null;
   function drawGMap(pts){
     var el=$('map');
     if(!gmap){
@@ -1880,6 +1986,7 @@
         gestureHandling:'greedy'
       });
       gInfo=new google.maps.InfoWindow();
+      try{ gTraffic=new google.maps.TrafficLayer(); }catch(e){}
       gWatch();                            // 磚唔出就自我重建（見 gWatch 註解）
       // 建立嗰刻容器尺寸未必 settle（三欄 grid 嘅 40% 欄）。Google 量到 0 就再也唔會重畫，
       // 所以一定要主動踢佢 resize，並且用 ResizeObserver 盯住之後任何尺寸變化。
@@ -1907,7 +2014,7 @@
           '<b style="display:block;margin-bottom:3px">'+esc(p.x.name)+'</b>'+
           (p.x.rating?'<span style="color:#C9700A;font-weight:700">'+ic('star',12,'inline')+' '+(+p.x.rating).toFixed(1)+'</span> ':'')+
           (p.x.addr?'<span style="color:#6C757D;font-size:12.5px">'+esc(p.x.addr)+'</span>':'')+
-          '<a href="https://www.google.com/maps/dir/?api=1&destination='+p.x.lat+','+p.x.lng+
+          '<a href="https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+p.x.lat+','+p.x.lng+
           '" target="_blank" rel="noopener" style="display:block;margin-top:6px;color:#3F52E3;font-weight:700;font-size:12.5px">導航 →</a></div>');
         gInfo.open({anchor:m, map:gmap});
         render(); scrollTo(p.x.id);
@@ -1927,9 +2034,17 @@
       else gmap.fitBounds(bounds, {top:64, right:44, bottom:44, left:44});
       gmap.__fit=1; gmap.__lastDay=mapDay;
     }
+    syncTraffic();
+    if(myPos) meMarker();
   }
 
   // ---------- map ----------
+  // TrafficLayer 開／熄。免費（計入 Dynamic Map 載入），但規劃期開住會好花，
+  // 所以默認熄，喺地圖列自己撳開。
+  function syncTraffic(){
+    if(!gTraffic || !gmap) return;
+    try{ gTraffic.setMap(state.settings.traffic? gmap : null); }catch(e){}
+  }
   function mapPoints(){
     var out=[], ds=days();
     ds.forEach(function(d,i){
@@ -1944,7 +2059,10 @@
   }
   function mapBar(){
     var t=curTrip();
-    $('mapbar').innerHTML = t? ('<button data-act="mapday" data-d="all" class="'+(mapDay==='all'?'on':'')+'">全程</button>'+
+    var tf = (gState==='on')
+      ? '<button data-act="traffic" class="tfbtn '+(state.settings.traffic?'on':'')+'" title="即時路況">'+ic('car',14,'inline')+' 路況</button>'
+      : '';
+    $('mapbar').innerHTML = t? (tf+'<button data-act="mapday" data-d="all" class="'+(mapDay==='all'?'on':'')+'">全程</button>'+
       days().map(function(d,i){ return '<button data-act="mapday" data-d="'+d+'" class="'+(mapDay===d?'on':'')+'">'+md(d)+'</button>'; }).join('')) : '';
   }
   function drawMap(){
@@ -2032,8 +2150,20 @@
     return {lat:a.reduce(function(t,x){return t+x.lat;},0)/a.length, lng:a.reduce(function(t,x){return t+x.lng;},0)/a.length};
   }
   // 攞相：先睇 state 有冇存過 URL，再睇今 session memo，最後才問 Google
+  // 相載唔到嘅處理。兩次都唔得就放棄，唔准無限重攞（每次都燒一個貴 tier call）。
+  window.__phErr=function(img, id){
+    try{
+      var box=img&&img.parentNode;
+      if(box && box.className==='thumb') box.remove();
+      var x=itemById(id); if(!x) return;
+      x.photoUrl=''; x.photoBad=(x.photoBad||0)+1;
+      if(x.photoName) delete photoMem[x.photoName];
+      save(true);
+    }catch(e){}
+  };
   function photoUrl(x, cb){
     if(x.photoUrl){ cb(x.photoUrl); return; }
+    if((x.photoBad||0)>=2){ cb(null); return; }
     if(!x.photoName){ cb(null); return; }
     if(photoMem[x.photoName]){ cb(photoMem[x.photoName]); return; }
     gCall({op:'photo',name:x.photoName,maxPx:400},function(j){
@@ -2177,7 +2307,11 @@
     $('sidebd').className = 'sidebd'+(on?' show':'');
   }
   function openSheet(h){ $('pan').innerHTML='<button class="close" data-act="closesheet">關</button>'+h; $('sheet').className='sheet show'; }
-  function closeSheet(){ $('sheet').className='sheet'; $('pan').innerHTML=''; dropPendingNew(); }
+  function closeSheet(){
+    var pan=$('pan');
+    if(pan.__now){ pan.__now=0; if(nowTimer){ clearInterval(nowTimer); nowTimer=null; } }
+    $('sheet').className='sheet'; pan.innerHTML=''; dropPendingNew();
+  }
   function closeMenu(){ var m=document.querySelector('.menu'); if(m) m.remove(); }
   function openMenu(ev,h){
     closeMenu();
@@ -2328,6 +2462,7 @@
     var id=pendingNew; pendingNew=null;
     var x=itemById(id); if(!x) return;
     if(!String(x.name||'').trim() && !x.time && !+x.cost && !String(x.note||'').trim() && !x.lat){
+      rmv(id);
       state.items=state.items.filter(function(z){ return z.id!==id; });
       save();
     }
@@ -2343,6 +2478,249 @@
       '<button class="btn acc" data-act="savetrip" data-id="'+(t.id||'')+'">儲存</button>'+
       (isNew?'':'<button class="btn warn" data-act="deltrip" data-id="'+t.id+'" style="margin-top:8px">刪咗成個旅程</button>'));
   }
+  // ==================== GPS ＋「而家」卡（乘客版）====================
+  // 設計前提：車上有第二個人。呢一版係俾乘客睇同讀出嚟嘅 —— 大字、少撳、
+  // 一版講一件事。司機唔應該睇手機。
+  var myPos=null, gpsWatch=null, gpsErr='', nowTimer=null, gMe=null;
+
+  function gpsOn(){ return gpsWatch!==null; }
+  function gpsStart(cb){
+    if(!navigator.geolocation){ gpsErr='呢部機唔支援定位'; if(cb) cb(false); return; }
+    if(gpsWatch!==null){ if(cb) cb(true); return; }
+    gpsErr='';
+    gpsWatch=navigator.geolocation.watchPosition(function(pos){
+      myPos={ lat:pos.coords.latitude, lng:pos.coords.longitude,
+              acc:pos.coords.accuracy, at:Date.now() };
+      gpsErr='';
+      if($('pan').__now) nowRender();
+      if(gmap) meMarker();
+      if(cb){ var f=cb; cb=null; f(true); }
+    }, function(e){
+      gpsErr = e.code===1? '你拒絕咗定位權限（Safari 設定 → 位置）'
+             : (e.code===3? '攞唔到位置（訊號弱）' : '定位出錯');
+      if($('pan').__now) nowRender();
+      if(cb){ var f2=cb; cb=null; f2(false); }
+    }, {enableHighAccuracy:true, maximumAge:15000, timeout:20000});
+  }
+  function gpsStop(){
+    if(gpsWatch!==null){ try{ navigator.geolocation.clearWatch(gpsWatch); }catch(e){} gpsWatch=null; }
+    myPos=null;
+    if(gMe){ try{ gMe.setMap(null); }catch(e){} gMe=null; }
+  }
+  function meMarker(){
+    if(!gmap || !myPos || !window.google) return;
+    var p={lat:myPos.lat,lng:myPos.lng};
+    if(gMe){ gMe.setPosition(p); return; }
+    try{
+      gMe=new google.maps.Marker({map:gmap, position:p, zIndex:9999, title:'我而家',
+        icon:{ path:google.maps.SymbolPath.CIRCLE, scale:7,
+               fillColor:'#1A73E8', fillOpacity:1, strokeColor:'#fff', strokeWeight:3 }});
+    }catch(e){}
+  }
+
+  // ── 現場天氣（Open-Meteo，免 key）：12 月北海道停你嘅唔係塞車，係雪同視界 ──
+  var liveWxData=null, liveWxAt=0, liveWxBusy=false;
+  var liveWxNA='';
+  function liveWx(cb){
+    if(!myPos){ liveWxNA='冇位置'; later(cb,null); return; }
+    if(liveWxData && (Date.now()-liveWxAt)<10*60*1000){ later(cb,liveWxData); return; }
+    if(liveWxBusy) return;                                            // 打緊，等佢返
+    liveWxBusy=true;
+    var u='https://api.open-meteo.com/v1/forecast?latitude='+myPos.lat.toFixed(3)+
+      '&longitude='+myPos.lng.toFixed(3)+
+      '&current=temperature_2m,snowfall,precipitation,weather_code,wind_gusts_10m,visibility&timezone=auto';
+    fetch(u).then(function(r){ return r.ok? r.json():null; }).then(function(j){
+      liveWxBusy=false;
+      if(j&&j.current){ liveWxData=j.current; liveWxAt=Date.now(); liveWxNA=''; }
+      else liveWxNA='攞唔到現場天氣';
+      later(cb,liveWxData);
+    }).catch(function(){ liveWxBusy=false; liveWxNA='攞唔到現場天氣（冇網？）'; later(cb,null); });
+  }
+  // 一句人話。視界同陣風先講 —— 嗰兩樣係決定「行唔行得」嘅嘢，唔係氣溫。
+  function liveWxLine(){
+    var c=liveWxData; if(!c) return '';
+    var bits=[];
+    if(c.visibility!=null){
+      var v=+c.visibility;
+      var vs = v<1000? Math.round(v)+'m' : (v/1000).toFixed(v<10000?1:0)+'km';
+      bits.push((v<1000?'⚠ ':'')+'視界 '+vs);
+    }
+    if(+c.snowfall>0) bits.push('落雪 '+(+c.snowfall).toFixed(1)+'cm/h');
+    else if(+c.precipitation>0) bits.push('落雨 '+(+c.precipitation).toFixed(1)+'mm/h');
+    if(c.wind_gusts_10m!=null){
+      var g=+c.wind_gusts_10m;
+      bits.push((g>=60?'⚠ ':'')+'陣風 '+Math.round(g)+'km/h');
+    }
+    if(c.temperature_2m!=null) bits.push(Math.round(c.temperature_2m)+'°C');
+    return bits.join(' · ');
+  }
+
+  // ── 下一站：今日未打勾、有座標、排得最前嗰個 ──
+  function nextStop(){
+    var t=curTrip(); if(!t) return null;
+    var ds=days(), td=today();
+    if(ds.indexOf(td)<0) return null;                 // 唔喺行程期間就冇「下一站」
+    var arr=dayItems(td).filter(function(x){ return !x.done && kd(x.kind).geo && x.lat!=null; });
+    return arr.length? {x:arr[0], d:td, left:arr.length} : null;
+  }
+
+  // ── 由 GPS 去下一站嘅真實車程（計埋即時路況）──
+  // 呢個係唯一會開 traffic:true 嘅地方（Routes Pro SKU，每月 5,000 次免費）。
+  // 一分鐘內唔重複打，所以一日用幾十個 call，離免費額好遠。
+  var nowEta=null, nowEtaBusy=false, nowEtaFor='', nowEtaNA='';
+  function later(cb,v){ if(cb) setTimeout(function(){ cb(v); },0); }   // 一定要 async，
+                                                                      // 唔係 nowRender 會自己叫自己
+  function fetchEta(x, cb){
+    if(!myPos || !x || x.lat==null){ nowEtaNA='冇位置，計唔到車程'; later(cb,null); return; }
+    var key=x.id+'|'+myPos.lat.toFixed(3)+','+myPos.lng.toFixed(3);
+    if(nowEta && nowEtaFor===key && (Date.now()-nowEta.at)<60*1000){ later(cb,nowEta); return; }
+    if(nowEtaBusy) return;                                            // 已經打緊，等佢返
+    if(MODE!=='cloud'){ nowEtaNA='本機模式計唔到車程（要雲端同步）'; later(cb,null); return; }
+    if(GOOG===false){ nowEtaNA='Google 未接通，計唔到車程'; later(cb,null); return; }
+    nowEtaNA='';
+    nowEtaBusy=true;
+    gCall({op:'route', mode:'DRIVE', traffic:true,
+           points:[{lat:myPos.lat,lng:myPos.lng},{lat:x.lat,lng:x.lng}]},
+      function(j,err){
+        nowEtaBusy=false;
+        if(err||!j||!j.totalSec){
+          nowEtaFor=''; nowEtaNA='攞唔到車程'+(err?'（'+String(err).slice(0,40)+'）':'');
+          later(cb,null); return;
+        }
+        nowEta={ sec:j.totalSec, m:j.totalM, traffic:!!j.traffic, at:Date.now() };
+        nowEtaFor=key; nowEtaNA='';
+        later(cb,nowEta);
+      });
+  }
+
+  function hhmm(d){ return pad(d.getHours())+':'+pad(d.getMinutes()); }
+  function minsTxt(sec){
+    var m=Math.max(1,Math.round(sec/60));
+    return m>=60? Math.floor(m/60)+' 小時'+(m%60? ' '+(m%60)+' 分':'') : m+' 分鐘';
+  }
+  // 當地時間（用當日天氣記錄嘅時區，冇就用經度估 —— 部機時區喺旅行時係錯嘅）
+  function localNow(d, lng){
+    var w=d? wxGet(d) : null;
+    var tz = (w&&w.tz!=null)? w.tz : (lng!=null? lngTz(lng) : null);
+    var n=new Date();
+    if(tz==null) return n;
+    return atTz(n, tz);
+  }
+
+  function nowSheet(){
+    openSheet('<div id="nowBox" class="nowwrap"></div>');
+    $('pan').__now=1;
+    nowRender();
+    if(!gpsOn()) gpsStart(function(){ nowRender(); });
+    if(nowTimer) clearInterval(nowTimer);
+    nowTimer=setInterval(function(){
+      if($('pan').__now) nowRender();
+      else { clearInterval(nowTimer); nowTimer=null; }
+    }, 30000);
+  }
+
+  function nowRender(){
+    var box=$('nowBox'); if(!box) return;
+    var t=curTrip();
+    var h='';
+    if(!t){ box.innerHTML='<div class="empty">仲未有旅程</div>'; return; }
+
+    var ns=nextStop();
+    var td=today(), inTrip=days().indexOf(td)>=0;
+    var d = inTrip? td : null;
+    var pt = ns? {lat:ns.x.lat,lng:ns.x.lng} : (d? dayPt(d) : tripCentre());
+    var lnow = localNow(d, myPos? myPos.lng : (pt? pt.lng : null));
+
+    // 天黑（當日、當地）
+    var setTxt='', setMin=null;
+    if(d && pt){
+      var w=wxGet(d);
+      var st = (w&&w.set)? w.set
+             : (function(){ var q=sunTimes(pt.lat,pt.lng,d,(w&&w.tz!=null)?w.tz:null); return q&&q.set; })();
+      if(st){ setTxt=st; var sp=st.split(':'); setMin=(+sp[0])*60+(+sp[1]); }
+    }
+
+    h+='<div class="nowtime">'+hhmm(lnow)+'<span>當地時間</span></div>';
+
+    if(!inTrip){
+      h+='<div class="empty" style="margin:16px 0">今日唔喺行程日期範圍內<br>'+
+         (t.start? md(t.start)+'–'+md(t.end) : '未定日期')+'</div>';
+    } else if(!ns){
+      h+='<div class="nowbig">今日冇未完成嘅安排</div>'+
+         '<div class="nowsub">'+longD(d)+(setTxt? ' · '+setTxt+' 天黑':'')+'</div>';
+    } else {
+      var x=ns.x;
+      h+='<div class="nowlbl">下一站'+(ns.left>1? '（今日仲有 '+ns.left+' 個）':'')+'</div>';
+      h+='<div class="nowbig">'+kico(x.kind,24,'inline')+' '+esc(x.name)+'</div>';
+      if(x.addr) h+='<div class="nowsub">'+esc(x.addr)+'</div>';
+
+      var e=(nowEta && nowEtaFor.indexOf(x.id+'|')===0)? nowEta : null;
+      if(!myPos){
+        h+='<div class="nowrow warn">'+(gpsErr||'<span class="spin"></span>攞緊你嘅位置…')+'</div>';
+      } else if(!e){
+        if(nowEtaNA){
+          h+='<div class="nowrow warn">'+esc(nowEtaNA)+
+             '<a href="#" data-act="etaretry" style="margin-left:8px">再試</a></div>';
+        } else {
+          h+='<div class="nowrow"><span class="spin"></span>計緊車程…</div>';
+          fetchEta(x, function(){ nowRender(); });
+        }
+      } else {
+        var eta=new Date(lnow.getTime()+e.sec*1000);
+        var etaMin=eta.getHours()*60+eta.getMinutes();
+        h+='<div class="nowrow big">'+ic('car',20,'inline')+' 開 '+minsTxt(e.sec)+
+           ' · '+(e.m/1000).toFixed(e.m<10000?1:0)+'km'+
+           (e.traffic? '<em>計埋即時路況</em>':'')+'</div>';
+        h+='<div class="nowrow big">'+ic('clock',20,'inline')+' '+hhmm(eta)+' 到'+
+           (setMin!=null? '<em class="'+(etaMin>setMin?'bad':'')+'">'+
+              (etaMin>setMin? '天黑後 '+minsTxt((etaMin-setMin)*60)
+                            : '天黑前 '+minsTxt((setMin-etaMin)*60))+'</em>' : '')+'</div>';
+
+        // 到嗰陣仲開唔開門 —— 用推算到達時間去驗，唔係等你手打時間
+        var H=dayHours(x, d);
+        if(H){
+          if(H.closed) h+='<div class="nowrow warn">'+ic('clock',18,'inline')+' 星期'+dow(d)+'休息</div>';
+          else if(H.all) h+='<div class="nowrow ok">'+ic('clock',18,'inline')+' 24 小時營業</div>';
+          else if(H.spans){
+            var openAt=H.spans.some(function(sp){ return etaMin>=sp[0] && etaMin<=sp[1]; });
+            var last=H.spans[H.spans.length-1];
+            if(openAt) h+='<div class="nowrow ok">'+ic('clock',18,'inline')+' 到嗰陣開門 · '+minHM(last[1])+' 關</div>';
+            else h+='<div class="nowrow warn">'+ic('clock',18,'inline')+' ⚠ '+hhmm(eta)+' 到，但當日營業 '+
+                    esc(H.spans.map(function(sp){ return minHM(sp[0])+'–'+minHM(sp[1]); }).join('、'))+'</div>';
+          }
+        }
+      }
+      if(setTxt) h+='<div class="nowrow">'+ic('spark',18,'inline')+' '+setTxt+' 天黑</div>';
+      if(x.conf) h+='<div class="nowrow">'+ic('check',18,'inline')+' '+esc(bkLab(x.kind).conf[0])+' '+esc(x.conf)+'</div>';
+      if(x.phone) h+='<div class="nowrow"><a href="tel:'+esc(String(x.phone).replace(/[^0-9+]/g,''))+'">'+
+                     ic('phone',18,'inline')+' '+esc(x.phone)+'</a></div>';
+    }
+
+    if(myPos){
+      var lw=liveWxLine();
+      if(lw) h+='<div class="nowwx">'+esc(lw)+'</div>';
+      else if(liveWxNA) h+='<div class="nowwx" style="color:var(--muted)">'+esc(liveWxNA)+'</div>';
+      else { h+='<div class="nowwx"><span class="spin"></span>攞現場天氣…</div>'; liveWx(function(){ nowRender(); }); }
+    }
+
+    h+='<div class="nowbtns">';
+    if(ns) h+='<button class="btn acc" data-act="nav" data-id="'+ns.x.id+'">'+ic('route',16,'inline')+' 導航去呢站</button>';
+    if(ns) h+='<button class="btn ghost" data-act="tick" data-id="'+ns.x.id+'">到咗 ✓</button>';
+    h+='<a class="btn ghost" href="https://northern-road.ceri.go.jp/navi/touge/sp/location.htm" target="_blank" rel="noopener">'+
+       ic('map',16,'inline')+' 官方吹雪視界（北の道ナビ）</a>';
+    h+='<a class="btn ghost" href="https://northern-road.ceri.go.jp/navi/touge/sp/stop.htm" target="_blank" rel="noopener">'+
+       ic('x',16,'inline')+' 官方通行止め情報</a>';
+    h+='</div>';
+    h+='<div class="hint">吹雪同封路係開去政府官方頁。App 唔會自己 cache 或者代你判斷 —— '+
+       '一個靜咗嘅 feed 顯示「通行可」會害死人。</div>';
+    if(myPos){
+      var upd=localNow(d, myPos.lng);                    // 同上面個鐘同一個時區，唔好兩個並排
+      upd=new Date(upd.getTime() - (Date.now()-myPos.at));
+      h+='<div class="hint">位置精度 ±'+Math.round(myPos.acc)+'m · '+hhmm(upd)+' 更新</div>';
+    }
+    box.innerHTML=h;
+  }
+
   function exportSheet(){
     openSheet('<h3>匯出</h3>'+
       '<button class="btn acc" data-act="print">'+ic('print',16,'inline')+' 列印 / 存做 PDF</button>'+
@@ -2709,13 +3087,14 @@
     }
     else if(act==='dup'){ var x6=itemById(id); if(!x6) return; snap();
       var c=JSON.parse(JSON.stringify(x6)); c.id=uid(); c.ord=(x6.ord||0)+5; state.items.push(c); save(); }
-    else if(act==='del'){ snap(); state.items=state.items.filter(function(i){return i.id!==id;}); save(); }
+    else if(act==='del'){ snap(); rmv(id); state.items=state.items.filter(function(i){return i.id!==id;}); save(); }
     else if(act==='geo1'){ geoQ.push(id); pumpGeo(); }
-    else if(act==='nav'){ var x7=itemById(id); if(x7&&x7.lat) window.open('https://www.google.com/maps/dir/?api=1&destination='+x7.lat+','+x7.lng,'_blank','noopener'); }
+    else if(act==='nav'){ var x7=itemById(id); if(x7&&x7.lat) window.open('https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+x7.lat+','+x7.lng,'_blank','noopener'); }
     else if(act==='sortday'){ var d2=el.getAttribute('data-d'); snap();
       dayItems(d2).slice().sort(function(a,b){ return (a.time||'99:99')<(b.time||'99:99')?-1:1; }).forEach(function(x,k){ x.ord=(k+1)*10; }); save(); }
     else if(act==='clearday'){ var d3=el.getAttribute('data-d');
       if(!confirm('清空呢日所有項目？')) return; snap();
+      rmv(state.items.filter(function(i){ return i.tripId===curTrip().id && i.date===d3; }).map(function(i){ return i.id; }));
       state.items=state.items.filter(function(i){ return !(i.tripId===curTrip().id && i.date===d3); }); save(); }
     else if(act==='newlist'){ var nm=prompt('清單叫咩名？','餐廳'); if(!nm) return; snap();
       state.lists.push({id:uid(),tripId:curTrip().id,name:nm.trim(),ord:tLists().length+1}); save(); }
@@ -2723,6 +3102,7 @@
       var nm2=prompt('改做…',l.name); if(!nm2) return; snap(); l.name=nm2.trim(); save(); }
     else if(act==='dellist'){
       if(!confirm('刪咗呢個清單？入面啲項目都會冇。')) return; snap();
+      rmv([id].concat(state.items.filter(function(z){return z.listId===id;}).map(function(z){return z.id;})));
       state.lists=state.lists.filter(function(z){return z.id!==id;});
       state.items=state.items.filter(function(z){return z.listId!==id;}); save(); }
     else if(act==='newtrip'){ tripSheet(null); }
@@ -2740,6 +3120,8 @@
     }
     else if(act==='deltrip'){
       if(!confirm('刪咗成個旅程？')) return; snap();
+      rmv([id].concat(state.items.filter(function(z){return z.tripId===id;}).map(function(z){return z.id;}))
+              .concat(state.lists.filter(function(z){return z.tripId===id;}).map(function(z){return z.id;})));
       state.trips=state.trips.filter(function(z){return z.id!==id;});
       state.items=state.items.filter(function(z){return z.tripId!==id;});
       state.lists=state.lists.filter(function(z){return z.tripId!==id;});
@@ -2773,6 +3155,13 @@
       var tn=(curTrip()||{}).name||'trip';
       dl(tn.replace(/[^\w\u4e00-\u9fa5-]+/g,'_')+'.ics', txt, 'text/calendar;charset=utf-8');
       setSync('ok','出咗 '+icsOut.n+' 個行事曆項目');
+    }
+    else if(act==='now'){ nowSheet(); }
+    else if(act==='gpsoff'){ gpsStop(); setSync('ok','定位已熄'); closeSheet(); }
+    else if(act==='etaretry'){ ev.preventDefault(); nowEtaNA=''; nowEta=null; nowEtaFor=''; nowRender(); }
+    else if(act==='traffic'){
+      state.settings.traffic = !state.settings.traffic;
+      save(true); drawMap(); mapBar();
     }
     else if(act==='offline'){ offlineSheet(); }
     else if(act==='precache'){ precacheFiles(); }
@@ -2869,7 +3258,7 @@
     }
     else if(act==='legnav'){ ev.preventDefault();
       var A=itemById(el.getAttribute('data-a')), B=itemById(el.getAttribute('data-b'));
-      if(A&&B&&A.lat&&B.lat) window.open('https://www.google.com/maps/dir/?api=1&origin='+A.lat+','+A.lng+'&destination='+B.lat+','+B.lng,'_blank','noopener'); }
+      if(A&&B&&A.lat&&B.lat) window.open('https://www.google.com/maps/dir/?api=1&travelmode=driving&origin='+A.lat+','+A.lng+'&destination='+B.lat+','+B.lng,'_blank','noopener'); }
     else if(act==='optday'){ optimizeSheet(el.getAttribute('data-d')); }
     else if(act==='applyopt'){ applyOpt(el.getAttribute('data-d')); }
     else if(act==='print'){ closeSheet(); setTimeout(function(){ window.print(); },250); }
@@ -2930,14 +3319,14 @@
       if(!n6){ alert('先入返出發／返程日期'); return; }
       var pr2='你係旅程規劃助手。幫我排「'+(t6.dest||t6.name)+'」'+n6+'日行程。\n出發日：'+t6.start+'\n偏好：'+(($('aiPref').value||'').trim()||'冇特別')+'\n'+
         '每日 3–6 個地點，順路排。只可以回覆 JSON：\n'+
-        '{"stops":[{"day":1,"time":"09:30","name":"地點名（連城市）","cat":"place|eat|stay|car","note":"一句","cost":0}]}\n'+
+        '{"stops":[{"day":1,"time":"09:30","name":"地點名（連城市）","cat":"place|eat|stay|car|buy","note":"一句","cost":0}]}\n'+
         'cost 用 '+cur()+' 每人大約，唔知就 0。';
       aiRun('plan',pr2,function onPlan(txt){ var a=parseStops(txt); if(!a){ manualSheet(pr2,onPlan,'回覆唔係 JSON'); return; }
         var n=importStops(a,false); setSync('ok','AI 加咗 '+n+' 項'); });
     }
     else if(act==='aiextract'){
       var src=($('aiSrc').value||'').trim(); if(!src){ alert('未貼嘢'); return; }
-      var pr3='從下面段文字抽出所有值得去嘅地點，只可以回覆 JSON：\n{"stops":[{"name":"地點名（連城市）","cat":"place|eat|stay|car","note":"一句","cost":0}]}\n\n文字：\n<<<\n'+src.slice(0,6000)+'\n>>>';
+      var pr3='從下面段文字抽出所有值得去嘅地點，只可以回覆 JSON：\n{"stops":[{"name":"地點名（連城市）","cat":"place|eat|stay|car|buy","note":"一句","cost":0}]}\n\n文字：\n<<<\n'+src.slice(0,6000)+'\n>>>';
       aiRun('extract',pr3,function onEx(txt){ var a=parseStops(txt); if(!a){ manualSheet(pr3,onEx,'回覆唔係 JSON'); return; }
         var n=importStops(a,true); setSync('ok','AI 加咗 '+n+' 項落清單'); });
     }
@@ -2980,6 +3369,11 @@
         '<div class="btnrow"><button class="btn acc" data-act="savegmk">儲存 key</button>'+
         (mapKey()?'<button class="btn ghost" data-act="clrgmk">清走，用返 OSM</button>':'')+'</div>'+
 
+        '<div class="fld" style="margin-top:16px"><label>定位（GPS）</label>'+
+        '<div class="inp" style="background:var(--soft2)">'+(gpsOn()? '✅ 開住 · 精度 ±'+(myPos?Math.round(myPos.acc)+'m':'攞緊') : (gpsErr? '⚠️ '+esc(gpsErr) : '－ 未開'))+'</div>'+
+        '<div class="hint">「而家」卡會自動開。位置<b>只留喺你部機</b>，唔會存入雲端、唔會傳去第三方；'+
+        '淨係用嚟計「由你而家去下一站幾遠」同「現場天氣」。</div></div>'+
+        '<div class="btnrow"><button class="btn ghost" data-act="gpsoff">熄咗定位</button></div>'+
         '<button class="btn ghost" data-act="offline" style="margin-top:18px">'+ic('note',15,'inline')+' 離線準備（預載附件）</button>'+
         '<button class="btn ghost" data-act="enrichall" style="margin-top:8px">'+ic('spark',15,'inline')+' 補齊未有 Google 資料嘅地點</button>'+
         '<button class="btn ghost" data-act="enrichall" data-all="1" style="margin-top:8px">'+ic('spark',15,'inline')+' 全部重新攝一次（'+tItems().filter(function(z){return kd(z.kind).geo;}).length+' 個）</button>'+

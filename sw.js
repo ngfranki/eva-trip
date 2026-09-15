@@ -2,7 +2,7 @@
 // 目標：出門冇網都開得到 app、睇得返行程、之前睇過嘅地圖照樣有。
 // 注意：唔會批量預載地圖磚 —— OSM 嘅使用條款唔准 bulk download。
 // 只 cache 你自己睇過嘅磚（正常瀏覽行為），所以出門前喺 wifi 慢慢碌一次個地圖就會存低。
-const V = 'trip-v5-0';
+const V = 'trip-v6-0';
 const SHELL = `${V}-shell`;
 const TILES = `${V}-tiles`;
 const TILE_MAX = 1200;
@@ -72,16 +72,39 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 自己個 app：network-first（咁先收到新版），冇網先用 cache
+  // 自己個 app：network-first（咁先收到新版），但一定要有 timeout。
+  //
+  // 🔴 2026-09-15 修（議會判為最高風險項）：舊版 `await fetch(req)` 冇 timeout。
+  // 離線反而冇事 —— fetch 即刻 reject，catch 即刻食 cache。
+  // 真正嘅殺手係「假在線」：山路／隧道／峠 一格訊號，TCP 連得通但去唔到底，
+  // fetch 唔會 throw，會吊住到 iOS 自己嘅 network timeout（可長達 30–90 秒），
+  // 期間 catch 永遠唔行、cache 永遠唔用，用家睇到白畫面 —— 而嗰一刻正係佢最需要
+  // 開個 app 睇「仲有幾遠、幾點天黑」。
+  //
+  // 所以：2.5 秒未返就即刻出 cache，但唔取消個 fetch，背景照更新落 cache。
+  const NET_MS = 2500;
   if (url.origin === self.location.origin) {
     e.respondWith((async () => {
-      try {
-        const res = await fetch(req);
-        if (res.ok) { const c = await caches.open(SHELL); c.put(req, res.clone()); }
+      const cached = await caches.match(req);
+      const net = fetch(req).then(async (res) => {
+        if (res.ok) { const c = await caches.open(SHELL); await c.put(req, res.clone()); }
         return res;
+      });
+      // 背景更新失敗唔准變成 unhandled rejection
+      net.catch(() => {});
+      if (!cached) {
+        // 第一次攞（cache 都冇），只可以等網絡
+        try { return await net; } catch (err) {
+          return (await caches.match('./index.html')) || Response.error();
+        }
+      }
+      const slow = new Promise((r) => setTimeout(() => r('SLOW'), NET_MS));
+      try {
+        const winner = await Promise.race([net, slow]);
+        if (winner === 'SLOW') return cached;      // 網絡太慢 → 即刻出手上嗰份
+        return winner;
       } catch (err) {
-        const hit = await caches.match(req);
-        return hit || (await caches.match('./index.html')) || Response.error();
+        return cached;                              // 網絡真係掛 → 出 cache
       }
     })());
   }

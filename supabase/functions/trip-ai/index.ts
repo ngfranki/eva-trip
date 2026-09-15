@@ -129,6 +129,14 @@ Deno.serve(async (req) => {
         units: "METRIC",
       };
       if (pts.length > 2) payload.intermediates = pts.slice(1, -1).map(ll);
+
+      // 即時路況。淨係「而家卡」會開（origin = 你而家 GPS、出發時間 = 而家），
+      // 所以唔會撞到 Routes API「departureTime 必須係未來」嗰條規 ——
+      // 規劃期嘅逐日路線一律唔開，留喺 Essentials SKU。
+      //   Essentials 每月 10,000 免費 / Pro（TRAFFIC_AWARE）每月 5,000 免費
+      if (body.traffic === true) {
+        payload.routingPreference = "TRAFFIC_AWARE";
+      }
       const r = await gPost(
         "https://routes.googleapis.com/directions/v2:computeRoutes",
         payload,
@@ -140,6 +148,7 @@ Deno.serve(async (req) => {
       const secs = (v: unknown) => (typeof v === "string" ? parseInt(v) : +(v ?? 0)) || 0;
       return json({
         mode,
+        traffic: body.traffic === true,
         totalSec: secs(rt.duration),
         totalM: rt.distanceMeters ?? 0,
         legs: (rt.legs ?? []).map((l: any) => ({ sec: secs(l.duration), m: l.distanceMeters ?? 0 })),
