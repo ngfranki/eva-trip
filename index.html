@@ -174,6 +174,10 @@
   .fitem .fic{display:flex; color:var(--muted); flex:0 0 auto}
   .fitem .fn{flex:1; min-width:0; text-align:left; font-size:13.5px; font-weight:600; color:var(--link);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .fitem.open{cursor:pointer}
+  .fitem.open:hover{background:var(--link-soft)}
+  .fitem.open:hover .fn{text-decoration:underline}
+  .fitem.open:active{transform:scale(.995)}
   .fitem .fsz{font-size:11.5px; color:var(--muted); flex:0 0 auto}
   .fadd{display:flex; align-items:center; gap:7px; padding:9px 11px; border:1px dashed var(--line);
     border-radius:9px; font-size:13px; color:var(--muted); cursor:pointer}
@@ -385,6 +389,19 @@
   .noteref{background:var(--soft); border-radius:8px; padding:10px 12px; font-size:13px;
            color:var(--muted); line-height:1.5; white-space:pre-wrap; word-break:break-word;
            max-height:120px; overflow:auto}
+  /* 標註排版工具條 */
+  .mdbar{display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin-bottom:6px}
+  .mdb{width:30px; height:28px; border:1px solid var(--line); border-radius:6px; background:var(--bg);
+       color:var(--ink2); font-size:13px; line-height:1; cursor:pointer; display:flex;
+       align-items:center; justify-content:center; padding:0}
+  .mdb:hover{border-color:var(--acc); color:var(--acc)}
+  .mdb:active{background:var(--soft)}
+  .mdhint{font-size:11px; color:var(--muted2); margin-left:4px}
+  .memo ul,.memo ol,.mdbody ul,.mdbody ol{margin:2px 0 2px 18px; padding:0}
+  .memo li,.mdbody li{margin:1px 0}
+  .memo .mdsp,.mdbody .mdsp{height:6px}
+  .memo a,.mdbody a{color:var(--link); font-weight:600}
+  .mdbody{margin-top:3px; font-size:13.5px; line-height:1.55}
   .stag{background:var(--soft); border:1px dashed var(--line); border-radius:9px; padding:10px 12px; margin-bottom:9px}
   .stagh{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.03em; margin-bottom:6px}
   .stag .fitem.bad .fn,.stag .fitem.bad .fsz{color:var(--acc)}
@@ -665,7 +682,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v22-0';
+  var APP_VER='20260915-v23-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2015,29 +2032,53 @@
       })
       .catch(function(e){ setSync('err','\u4e0a\u8f09\u5931\u6557\uff1a'+(e.message||'')); if(cb) cb(false); });
   }
+  // 開附件。
+  // 🔴 關鍵：window.open 一定要喺撳落去嗰一刻**同步**叫，唔可以等 fetch／
+  // caches 返嚟才叫 —— 兩層 async 之後已經離開 user gesture，瀏覽器會當佢係
+  // 彈窗攔截落去，而且係靜靜咁擋（你撳中都好似冇反應）。
+  // 做法：先同步開一個空白 tab，攞到檔案才 set 佢個 location。
   function openFile(f){
-    // 先睇有冇離線副本（冇訊號都開得到）
+    if(!f) return;
+    var w=null;
+    try{ w=window.open('', '_blank'); }catch(e){}
+    if(w){ try{ w.document.write('<title>'+esc(f.n)+'</title><p style="font:15px -apple-system,sans-serif;color:#666;padding:24px">開緊 '+esc(f.n)+'…</p>'); }catch(e){} }
+    setSync('','開緊 '+f.n+'…');
+
+    var show=function(blob){
+      var b2 = blob.type? blob : new Blob([blob],{type:f.t||'application/octet-stream'});
+      var u=URL.createObjectURL(b2);
+      if(w && !w.closed){ try{ w.location.href=u; }catch(e){ fallback(u); } }
+      else fallback(u);
+      setSync('ok','');
+      setTimeout(function(){ URL.revokeObjectURL(u); }, 120000);
+    };
+    var fallback=function(u){
+      // 彈窗被擋 → 用一條真 <a> 落 DOM 再 click（連 download 屬性，最少都存得到）
+      var a2=document.createElement('a');
+      a2.href=u; a2.target='_blank'; a2.rel='noopener'; a2.download=f.n;
+      document.body.appendChild(a2); a2.click(); a2.remove();
+      setSync('ok','如果冇開，瀏覽器可能擋咗彈窗 —— 已改成下載');
+    };
+    var fail=function(msg){
+      if(w && !w.closed){ try{ w.close(); }catch(e){} }
+      setSync('err','開唔到：'+msg);
+    };
+
+    var fromNet=function(){
+      fetch(stUrl(f.p), {headers:stHdr()})
+        .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); })
+        .then(show)
+        .catch(function(e){ fail((e.message||'')+(navigator.onLine? '' : '（離線，而且冇預載）')); });
+    };
+
     if(window.caches){
       caches.match(stUrl(f.p)).then(function(m){
-        if(m) m.blob().then(function(b){ var u=URL.createObjectURL(b); window.open(u,'_blank'); setTimeout(function(){URL.revokeObjectURL(u);},60000); });
-        else openFileNet(f);
-      }).catch(function(){ openFileNet(f); });
+        if(m) return m.blob().then(show);
+        fromNet();
+      }).catch(fromNet);
       return;
     }
-    openFileNet(f);
-  }
-  function openFileNet(f){
-    if(!f) return;
-    setSync('','\u958b\u7dca '+f.n+'\u2026');
-    fetch(stUrl(f.p), {headers:stHdr()})
-      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); })
-      .then(function(b){
-        var u=URL.createObjectURL(b.type? b : new Blob([b],{type:f.t||'application/octet-stream'}));
-        window.open(u,'_blank','noopener');
-        setTimeout(function(){ URL.revokeObjectURL(u); }, 60000);
-        setSync('ok','');
-      })
-      .catch(function(e){ setSync('err','\u958b\u5514\u5230\uff1a'+(e.message||'')); });
+    fromNet();
   }
   function delFile(x, i){
     var f=(x.files||[])[i]; if(!f) return;
@@ -2050,10 +2091,13 @@
   function filesHTML(x, editable){
     var fs=x.files||[], h='<div class="files">';
     fs.forEach(function(f,i){
-      h+='<div class="fitem"><span class="fic">'+ic(fileIcon(f.t),16)+'</span>'+
-         '<button class="fn" data-act="openfile" data-id="'+x.id+'" data-i="'+i+'">'+esc(f.n)+'</button>'+
+      // 整格都係一粒掣（舊版只有檔名幾個字撳得到，而且冇 pointer cursor，
+      // 所以隻 mouse 移過去完全唔知撳得）
+      h+='<div class="fitem open" data-act="openfile" data-id="'+x.id+'" data-i="'+i+'" title="開檔案">'+
+         '<span class="fic">'+ic(fileIcon(f.t),16)+'</span>'+
+         '<span class="fn">'+esc(f.n)+'</span>'+
          '<span class="fsz">'+fmtSize(f.s)+'</span>'+
-         (editable?'<button class="kebab" data-act="delfile" data-id="'+x.id+'" data-i="'+i+'" style="opacity:1">'+ic('x',14)+'</button>':'')+
+         (editable?'<button class="kebab" data-act="delfile" data-id="'+x.id+'" data-i="'+i+'" style="opacity:1" title="刪咗">'+ic('x',14)+'</button>':'')+
          '</div>';
     });
     if(editable){
@@ -2251,7 +2295,7 @@
           '<span data-act="focus" data-id="'+x.id+'" style="cursor:pointer">'+esc(x.name)+'</span></div>'+
         (x.addr?'<div class="ad">'+esc(tidyAddr(x.addr))+'</div>':'')+
         (x.note?'<div class="nt">'+esc(x.note)+'</div>':'')+chk+
-        (x.memo?'<div class="memo"><em>'+ic('note',12)+'我嘅標註</em>'+esc(x.memo)+'</div>':'')+
+        (x.memo?'<div class="memo"><em>'+ic('note',12)+'我嘅標註</em>'+mdText(x.memo)+'</div>':'')+
         (chips.length?'<div class="chips">'+chips.join('')+'</div>':'')+
         // 兩粒掣直接擺喺格上面。之前我放喺「撳地點名彈出嗰張卡」，
         // 等於仲要多兩步 —— 呢兩樣係到咗現場最常做嘅動作，要一揿就到。
@@ -2852,15 +2896,119 @@
       '<div class="two">'+f('eSeat','seat')+f('eTerm','term')+'</div></div>';
   }
   // 揿「筆記」：即刻寫，儲存就完。唔使入「改」再碌。
+  // ==================== 標註嘅簡單排版 ====================
+  // 用 markdown-lite 而唔用 contenteditable：資料照樣係純文字，
+  // 匯出 .ics／CSV／分享頁／列印全部照用，唔會夾雜 HTML（亦冇 XSS 風險）。
+  //   **粗體**  *斜體*  __底線__  ~~刪除~~  - 項目  1. 編號  ★ ⚠
+  function mdInline(t){
+    // URL 先抽出嚟收好，唔係裡面嘅 _ 同 * 會被當成排版符號
+    var urls=[];
+    var h=String(t||'').replace(/https?:\/\/[^\s<>"']+/g, function(u){
+      urls.push(u); return '@@U'+(urls.length-1)+'@@';
+    });
+    h=esc(h);
+    h=h.replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>')
+       .replace(/__([^_\n]+)__/g,'<u>$1</u>')
+       .replace(/~~([^~\n]+)~~/g,'<s>$1</s>')
+       .replace(/(^|[\s(（【])\*([^*\n]+)\*/g,'$1<i>$2</i>')
+       .replace(/(^|[\s(（【])_([^_\n]+)_/g,'$1<i>$2</i>');
+    h=h.replace(/@@U(\d+)@@/g, function(m,i){
+      var u=urls[+i]; if(u==null) return m;
+      var sh=u.replace(/^https?:\/\//,'');
+      return '<a href="'+esc(u)+'" target="_blank" rel="noopener">'+esc(sh.length>38? sh.slice(0,38)+'…' : sh)+'</a>';
+    });
+    return h;
+  }
+  function mdText(t){
+    if(!t) return '';
+    var lines=String(t).split('\n'), out=[], mode=null;
+    function close(){ if(mode){ out.push(mode==='ul'?'</ul>':'</ol>'); mode=null; } }
+    lines.forEach(function(L){
+      var mb=L.match(/^\s*[-•]\s+(.*)$/);
+      var mo=L.match(/^\s*\d+[.)]\s+(.*)$/);
+      if(mb){
+        if(mode!=='ul'){ close(); out.push('<ul>'); mode='ul'; }
+        out.push('<li>'+mdInline(mb[1])+'</li>');
+      } else if(mo){
+        if(mode!=='ol'){ close(); out.push('<ol>'); mode='ol'; }
+        out.push('<li>'+mdInline(mo[1])+'</li>');
+      } else {
+        close();
+        if(L.trim()==='') out.push('<div class="mdsp"></div>');
+        else out.push('<div>'+mdInline(L)+'</div>');
+      }
+    });
+    close();
+    return out.join('');
+  }
+  // 純文字版（匯出 .ics／CSV 用，掉走排版符號）
+  function mdPlain(t){
+    return String(t||'')
+      .replace(/\*\*([^*\n]+)\*\*/g,'$1').replace(/__([^_\n]+)__/g,'$1')
+      .replace(/~~([^~\n]+)~~/g,'$1')
+      .replace(/(^|[\s(（【])\*([^*\n]+)\*/g,'$1$2')
+      .replace(/^\s*[-•]\s+/gm,'· ');
+  }
+
+  // ── 排版工具條（對 textarea 嘅選取範圍動手）──
+  var MDBTN=[
+    {k:'b',  t:'<b>B</b>',  w:['**','**'], tip:'粗體'},
+    {k:'i',  t:'<i>I</i>',  w:['*','*'],   tip:'斜體'},
+    {k:'u',  t:'<u>U</u>',  w:['__','__'], tip:'底線'},
+    {k:'s',  t:'<s>S</s>',  w:['~~','~~'], tip:'刪除線'},
+    {k:'ul', t:'•',    p:'- ',        tip:'項目符號'},
+    {k:'ol', t:'1.',        p:'1. ',       tip:'編號'},
+    {k:'st', t:'★',    ins:'★ ', tip:'星'},
+    {k:'wa', t:'⚠',    ins:'⚠ ', tip:'警告'}
+  ];
+  function mdBar(forId){
+    return '<div class="mdbar">'+MDBTN.map(function(b){
+      return '<button type="button" class="mdb" data-act="md" data-k="'+b.k+'" data-for="'+forId+'" title="'+b.tip+'">'+b.t+'</button>';
+    }).join('')+'<span class="mdhint">選咗字再撳</span></div>';
+  }
+  function mdApply(ta, k){
+    var def=null; MDBTN.forEach(function(b){ if(b.k===k) def=b; });
+    if(!def||!ta) return;
+    var v=ta.value, a=ta.selectionStart, b=ta.selectionEnd;
+    if(def.ins){                                   // 直接插入符號
+      ta.value=v.slice(0,a)+def.ins+v.slice(b);
+      ta.selectionStart=ta.selectionEnd=a+def.ins.length;
+    } else if(def.p){                              // 逐行加前綴
+      var ls=v.lastIndexOf('\n',a-1)+1;
+      var le=v.indexOf('\n',b); if(le<0) le=v.length;
+      var seg=v.slice(ls,le).split('\n').map(function(L,i){
+        if(/^\s*(?:[-•]|\d+[.)])\s+/.test(L)) return L;      // 已經有就唔重複
+        return (k==='ol'? (i+1)+'. ' : def.p)+L;
+      }).join('\n');
+      ta.value=v.slice(0,ls)+seg+v.slice(le);
+      ta.selectionStart=ls; ta.selectionEnd=ls+seg.length;
+    } else {                                       // 包住選取範圍
+      var sel=v.slice(a,b), m0=def.w[0], m1=def.w[1];
+      if(!sel){                                    // 冇選就插入一對符號，游標放中間
+        ta.value=v.slice(0,a)+m0+m1+v.slice(b);
+        ta.selectionStart=ta.selectionEnd=a+m0.length;
+      } else if(sel.slice(0,m0.length)===m0 && sel.slice(-m1.length)===m1){   // 已經有＝拆走
+        var inner=sel.slice(m0.length, sel.length-m1.length);
+        ta.value=v.slice(0,a)+inner+v.slice(b);
+        ta.selectionStart=a; ta.selectionEnd=a+inner.length;
+      } else {
+        ta.value=v.slice(0,a)+m0+sel+m1+v.slice(b);
+        ta.selectionStart=a+m0.length; ta.selectionEnd=a+m0.length+sel.length;
+      }
+    }
+    ta.focus();
+  }
+
   function noteSheet(x){
     if(!x) return;
     openSheet('<h3>'+kico(x.kind,18,'inline')+' '+esc(x.name)+'</h3>'+
       // 地點本身嘅描述（匯入／AI／Google）只做參考，唔喺呢度改 —— 改喺「改」入面
       (x.note? '<div class="fld"><label>地點資料（唔喺呢度改）</label>'+
                '<div class="noteref">'+esc(x.note)+'</div></div>' : '')+
-      '<div class="fld"><label>我嘅標註</label>'+
+      '<div class="fld"><label>我嘅標註</label>'+ mdBar('qN')+
       '<textarea class="inp" id="qN" style="min-height:130px" placeholder="寫落自己要記住嘅：呢間係酒店、泊車免費、門鎖密碼、幾點要走…">'+
-      esc(x.memo||'')+'</textarea></div>'+
+      esc(x.memo||'')+'</textarea>'+
+      '<div class="hint">**粗** *斜* __底線__ ~~刪除~~ · 行頭打 - 就係項目符號</div></div>'+
       '<div class="btnrow"><button class="btn ghost" data-act="closesheet">唔改</button>'+
       '<button class="btn acc" data-act="qnotesave" data-id="'+x.id+'">儲存</button></div>');
     $('pan').__reopen=function(){ noteSheet(itemById(x.id)); };
@@ -2890,7 +3038,7 @@
       '<div class="fld"><label>擺喺邊</label><select class="inp" id="eScope">'+scopeOpts(x)+'</select></div>'+
       bkHTML(x)+
       '<div class="fld"><label>備註（地點資料）</label><textarea class="inp" id="eNote">'+esc(x.note||'')+'</textarea></div>'+
-      '<div class="fld"><label>我嘅標註</label><textarea class="inp" id="eMemo" placeholder="自己要記住嘅嘢">'+esc(x.memo||'')+'</textarea></div>'+
+      '<div class="fld"><label>我嘅標註</label>'+mdBar('eMemo')+'<textarea class="inp" id="eMemo" placeholder="自己要記住嘅嘢">'+esc(x.memo||'')+'</textarea></div>'+
       '<div class="fld"><label>附件</label>'+filesHTML(x,true)+'</div>'+
       (x.kind==='check'? '<div class="fld"><label>清單（一行一項）</label><textarea class="inp" id="eChecks">'+esc((x.checks||[]).map(function(c){return c.t;}).join('\n'))+'</textarea></div>':'')+
       '<div class="hint" id="eGeo">'+(x.lat? ic('pin',14,'inline')+' '+(+x.lat).toFixed(4)+', '+(+x.lng).toFixed(4)+(x.addr?' · '+esc(x.addr):'') : '冇座標，地圖上唔會出現')+'</div>'+
@@ -2919,7 +3067,7 @@
     if(x.addr) rows.push([ic('pin',17), esc(x.addr), x.lat? 'https://www.google.com/maps/search/?api=1&query='+x.lat+','+x.lng : '']);
     var th=todayHourLine(x);
     if(th) rows.push([ic('clock',17), esc(th)+(x.hours.length>1?' <a data-act="allhours">\u5168\u9031</a>':''), '']);
-    if(x.memo) rows.push([ic('note',17), '<b>我嘅標註</b><br>'+esc(x.memo).replace(/\n/g,'<br>'), '']);
+    if(x.memo) rows.push([ic('note',17), '<b>我嘅標註</b><div class="mdbody">'+mdText(x.memo)+'</div>', '']);
     var hw2=hoursWarn(x);
     if(hw2) rows.push([ic('clock',17), '<b class="pshut">'+esc(hw2)+'</b>', '']);
     if(x.fno) rows.push([kico(x.kind,17), esc(x.fno), '']);
@@ -3314,7 +3462,7 @@
         if(x.term) bits.push(Lb.term[0]+'：'+x.term);
         if(x.phone) bits.push('電話：'+x.phone);
         if(+x.cost) bits.push('使費：'+fmtCcy(itemCcy(x), x.cost));
-        if(x.memo) bits.push('【標註】'+x.memo);
+        if(x.memo) bits.push('【標註】'+mdPlain(x.memo));
         if(x.note) bits.push(x.note);
         if(x.site) bits.push(x.site);
         L.push('BEGIN:VEVENT');
@@ -3741,6 +3889,7 @@
       reopenSheet(sid);
     }
     else if(act==='unstageall'){ var sid=staged&&staged.id; staged=null; if(sid) reopenSheet(sid); }
+    else if(act==='md'){ ev.preventDefault(); mdApply($(el.getAttribute('data-for')), el.getAttribute('data-k')); }
     else if(act==='qnote'){ noteSheet(itemById(id)); }
     else if(act==='qfile'){ fileSheet(itemById(id)); }
     else if(act==='qnotesave'){
