@@ -370,6 +370,16 @@
   .pmeta b{font-weight:700}
   .prate{color:#C9700A} .popen{color:var(--ok)} .pshut{color:var(--muted)}
   .ohint{color:var(--muted2); font-size:12.5px; margin-left:5px}
+  .mapoff{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+          justify-content:center; gap:10px; text-align:center; padding:26px; background:var(--soft);
+          color:var(--muted); z-index:3}
+  .mapoff .ico{color:var(--muted2)}
+  .mapoff b{font-size:15px; color:var(--ink2)}
+  .mapoff span{font-size:12.5px; line-height:1.55; max-width:320px}
+  .pnote{margin-top:16px}
+  .pnote textarea.inp{min-height:84px}
+  .btnrow2{display:flex; align-items:center; gap:10px; margin-top:7px}
+  .btn.sm{width:auto; padding:0 14px; height:34px; font-size:13.5px; margin:0}
   .bkbox{border:1px solid var(--line); border-radius:10px; padding:12px 13px 2px; margin:2px 0 14px; background:var(--soft)}
   .bkh{font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; margin-bottom:9px}
   .bkbox .inp{background:var(--bg)}
@@ -634,7 +644,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v19-1';
+  var APP_VER='20260915-v20-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2272,7 +2282,16 @@
     }, 2500);
   }
 
-  var gTraffic=null;
+  var gTraffic=null, tileCacheN=0;
+  // 數一下手上有幾塊 OSM 磚（決定離線有冇地圖睇）
+  (function countTiles(){
+    if(!window.caches) return;
+    caches.keys().then(function(ks){
+      var t=ks.filter(function(k){ return /tiles/.test(k); })[0];
+      if(!t) return;
+      caches.open(t).then(function(c){ c.keys().then(function(r){ tileCacheN=r.length; }); });
+    }).catch(function(){});
+  })();
   function drawGMap(pts){
     var el=$('map');
     if(!gmap){
@@ -2369,6 +2388,18 @@
       days().map(function(d,i){ return '<button data-act="mapday" data-d="'+d+'" class="'+(mapDay===d?'on':'')+'">'+md(d)+'</button>'; }).join('')) : '';
   }
   function drawMap(){
+    // 離線嗰陣：Google Maps JS 載唔到，OSM 又只有你之前親手睇過嘅磚。
+    // 舊版會留一個空白灰盒，睇落似壞咗。而家講清楚。
+    if(!navigator.onLine){
+      var el0=$('map');
+      if(el0 && !(map && tileCacheN>0)){
+        el0.innerHTML='<div class="mapoff">'+ic('map',30)+
+          '<b>離線：地圖睇唔到</b>'+
+          '<span>行程、地址、電話、筆記、預載咗嘅附件全部照樣睇得到。<br>'+
+          '要導航就用 Google Maps 自己嘅離線地圖（出門前喺 wifi 下載個區）。</span></div>';
+        mapBar(); return;
+      }
+    }
     // 有 browser key 就行 Google，否則 Leaflet + OSM
     if(mapKey() && gState!=='fail'){
       if(gState!=='on'){ loadGMaps(function(){ drawMap(); }); 
@@ -2739,7 +2770,7 @@
     if(x.site) rows.push([ic('link',17), esc(String(x.site).replace(/^https?:\/\//,'').slice(0,42)), x.site]);
     if(x.time) rows.push([ic('clock',17), esc((k.tl?k.tl+' ':'')+x.time), '']);
     if(+x.cost) rows.push([ic('money',17), esc(fmtCcy(itemCcy(x), x.cost))+(itemCcy(x)!==cur()?' \u2248 '+esc(fmtCcy(cur(),toHome(x.cost,itemCcy(x)))):''), '']);
-    if(x.note) rows.push([ic('note',17), esc(x.note), '']);
+
     if(rows.length){
       h+='<div class="prows">';
       rows.forEach(function(r){
@@ -2748,7 +2779,14 @@
       });
       h+='</div>';
     }
-    if((x.files||[]).length) h+='<div class="fld" style="margin-top:14px"><label>附件</label>'+filesHTML(x,false)+'</div>';
+    // 筆記：即場寫得，唔使入「改」。呢個係最常做嘅動作，唔應該藏三層。
+    h+='<div class="fld pnote"><label>'+ic('note',13,'inline')+' 筆記／標註</label>'+
+       '<textarea class="inp" id="pNote" placeholder="泊車、門票、要預約、朋友話邊樣好食、密碼…">'+esc(x.note||'')+'</textarea>'+
+       '<div class="btnrow2"><button class="btn ghost sm" data-act="savepnote" data-id="'+x.id+'">儲存筆記</button>'+
+       '<span class="hint" id="pNoteMsg"></span></div></div>';
+    // 附件：一律見得到＋加得到（舊版只有已經有檔案才顯示，而且唔可以加）
+    h+='<div class="fld"><label>'+ic('copy',13,'inline')+' 檔案（酒店圖、門票、確認信…）</label>'+
+       filesHTML(x,true)+'</div>';
     if(x.hours && x.hours.length>1)
       h+='<div class="phours hide" id="pAllHours">'+x.hours.map(function(l){ return '<div>'+esc(l)+'</div>'; }).join('')+'</div>';
 
@@ -3259,7 +3297,18 @@
          '<button class="btn ghost" data-act="clrprecache" style="margin-top:8px">清走離線附件</button>'+
          '<div class="hint">離線檔案係未加密咁擺喺瀏覽器度，同任何離線 app 一樣。唔想留喺部機就清走佢。</div>';
     }
-    h+='<div class="hint" style="margin-top:16px">地圖：出門前喺 wifi 慢慢碌一次個地圖，睇過嘅範圍就會存低。</div>';
+    h+='<div class="fld" style="margin-top:18px"><label>'+ic('map',13,'inline')+' 地圖離線</label>'+
+       '<div class="inp" style="background:var(--soft2)">手上有 '+tileCacheN+' 塊地圖磚</div>'+
+       '<div class="hint">'+
+       (mapKey()
+         ? '你而家用 <b>Google 底圖</b>。Google 嘅地圖磚<b>離線用唔到</b>（佢哋唔准 cache），'+
+           '所以離線時地圖會係空白 —— 呢個改唔到。<br>'+
+           '想離線都有粗略地圖：設定 → 清走 Google key 用返 OSM，然後出門前喺 wifi 碌一次個地圖。'
+         : '你而家用 <b>OSM 底圖</b>。出門前喺 wifi 慢慢碌一次個地圖（包括放大／縮細），'+
+           '睇過嘅範圍就會存低。<br>唔會自動大批下載 —— OSM 使用條款唔准。')+
+       '<br><br><b>真正導航請用 Google Maps 自己嘅離線地圖</b>：Google Maps app → 你個頭像 → '+
+       '「離線地圖」→ 揀範圍下載。呢個 app 負責行程、文件、時間判斷，唔負責導航。'+
+       '</div></div>';
     openSheet(h);
     if(window.caches && all.length) caches.open(ATTC).then(function(c){
       var n=0;
@@ -3507,6 +3556,11 @@
         '<button class="dz" data-act="deltrip" data-id="'+id+'">刪咗成個旅程</button>');
     }
     else if(act==='edittripid'){ tripSheet(tripById(id)); }
+    else if(act==='savepnote'){
+      var xn=itemById(id), ta=$('pNote'); if(!xn||!ta) return;
+      snap(); xn.note=ta.value.replace(/\s+$/,''); save();
+      var m=$('pNoteMsg'); if(m){ m.textContent='已儲存 ✓'; setTimeout(function(){ if($('pNoteMsg')) $('pNoteMsg').textContent=''; },1800); }
+    }
     else if(act==='setcover'){
       var xc=itemById(id), tc=curTrip();
       if(xc&&xc.photoUrl&&tc){ snap(); tc.cover=xc.photoUrl; save(); setSync('ok','封面換咗'); }
