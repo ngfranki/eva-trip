@@ -653,7 +653,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v21-2';
+  var APP_VER='20260915-v21-3';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1177,6 +1177,8 @@
     if(ms.traffic!=null) out.settings.traffic=ms.traffic;
     return out;
   }
+  var pRetry=0;           // ⚠️ 我 v21-1 換 mergeStates 嗰陣連呢行一齊 splice 走咗，
+                          // strict mode 下 pRetry=0 即刻 ReferenceError。
   var lastErr='';
   function httpErr(r){                                   // 保留真 status，唔好 throw 0
     return r.text().then(function(t){
