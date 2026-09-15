@@ -493,7 +493,7 @@
   /* ── 今日一頁 ── */
   .tdnav{display:flex; align-items:center; gap:8px; margin:0 0 8px}
   .tdnav b{flex:1; text-align:center; font-size:15px; font-weight:800; letter-spacing:-.01em}
-  .tdb{width:34px; height:34px; border-radius:9px; border:1px solid var(--line);
+  .tdb{width:42px; height:42px; border-radius:9px; border:1px solid var(--line);
        background:var(--card); color:var(--fg); font-size:17px; line-height:1}
   .tdb:disabled{opacity:.3}
   .tdwx{font-size:12.5px; color:var(--muted); font-weight:600; margin:0 0 4px}
@@ -503,7 +503,11 @@
   .tdrow{display:flex; align-items:flex-start; gap:9px; padding:10px 0;
          border-top:1px solid var(--line)}
   .tdrow.done{opacity:.45}
-  .tdrow .tick{flex:none; margin-top:1px; color:var(--muted2)}
+  /* 打勾係途中最常撳嘅掣（手套／行路／趕住）。圓圈維持 28px 好睇，
+     但用 ::after 撐開真正嘅觸控範圍到 44px —— Apple HIG 最細嗰個數。 */
+  .tdrow .tick{flex:none; margin-top:1px; color:var(--muted2); position:relative;
+               width:28px; height:28px; font-size:13px}
+  .tdrow .tick::after{content:''; position:absolute; top:-8px; left:-8px; right:-8px; bottom:-8px}
   .tdrow.done .tick{background:var(--ok); border-color:var(--ok); color:#fff}
   .tdt{flex:none; width:44px; text-align:right; font-size:13.5px; font-weight:800;
        font-variant-numeric:tabular-nums; line-height:1.25; padding-top:2px}
@@ -513,7 +517,7 @@
   .tdw{font-size:12px; color:var(--warn); font-weight:700; margin-top:3px}
   .tdc{font-size:11.5px; color:var(--muted2); font-weight:600; margin-top:3px}
   .tdc .sep{margin:0 5px; opacity:.5}
-  .tdgo{flex:none; width:38px; height:38px; display:flex; align-items:center; justify-content:center;
+  .tdgo{flex:none; width:42px; height:42px; display:flex; align-items:center; justify-content:center;
         border-radius:9px; border:1px solid var(--line); color:var(--acc); text-decoration:none}
 
   /* ── 首頁：行程格 ── */
@@ -747,7 +751,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v27-1';
+  var APP_VER='20260915-v27-2';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
