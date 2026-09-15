@@ -189,6 +189,12 @@
   .fadd .fadd-in{position:absolute; inset:0; width:100%; height:100%; opacity:0;
     cursor:pointer; font-size:16px; z-index:2}
   .chip.file{background:var(--soft2); color:var(--ink2); border:1px solid var(--line)}
+  /* 撳得嘅 chip 要一眼睇得出撳得 */
+  .chip.tap{cursor:pointer; border:1px solid transparent}
+  .chip.tap:hover{border-color:var(--link); filter:brightness(.97)}
+  .chip.tap:active{transform:scale(.97)}
+  .chip.file.tap{color:var(--link); background:var(--link-soft); border-color:transparent; font-weight:800}
+  .chip.file.tap:hover{border-color:var(--link)}
 
   /* 探索卡（照 Wanderlog 橫向相片卡）*/
   .excards{display:flex; gap:12px; overflow-x:auto; padding:2px 0 8px; scrollbar-width:none}
@@ -696,7 +702,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v24-0';
+  var APP_VER='20260915-v24-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2293,7 +2299,8 @@
     var chips=[];
     if(tl) chips.push('<span class="chip">'+esc(tl)+'</span>');
     if(+x.cost) chips.push('<span class="chip cost">'+esc(fmtCcy(itemCcy(x), x.cost))+'</span>');
-    if((x.files||[]).length) chips.push('<span class="chip file">'+ic('note',11,'inline')+' '+x.files.length+'</span>');
+    if((x.files||[]).length) chips.push('<button class="chip file tap" data-act="chipfile" data-id="'+x.id+'" title="開附件">'+
+      ic('note',11,'inline')+' '+x.files.length+'</button>');
     if(x.unverified) chips.push('<span class="chip warn" title="地圖搵唔到呢個名，AI 可能作嘅">⚠ 查唔到</span>');
     var chk='';
     if(x.kind==='check' && x.checks && x.checks.length){
@@ -2307,7 +2314,8 @@
     var hw=hoursWarn(x);
     if(hw) chips.push('<span class="chip shut" title="Google 營業時間">'+ic('clock',11,'inline')+' '+esc(hw)+'</span>');
     if(x.fno) chips.push('<span class="chip">'+esc(x.fno)+'</span>');
-    if(x.conf) chips.push('<span class="chip">'+ic('check',11,'inline')+' '+esc(x.conf)+'</span>');
+    if(x.conf) chips.push('<button class="chip tap" data-act="copyconf" data-id="'+x.id+'" title="撳一下複製">'+
+      ic('check',11,'inline')+' '+esc(x.conf)+'</button>');
     var badge = idx
       ? '<div class="idx" style="background:'+idx.c+'">'+idx.n+'</div>'
       : '<div class="idx kico" style="background:var(--muted2)">'+kico(x.kind,14)+'</div>';
@@ -3925,6 +3933,18 @@
     else if(act==='md'){ ev.preventDefault(); mdApply($(el.getAttribute('data-for')), el.getAttribute('data-k')); }
     else if(act==='qnote'){ noteSheet(itemById(id)); }
     else if(act==='qfile'){ fileSheet(itemById(id)); }
+    else if(act==='chipfile'){
+      var xcf=itemById(id); if(!xcf) return;
+      if((xcf.files||[]).length===1) viewFile(xcf, 0);     // 一個檔就直接開
+      else fileSheet(xcf);
+    }
+    else if(act==='copyconf'){
+      var xcc=itemById(id); if(!xcc||!xcc.conf) return;
+      var txt=String(xcc.conf);
+      var done=function(){ setSync('ok','複製咗 '+txt); };
+      if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, function(){ setSync('err','複製唔到'); });
+      else { try{ var ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); done(); }catch(e){ setSync('err','複製唔到'); } }
+    }
     else if(act==='qnotesave'){
       var xq=itemById(id), tq=$('qN'); if(!xq||!tq) return;
       snap(); xq.memo=tq.value.replace(/\s+$/,''); save(); closeSheet();
