@@ -581,7 +581,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v17-1';
+  var APP_VER='20260915-v17-2';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1519,7 +1519,11 @@
     if(i<=0) return null;                       // 第一日冇「昨晚」
     for(var k=i-1;k>=0;k--){
       var prev=dayItems(ds[k]).filter(function(x){ return kd(x.kind).geo && x.lat!=null; });
-      if(prev.length) return prev[prev.length-1];
+      if(!prev.length) continue;
+      // 你係喺住宿過夜，唔係喺當日最後去嗰個景點過夜。
+      // 有住宿就用住宿（取最後一個，即係當晚 check in 嗰間）。
+      var stays=prev.filter(function(x){ return x.kind==='stay'; });
+      return stays.length? stays[stays.length-1] : prev[prev.length-1];
     }
     return null;
   }
@@ -2258,21 +2262,37 @@
       setTimeout(function(){ geoBusy=false; pumpGeo(); },1100);
     });
   }
-  // Google formattedAddress 例：
-  //   "Sengokuhara, Hakone, Ashigarashimo District, Kanagawa 250-0631, Japan"
-  // 喺行裡面淨係要「Sengokuhara, Hakone」。國家、郵政編碼、郡／県 全部唔要。
+  // Google 嘅 formattedAddress 有兩種語序，都要處理：
+  //   A 西式（多數）："3-chōme-4-2 Hanedakūkō, Ota City, Tokyo 144-0041, Japan"
+  //   B 日式（有時）："Japan, 〒163-8001 Tokyo, Shinjuku City, Nishishinjuku, 2-chōme−8−１ …, 45F"
+  // 行裡面只需要知「大概喺邊區」，門牌同樓層係噪音。原本地址照留喺 state，
+  // 詳情卡仍然見得到全個。
   function tidyAddr(a){
     if(!a) return '';
     var t=String(a).replace(/\s+/g,' ').trim();
-    t=t.replace(/[,、]?\s*(Japan|日本|Hong Kong|香港)\s*$/i,'');
-    t=t.replace(/〒?\d{3}-?\d{4}/g,'');                       // 郵政編碼
+    var jp=/^(Japan|日本)\s*[,、]/i.test(t) || /〒/.test(t);     // 日式語序（闊 → 窄）
+    t=t.replace(/^(Japan|日本)\s*[,、]\s*/i,'')
+       .replace(/[,、]?\s*(Japan|日本|Hong Kong|香港)\s*$/i,'')
+       .replace(/〒?\d{3}[-−]?\d{4}/g,'');
     var seg=t.split(/\s*[,、]\s*/).map(function(x){ return x.trim(); }).filter(Boolean);
-    // 日文語序（県／府／都／道 開頭）由後面開始最具體；英文語序由前面開始
-    var jp=/[都道府県市区町村]/.test(seg[0]||'');
-    seg=seg.filter(function(x){ return !/\b(District|County|Prefecture)\b/i.test(x); });
+    seg=seg.filter(function(x){
+      if(/\b(District|County|Prefecture)\b/i.test(x)) return false;   // 郡／県 冇資訊量
+      if(/^[0-9０-９]+\s*F(?:[・･][0-9０-９]+\s*F)*$/i.test(x)) return false; // 樓層
+      return true;
+    });
     if(!seg.length) return '';
-    var keep = jp? seg.slice(-2) : seg.slice(0,2);
-    return keep.join(', ');
+    var keep;
+    if(jp) keep=seg.slice(1,3);                 // 跳過都道府県，取「區 + 町」
+    else {
+      keep=seg.slice(0,2);
+      // 掉走第一截頭嗰段門牌（"3-chōme-4-2 Hanedakūkō" → "Hanedakūkō"）
+      if(keep[0]){
+        var c=keep[0].replace(/^(?:[0-9０-９]+\s*[-−]?\s*[Cc]h[ōo]me\s*[-−]?\s*[0-9０-９\-−]*|[0-9０-９\-−]+)\s*/,'').trim();
+        if(c) keep[0]=c;
+      }
+    }
+    keep=keep.filter(Boolean);
+    return keep.length? keep.join(', ') : seg[0];
   }
   function shortAddr(r){
     var a=r.address||{};
