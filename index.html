@@ -247,6 +247,7 @@
   .rcard .ad{font-size:13px; color:var(--muted); margin-top:2px; word-break:break-word}
   .rcard .nt{font-size:14px; color:var(--ink2); margin-top:5px; white-space:pre-wrap; word-break:break-word; line-height:1.5;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .ntlink,.noteref a,.prow a.ntlink{color:var(--link); text-decoration:underline; text-underline-offset:2px; font-weight:600; word-break:break-all}
   .chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
   .chip{font-size:12.5px; font-weight:700; border-radius:5px; padding:3px 8px; background:var(--link-soft); color:var(--link); white-space:nowrap}
   .chip.cost{background:var(--soft2); color:var(--ink2); border:1px solid var(--line)}
@@ -333,7 +334,7 @@
   .pin b{transform:rotate(45deg); font-size:11.5px; font-weight:700}
   .pin.big{width:34px; height:34px; z-index:900 !important}
   .pin.big b{font-size:14px}
-  .mapbar{position:absolute; top:12px; left:12px; right:12px; z-index:5; display:flex; gap:5px;
+  .mapbar{position:absolute; top:12px; left:12px; right:86px; z-index:5; display:flex; gap:5px;
     flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px}
   .mapbar::-webkit-scrollbar{display:none}
   .mapbar button{flex:0 0 auto; background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:6px 12px; font-size:13px; font-weight:700; color:var(--ink2)}
@@ -676,7 +677,7 @@
     .rcard{margin-left:9px; padding-left:19px}
     .row{padding-left:12px}
   }
-  @media (min-width:821px){ .mapclose{display:none} }
+  @media (min-width:821px){ .mapclose{display:none} .mapbar{right:12px} }
 </style>
 </head>
 <body>
@@ -751,7 +752,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v27-2';
+  var APP_VER='20260915-v28-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -783,6 +784,7 @@
     clock:'<circle cx="12" cy="12" r="8.8"/><path d="M12 7v5.3l3.4 2"/>',
     money:'<circle cx="12" cy="12" r="8.8"/><path d="M12 6.8v10.4"/><path d="M9.4 9.4h5.2"/><path d="M9.4 14.2h5.2"/>',
     phone:'<path d="M15.6 21A13 13 0 0 1 3 8.4a2 2 0 0 1 1.9-2l2-.4a1.4 1.4 0 0 1 1.5.8l1 2.3a1.4 1.4 0 0 1-.4 1.6l-1 .8a10 10 0 0 0 4.6 4.6l.8-1a1.4 1.4 0 0 1 1.6-.4l2.3 1a1.4 1.4 0 0 1 .8 1.5l-.4 2a2 2 0 0 1-2 1.9Z"/>',
+    info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/>',
     link:'<path d="M10.2 13.2a4.8 4.8 0 0 0 7.2.5l2.9-2.9a4.8 4.8 0 0 0-6.8-6.8l-1.7 1.7"/><path d="M13.8 10.8a4.8 4.8 0 0 0-7.2-.5l-2.9 2.9a4.8 4.8 0 0 0 6.8 6.8l1.7-1.7"/>',
     star:'<path d="M12 2.8l2.8 5.8 6.4.9-4.6 4.5 1.1 6.3L12 17.3l-5.7 3-1.1-6.3L.6 9.5l6.4-.9Z" fill="currentColor" stroke="none"/>',
     chev:'<path d="m6 9.5 6 6 6-6"/>',
@@ -2079,14 +2081,9 @@
     },0);
   }
 
-  function heroPhoto(){
-    var t=curTrip(); if(!t) return '';
-    if(t.cover) return t.cover;
-    var cands=tItems().filter(function(x){ return x.photoUrl; });
-    if(!cands.length) return '';
-    cands.sort(function(a,b){ return (+b.rating||0)-(+a.rating||0); });
-    return cands[0].photoUrl;
-  }
+  // 2026-09-15 修：舊版揀「評分最高」→ 4.8 分但只有 6 個人評嘅 Airbnb 房相做咗封面。
+  // 首頁行程格已經有 tripPhoto()（評分×人數×地標類型），hero 用返同一套。
+  function heroPhoto(){ var t=curTrip(); return t? tripPhoto(t) : ''; }
   function hero(t){
     var it=tItems(), done=it.filter(function(x){return x.done;}).length, n=days().length;
     var ph=heroPhoto();
@@ -2389,6 +2386,24 @@
     });
     return h+'</div>';
   }
+  // 地點資料（note）顯示用。三件事：
+  //   a. 入面嘅 URL 變做撳得到嘅連結 —— 你 46 條 maps.app.goo.gl 全部撳唔到，等於冇
+  //   b. 連結標籤縮短（域名＋少少路徑），唔好成行 airbnb tracking 參數塞爆個格
+  //   c. Wanderlog 匯入嘅備註第一行同個名一樣（「Supermarket:\nSupermarket:\n餐紙…」）→ 唔出第一行
+  function noteHtml(x){
+    var t=String(x.note||'');
+    if(!t) return '';
+    var nm=String(x.name||'').trim();
+    var lines=t.split('\n');
+    if(nm && lines.length>1 && lines[0].trim()===nm){ lines.shift(); t=lines.join('\n').replace(/^\n+/,''); }
+    return t.split(/(https?:\/\/[^\s<>"'）)]+)/).map(function(seg,i){
+      if(i%2===0) return esc(seg);
+      var lab=seg.replace(/^https?:\/\//,'').replace(/^www\./,'');
+      var q=lab.indexOf('?'); if(q>0) lab=lab.slice(0,q);        // 追蹤參數唔好見人
+      if(lab.length>34) lab=lab.slice(0,32)+'…';
+      return '<a class="ntlink" href="'+esc(seg)+'" target="_blank" rel="noopener">'+esc(lab)+'</a>';
+    }).join('');
+  }
   function rowHTML(x,idx){
     var k=kd(x.kind);
     var tl = x.time ? (k.tl? k.tl+' '+x.time : x.time) : '';
@@ -2430,7 +2445,7 @@
         '<div class="nm">'+(idx?'<span class="kin">'+kico(x.kind,14,'inline')+'</span>':'')+
           '<span data-act="focus" data-id="'+x.id+'" style="cursor:pointer">'+esc(x.name)+'</span></div>'+
         (x.addr?'<div class="ad">'+esc(tidyAddr(x.addr))+'</div>':'')+
-        (x.note?'<div class="nt">'+esc(x.note)+'</div>':'')+chk+
+        (x.note?'<div class="nt">'+noteHtml(x)+'</div>':'')+chk+
         (x.memo?'<div class="memo"><em>'+ic('note',12)+'我嘅標註</em>'+memoHtml(x.memo)+'</div>':'')+
         (chips.length?'<div class="chips">'+chips.join('')+'</div>':'')+
         // 兩粒掣直接擺喺格上面。之前我放喺「撳地點名彈出嗰張卡」，
@@ -3254,7 +3269,7 @@
     openSheet('<h3>'+kico(x.kind,18,'inline')+' '+esc(x.name)+'</h3>'+
       // 地點本身嘅描述（匯入／AI／Google）只做參考，唔喺呢度改 —— 改喺「改」入面
       (x.note? '<div class="fld"><label>地點資料（唔喺呢度改）</label>'+
-               '<div class="noteref">'+esc(x.note)+'</div></div>' : '')+
+               '<div class="noteref">'+noteHtml(x)+'</div></div>' : '')+
       '<div class="fld"><label>我嘅標註</label>'+ rteBar('qN')+
       '<div class="inp rte" id="qN" contenteditable="true" role="textbox" aria-multiline="true" '+
       'data-ph="寫落自己要記住嘅：呢間係酒店、泊車免費、門鎖密碼、幾點要走…">'+
@@ -3326,7 +3341,7 @@
     if(x.addr) rows.push([ic('pin',17), esc(x.addr), x.lat? 'https://www.google.com/maps/search/?api=1&query='+x.lat+','+x.lng : '']);
     var th=todayHourLine(x);
     if(th) rows.push([ic('clock',17), esc(th)+(x.hours.length>1?' <a data-act="allhours">\u5168\u9031</a>':''), '']);
-    if(x.memo) rows.push([ic('note',17), '<b>我嘅標註</b><div class="mdbody">'+memoHtml(x.memo)+'</div>', '']);
+    if(x.note) rows.push([ic('info',17), noteHtml(x), '']);
     var hw2=hoursWarn(x);
     if(hw2) rows.push([ic('clock',17), '<b class="pshut">'+esc(hw2)+'</b>', '']);
     if(x.fno) rows.push([kico(x.kind,17), esc(x.fno), '']);
@@ -3346,10 +3361,14 @@
       });
       h+='</div>';
     }
-    // 筆記：即場寫得，唔使入「改」。呢個係最常做嘅動作，唔應該藏三層。
-    h+='<div class="fld pnote"><label>'+ic('note',13,'inline')+' 筆記／標註</label>'+
-       '<textarea class="inp" id="pNote" placeholder="泊車、門票、要預約、朋友話邊樣好食、密碼…">'+esc(x.note||'')+'</textarea>'+
-       '<div class="btnrow2"><button class="btn ghost sm" data-act="savepnote" data-id="'+x.id+'">儲存筆記</button>'+
+    // 我嘅標註：即場寫得，唔使入「改」。
+    // 2026-09-15 修：舊版呢格叫「筆記／標註」但其實改緊 note（地點資料），
+    // 同行程格嗰粒「加標註」改嘅 memo 唔係同一樣嘢 —— 你喺呢度寫完，行程格睇唔到。
+    // 而家統一：呢度改嘅就係 memo（我嘅標註），地點資料喺上面只顯示，要改入「改」。
+    h+='<div class="fld pnote"><label>'+ic('note',13,'inline')+' 我嘅標註</label>'+rteBar('pMemo')+
+       '<div class="inp rte" id="pMemo" contenteditable="true" role="textbox" aria-multiline="true" '+
+       'data-ph="泊車、門票、要預約、朋友話邊樣好食、密碼…">'+memoHtml(x.memo)+'</div>'+
+       '<div class="btnrow2"><button class="btn ghost sm" data-act="savepmemo" data-id="'+x.id+'">儲存標註</button>'+
        '<span class="hint" id="pNoteMsg"></span></div></div>';
     // 附件：一律見得到＋加得到（舊版只有已經有檔案才顯示，而且唔可以加）
     h+='<div class="fld"><label>'+ic('copy',13,'inline')+' 檔案（酒店圖、門票、確認信…）</label>'+
@@ -3364,6 +3383,8 @@
       h+='<button class="btn ghost" data-act="enrich" data-id="'+x.id+'" style="margin-top:8px">'+
          (x.placeId?'\u91cd\u65b0\u651d Google \u8cc7\u6599':'\u2728 \u651d Google \u8cc7\u6599\uff08\u76f8\uff0f\u8a55\u5206\uff0f\u6642\u9593\uff09')+'</button>';
     openSheet(h);
+    $('pan').__reopen=function(){ placeSheet(itemById(x.id)); };
+    setTimeout(function(){ var e=$('pMemo'); if(e) rteInit(e); },60);
   }
   // ⚠️ 由 gCall 返嚟嗰刻，state 可能已經被 persist() 撞版後嘅 mergeStates 整個換走，
   // 所以一定要用 id 重新拎返個 item，唔可以繼續寫落入嚟嗰個 object（會變孤兒）。
@@ -3583,13 +3604,21 @@
   }
   function dayPlan(d){
     var arr=dayItems(d);
-    var seed=arr.filter(function(x){ return x.time; })[0];
-    var clock = seed? hm2m(seed.time) : 9*60;
-    var gi=0, out=[], prevGeo=null;
+    var clock=9*60, gi=0, out=[], prevGeo=null, seeded=false;
     arr.forEach(function(x){
       var isGeo = kd(x.kind).geo && x.lat!=null && x.lng!=null;
-      if(x.time){ clock=hm2m(x.time); }
-      else if(prevGeo && isGeo){ clock += legMins(d, gi-1, prevGeo, x); }
+      var travel = (prevGeo && isGeo)? legMins(d, gi-1, prevGeo, x) : 0;
+      if(x.time){
+        var hard=hm2m(x.time);
+        // 第一個硬時間之前嗰啲係由 09:00 順推嘅；如果順推到嚟已經遲過硬時間，
+        // 就整段推早 —— 唔係嘅話會出現「約 10:30 去 A，然後 09:30 硬時間到 B」。
+        if(!seeded){
+          var over=(clock+travel)-hard;
+          if(over>0) out.forEach(function(r){ r.at-=over; });
+          seeded=true;
+        }
+        clock=hard;
+      } else clock += travel;
       out.push({ x:x, at:clock, est:!x.time });
       clock += (DWELL[x.kind]!=null? DWELL[x.kind] : 30);
       if(isGeo){ prevGeo=x; gi++; }
@@ -4346,7 +4375,7 @@
             ic('copy',15,'inline')+' 複製「'+esc(ct.name)+'」做下次嘅底稿</button>':''));
     }
     else if(act==='picktrip'){ state.settings.curTrip=id; view='trip'; mapDay='all'; if(map) map.__fit=0; save(); closeSheet(); }
-    else if(act==='home'){ view='home'; closeSheet(); sideOpen(false); render(); window.scrollTo(0,0); }
+    else if(act==='home'){ view='home'; closeSheet(); sideOpen(false); render(); var dc=document.querySelector('.doc'); if(dc) dc.scrollTop=0; window.scrollTo(0,0); }
     else if(act==='tripmenu'){
       ev.stopPropagation();
       openMenu(ev,'<button data-act="picktrip" data-id="'+id+'">打開</button>'+
@@ -4402,9 +4431,12 @@
       snap(); xq.memo=html; save(); closeSheet();
       setSync('ok', xq.memo? '標註存咗' : '標註清咗');
     }
-    else if(act==='savepnote'){
-      var xn=itemById(id), ta=$('pNote'); if(!xn||!ta) return;
-      snap(); xn.note=ta.value.replace(/\s+$/,''); save();
+    else if(act==='savepmemo'){
+      var xn=itemById(id), tq2=$('pMemo'); if(!xn||!tq2) return;
+      var hm=sanitizeMemo(tq2.innerHTML);
+      if(!(tq2.textContent||'').trim()) hm='';
+      snap(); xn.memo=hm; save(true);                    // save(true)：唔重畫，個 sheet 唔會跳
+      render();
       var m=$('pNoteMsg'); if(m){ m.textContent='已儲存 ✓'; setTimeout(function(){ if($('pNoteMsg')) $('pNoteMsg').textContent=''; },1800); }
     }
     else if(act==='setcover'){
