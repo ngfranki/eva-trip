@@ -589,7 +589,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v18-0';
+  var APP_VER='20260915-v18-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -846,11 +846,6 @@
   function wxFetch(force){
     var t=curTrip(); if(!t||!t.start) return;
     if(!state.wx) state.wx={};
-    if(wxBusy) return;
-    if(!force){
-      if(t.wxAt && (Date.now()-t.wxAt)<3*3600*1000) return;          // 三個鐘內唔重複攞
-      if(wxFail && (Date.now()-wxFail)<5*60*1000) return;            // 撲街就等五分鐘先再試
-    }
     var ds=days(); if(!ds.length) return;
 
     // 逐日一個座標，重複嘅合埋（一個 request 攞齊）
@@ -862,6 +857,17 @@
       dayIdx[d]=seen[k];
     });
     if(!pts.length) return;                                          // 一個地點都未定位，冇得計
+
+    // 往年同期：自己有 30 日 cache，唔應該被預報嘅三個鐘節流封死。
+    // 有任何一日攞唔到預報（即係超出 16 日窗）就補往年。
+    var needHist = ds.some(function(dd){ return !(state.wx[t.id+'|'+dd]||{}).mx; });
+    if(needHist) wxHist(pts, dayIdx, ds, t.id);
+
+    if(wxBusy) return;
+    if(!force){
+      if(t.wxAt && (Date.now()-t.wxAt)<3*3600*1000) return;          // 三個鐘內唔重複攞預報
+      if(wxFail && (Date.now()-wxFail)<5*60*1000) return;            // 撲街就等五分鐘先再試
+    }
 
     var todayS=today(), maxD=fmtD(new Date(Date.now()+15*86400000));
     var a=(ds[0]<todayS)? todayS : ds[0], b=ds[ds.length-1];
@@ -897,9 +903,6 @@
       });
       t2.wxAt=Date.now(); wxBusy=false;
       save(true); render();
-      // 有日子超出預報窗 → 補往年同期
-      if(ds.some(function(dd){ return !(state.wx[t2.id+'|'+dd]||{}).mx; }))
-        wxHist(pts, dayIdx, ds, t2.id);
     }).catch(function(){ wxBusy=false; wxFail=Date.now(); });
   }
   var WXI={0:'晴',1:'大致晴',2:'多雲',3:'密雲',45:'霧',48:'霧',51:'微雨',53:'微雨',55:'微雨',
