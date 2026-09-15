@@ -644,7 +644,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v20-1';
+  var APP_VER='20260915-v20-2';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2388,6 +2388,12 @@
       days().map(function(d,i){ return '<button data-act="mapday" data-d="'+d+'" class="'+(mapDay===d?'on':'')+'">'+md(d)+'</button>'; }).join('')) : '';
   }
   function drawMap(){
+    // 線上就清走離線提示。一定要喺呢度做：Leaflet 路徑係 append 唔係換 innerHTML，
+    // 唔清就會被個 absolute 提示蓋住成個地圖。
+    if(navigator.onLine){
+      var mo=document.querySelector('#map .mapoff');
+      if(mo) mo.remove();
+    }
     // 離線嗰陣：Google Maps JS 載唔到，OSM 又只有你之前親手睇過嘅磚。
     // 舊版會留一個空白灰盒，睇落似壞咗。而家講清楚。
     if(!navigator.onLine){
@@ -3834,7 +3840,13 @@
   setInterval(refreshIfChanged,45000);
   addEventListener('resize',gKick);
   addEventListener('orientationchange',gKick);
-  addEventListener('online',function(){ setNet(); refreshIfChanged(); });
+  addEventListener('online',function(){
+    setNet(); refreshIfChanged();
+    // 離線期間 Google Maps 個 script 一定載失敗 → gState 變 'fail' → 之後就算有網
+    // 都永遠唔會再試，要 reload 才返得到 Google 底圖。返返網就俾佢再試一次。
+    if(gState==='fail' && mapKey()){ gState='off'; gTries=0; }
+    drawMap();
+  });
   addEventListener('offline',setNet);
   setNet();
   if('serviceWorker' in navigator) addEventListener('load',function(){
