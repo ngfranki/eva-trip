@@ -402,6 +402,51 @@
   .nowbtns{margin-top:16px; display:flex; flex-direction:column; gap:8px}
   .nowbtns .btn{text-align:center; text-decoration:none}
   .tfbtn.on{background:var(--acc)!important; color:#fff!important; border-color:var(--acc)!important}
+
+  /* ── 首頁：行程格 ── */
+  .ico.rot90{transform:rotate(90deg)}
+  .home{padding-top:6px}
+  .homeh{display:flex; align-items:baseline; gap:10px; margin:6px 0 18px}
+  .homeh h1{font-size:27px; font-weight:800; letter-spacing:-.03em; margin:0}
+  .homeh .n{font-size:13px; color:var(--muted); font-weight:700}
+  .tgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:16px}
+  .tcard{background:var(--card); border-radius:12px; box-shadow:var(--sh2); overflow:hidden;
+         cursor:pointer; text-align:left; padding:0; border:1.5px solid transparent;
+         transition:box-shadow .14s,transform .14s; display:block; width:100%}
+  .tcard:hover{box-shadow:var(--sh3,0 6px 20px rgba(0,0,0,.13)); transform:translateY(-2px)}
+  .tcard.on{border-color:var(--acc)}
+  .tph{position:relative; height:124px; background-size:cover; background-position:center 45%;
+       background-repeat:no-repeat; background-color:var(--soft)}
+  .tph.noph{display:flex; align-items:center; justify-content:center}
+  .tph.noph em{color:#fff; opacity:.75}
+  .twhen{position:absolute; left:10px; bottom:10px; font-size:11.5px; font-weight:800;
+         padding:3px 8px; border-radius:20px; background:rgba(255,255,255,.94); color:var(--ink);
+         letter-spacing:.02em; box-shadow:0 1px 4px rgba(0,0,0,.18)}
+  .twhen.now{background:var(--acc); color:#fff}
+  .twhen.past{background:rgba(0,0,0,.6); color:#fff}
+  .tnow{position:absolute; right:10px; top:10px; font-size:11px; font-weight:800; padding:3px 8px;
+        border-radius:20px; background:var(--ink); color:#fff; letter-spacing:.02em}
+  .tinfo{padding:12px 13px 10px}
+  .tnm{font-size:16px; font-weight:700; letter-spacing:-.02em; line-height:1.25;
+       display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .tsub{font-size:12.5px; color:var(--muted); margin-top:3px; line-height:1.35}
+  .tbar{height:3px; border-radius:3px; background:var(--soft2); margin:10px 0 7px; overflow:hidden}
+  .tbar i{display:block; height:100%; border-radius:3px}
+  .tmeta{font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px}
+  .tmeta .kebab{margin-left:auto}
+  .tcard.add{display:flex; flex-direction:column; align-items:center; justify-content:center;
+             gap:8px; min-height:190px; background:var(--soft); box-shadow:none;
+             border:1.5px dashed var(--line); color:var(--muted)}
+  .tcard.add:hover{border-color:var(--acc); color:var(--acc); transform:none; box-shadow:none}
+  .tcard.add span{font-size:14px; font-weight:700}
+  .h1back{background:none; border:0; padding:0 7px 0 0; color:var(--muted); cursor:pointer;
+          vertical-align:2px}
+  .h1back:hover{color:var(--acc)}
+  .tochome{width:100%; text-align:left; background:none; border:0; cursor:pointer;
+           font-size:13.5px; font-weight:700; color:var(--ink2); padding:8px 10px 10px;
+           display:flex; align-items:center; gap:7px; border-bottom:1px solid var(--line); margin-bottom:8px}
+  .tochome:hover{color:var(--acc)}
+  @media print{ .tochome,.h1back{display:none} }
   .prows{margin:16px 0 4px; display:flex; flex-direction:column}
   .prow{display:flex; gap:11px; padding:9px 0; border-top:1px solid var(--line2); font-size:14px; align-items:flex-start}
   .prow:first-child{border-top:0}
@@ -589,7 +634,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v18-3';
+  var APP_VER='20260915-v19-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1680,8 +1725,12 @@
     if(!state) return;
     upBtns();
     var t=curTrip();
-    if(!t){ $('main').innerHTML='<div class="page" style="padding-top:60px"><div class="panel pad"><div class="empty">仲未有旅程<br>開一個先</div><button class="btn acc" data-act="newtrip">＋ 開新旅程</button></div></div>';
-            $('toc').innerHTML=''; drawMap(); return; }
+    if(view==='home' || !t){
+      $('main').innerHTML=homeView();
+      $('toc').innerHTML=toc();
+      var v0=$('ver'); if(v0) v0.textContent='v '+APP_VER;
+      return;
+    }
     ensureList();
     if(MODE==='cloud') wxFetch();      // 自己有守衛，唔會每次 render 都打
     var h='<div class="page">';
@@ -1700,6 +1749,98 @@
     drawMap();
   }
   // 封面：揀個有相、評分最高嘅地點做 hero；冇就用漸變
+  // ==================== 首頁：行程格 ====================
+  // 之前要「側欄 → 碌到底 → 切換行程」，唔方便。而家一格一個行程，
+  // 封面用行程裡面最「重要」嘅地標（評分達標之中評分人數最多嗰個 —— 人數
+  // 比分數更能代表「地標」，一間 4.9 分但只有 12 人評嘅咖啡店唔算地標）。
+  var view='trip';
+
+  function tripItems(tid){ return state.items.filter(function(x){ return x.tripId===tid; }); }
+  function tripPhoto(t){
+    if(t.cover) return t.cover;
+    var c=tripItems(t.id).filter(function(x){ return x.photoUrl; });
+    if(!c.length) return '';
+    c.sort(function(a,b){
+      var ga=(+a.rating||0)>=4 ? 1:0, gb=(+b.rating||0)>=4 ? 1:0;
+      if(ga!==gb) return gb-ga;                          // 先要評分達標
+      var na=+a.ratingCount||0, nb=+b.ratingCount||0;
+      if(na!==nb) return nb-na;                          // 再要最多人評（＝地標）
+      return (+b.rating||0)-(+a.rating||0);
+    });
+    return c[0].photoUrl;
+  }
+  function tripDays(t){
+    if(!t.start||!t.end) return 0;
+    return Math.max(1, diffD(t.start,t.end)+1);
+  }
+  // 行程狀態：進行中／仲有幾日／完咗幾久
+  function tripWhen(t){
+    if(!t.start) return {txt:'未定日期', cls:'soon'};
+    var td=today();
+    if(t.end && t.end<td){
+      var ago=diffD(t.end,td);
+      return {txt: ago<=30? ago+' 日前完成' : (ago<365? Math.round(ago/30)+' 個月前' : Math.round(ago/365)+' 年前'), cls:'past'};
+    }
+    if(t.start<=td) return {txt:'進行中', cls:'now'};
+    var left=diffD(td,t.start);
+    return {txt: left<=1? '聽日出發' : (left<=60? '仲有 '+left+' 日' : '仲有 '+Math.round(left/30)+' 個月'), cls:'soon'};
+  }
+  function tripSort(a,b){
+    var wa=tripWhen(a).cls, wb=tripWhen(b).cls;
+    var rank={now:0, soon:1, past:2};
+    if(rank[wa]!==rank[wb]) return rank[wa]-rank[wb];
+    if(wa==='past') return String(b.start||'').localeCompare(String(a.start||''));   // 近期完成嘅喺前
+    return String(a.start||'9999').localeCompare(String(b.start||'9999'));           // 快出發嘅喺前
+  }
+
+  function homeView(){
+    var ts=state.trips.slice().sort(tripSort);
+    var h='<div class="page home">';
+    h+='<div class="homeh"><h1>我嘅旅程</h1><span class="n">'+ts.length+'</span></div>';
+    if(!ts.length){
+      h+='<div class="panel pad"><div class="empty">仲未有旅程<br>開一個先</div>'+
+         '<button class="btn acc" data-act="newtrip">＋ 開新旅程</button></div></div>';
+      return h;
+    }
+    h+='<div class="tgrid">';
+    ts.forEach(function(t,i){
+      var ph=tripPhoto(t), w=tripWhen(t);
+      var its=tripItems(t.id), done=its.filter(function(x){ return x.done; }).length;
+      var nd=tripDays(t), cur=(t.id===state.settings.curTrip);
+      var pct=its.length? Math.round(done/its.length*100) : 0;
+      h+='<div class="tcard'+(cur?' on':'')+'" data-act="picktrip" data-id="'+t.id+'">'+
+        '<div class="tph'+(ph?'':' noph')+'"'+(ph?' style="background-image:url(\''+esc(ph)+'\')"':
+            ' style="background:linear-gradient(135deg,'+dayColor(i)+','+dayColor(i+3)+')"')+'>'+
+          (ph?'':'<em>'+ic('compass',30)+'</em>')+
+          '<span class="twhen '+w.cls+'">'+esc(w.txt)+'</span>'+
+          (cur?'<span class="tnow">正在睇</span>':'')+
+        '</div>'+
+        '<div class="tinfo">'+
+          '<div class="tnm">'+esc(t.name||'未命名')+'</div>'+
+          '<div class="tsub">'+esc(t.dest||'')+(t.dest&&t.start?' · ':'')+
+            (t.start? md(t.start)+'–'+md(t.end)+' · '+nd+'日' : '')+'</div>'+
+          '<div class="tbar"><i style="width:'+pct+'%;background:'+dayColor(i)+'"></i></div>'+
+          '<div class="tmeta">'+its.length+' 項'+(done?' · 去咗 '+done:'')+
+            (itemsCost(its)? ' · '+esc((t.cur||'HKD')+' '+Math.round(itemsCost(its)).toLocaleString()) : '')+
+            '<button class="kebab" data-act="tripmenu" data-id="'+t.id+'">⋯</button></div>'+
+        '</div></div>';
+    });
+    h+='<button class="tcard add" data-act="newtrip"><em>'+ic('plus',26)+'</em><span>開新旅程</span></button>';
+    h+='</div></div>';
+    return h;
+  }
+  // 用行程自己嘅主幣種加總（唔可以直接加 raw cost，會撞貨幣）
+  function itemsCost(its){
+    var t=its.length? tripById(its[0].tripId) : null;
+    var home=(t&&t.cur)||'HKD', rr=(t&&t.rates)||{};
+    return its.reduce(function(a,x){
+      var c=x.ccy||home, v=+x.cost||0;
+      if(!v) return a;
+      if(c===home) return a+v;
+      var r=+rr[c]; return a+(r? v*r : 0);
+    },0);
+  }
+
   function heroPhoto(){
     var t=curTrip(); if(!t) return '';
     if(t.cover) return t.cover;
@@ -1714,7 +1855,8 @@
     return '<div class="hero'+(ph?' hasph':'')+'"'+
       (ph?' style="background-image:url(\''+esc(ph)+'\')"':'')+'></div>'+
       '<div class="herocard"><button class="tbtn hedit" data-act="edittrip">改</button>'+
-      '<h1>'+esc(t.name)+'</h1><div class="sub">'+esc(t.dest||'')+(t.dest?' · ':'')+
+      '<h1><button class="h1back" data-act="home" title="所有旅程">'+ic('chev',16,'rot90')+'</button>'+esc(t.name)+'</h1>'+
+      '<div class="sub">'+esc(t.dest||'')+(t.dest?' · ':'')+
       (t.start? md(t.start)+'–'+md(t.end)+' · '+n+'日':'未定日期')+'</div>'+
       '<div class="hstats">'+
       '<div><b class="num">'+it.length+'</b><span>項目</span></div>'+
@@ -2032,6 +2174,11 @@
     return h+'</div></div>';
   }
   function toc(){
+    var head='<button class="tochome" data-act="home">'+ic('chev',14,'rot90')+' 我嘅旅程</button>';
+    if(view==='home') return head;
+    return head+tocBody();
+  }
+  function tocBody(){
     var t=curTrip(); if(!t) return '';
     var h='<div class="sgrp"><h4>'+ic('chev',12,'chev')+'概覽</h4><nav>';
     h+='<button data-act="go" data-s="s-explore">探索'+(exList()&&exList().items?'<i>'+exList().items.length+' 個推介</i>':'')+'</button>';
@@ -3243,6 +3390,7 @@
       var x3=itemById(id); if(!x3) return;
       openMenu(ev,'<button data-act="edititem" data-id="'+id+'">改</button>'+
         (x3.lat?'<button data-act="nav" data-id="'+id+'">Google 導航</button>':'<button data-act="geo1" data-id="'+id+'">定位</button>')+
+        (x3.photoUrl? '<button data-act="setcover" data-id="'+id+'">用呢張相做封面</button>':'')+
         '<button data-act="dup" data-id="'+id+'">複製一份</button><hr>'+
         '<button class="dz" data-act="del" data-id="'+id+'">刪咗佢</button>');
     }
@@ -3337,7 +3485,21 @@
         (ct?'<button class="btn ghost" data-act="duptrip" data-id="'+ct.id+'" style="margin-top:8px">'+
             ic('copy',15,'inline')+' 複製「'+esc(ct.name)+'」做下次嘅底稿</button>':''));
     }
-    else if(act==='picktrip'){ state.settings.curTrip=id; mapDay='all'; if(map) map.__fit=0; save(); closeSheet(); }
+    else if(act==='picktrip'){ state.settings.curTrip=id; view='trip'; mapDay='all'; if(map) map.__fit=0; save(); closeSheet(); }
+    else if(act==='home'){ view='home'; closeSheet(); sideOpen(false); render(); window.scrollTo(0,0); }
+    else if(act==='tripmenu'){
+      ev.stopPropagation();
+      openMenu(ev,'<button data-act="picktrip" data-id="'+id+'">打開</button>'+
+        '<button data-act="edittripid" data-id="'+id+'">改名／改日期</button>'+
+        '<button data-act="duptrip" data-id="'+id+'">'+ic('copy',15,'inline')+' 複製做底稿</button><hr>'+
+        '<button class="dz" data-act="deltrip" data-id="'+id+'">刪咗成個旅程</button>');
+    }
+    else if(act==='edittripid'){ tripSheet(tripById(id)); }
+    else if(act==='setcover'){
+      var xc=itemById(id), tc=curTrip();
+      if(xc&&xc.photoUrl&&tc){ snap(); tc.cover=xc.photoUrl; save(); setSync('ok','封面換咗'); }
+      else setSync('err','呢個項目冇相');
+    }
     else if(act==='duptrip'){ dupTrip(tripById(id)); }
     else if(act==='shiftday'){
       var msg=moveDay(el.getAttribute('data-d'), +el.getAttribute('data-n'));
