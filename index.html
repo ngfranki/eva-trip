@@ -752,7 +752,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v28-0';
+  var APP_VER='20260915-v28-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -4165,7 +4165,12 @@
     sugTimer=setTimeout(function(){
       var alive=function(){ var inp=document.querySelector('.add[data-scope="'+scope+'"] input'); return inp && inp.value.trim()===q; };
       if(GOOG!==false && MODE==='cloud'){
-        var c=tripCentre(), body={op:'autocomplete',q:q};
+        // 2026-09-15 修：搜尋偏向用「呢一日嘅位置」，唔係成個行程嘅中心。
+        // 東京＋北海道嘅行程，中心跌落東北 —— 喺旭川嗰日搵「旭川ラーメン」
+        // 出嚟嘅係福島、東京、大阪。加落某一日就用嗰日嘅點。
+        var sp=String(scope||'').split(':');
+        var c=(sp[0]==='day' && sp[1])? dayPt(sp[1]) : tripCentre();
+        var body={op:'autocomplete',q:q};
         if(c){ body.lat=c.lat; body.lng=c.lng; }
         gCall(body,function(j,err){
           if(!err && j && j.suggestions){ if(alive()) showSug(scope, j.suggestions.map(function(r){
