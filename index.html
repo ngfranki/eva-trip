@@ -402,6 +402,14 @@
   .memo .mdsp,.mdbody .mdsp{height:6px}
   .memo a,.mdbody a{color:var(--link); font-weight:600}
   .mdbody{margin-top:3px; font-size:13.5px; line-height:1.55}
+  /* 附件檢視器：直接喺 app 裡面睇 */
+  .fview{min-height:200px; display:flex; flex-direction:column; gap:10px; align-items:stretch}
+  .fview img{width:100%; height:auto; max-height:62vh; object-fit:contain; border-radius:10px;
+             background:var(--soft); display:block}
+  .fview iframe{width:100%; height:62vh; border:1px solid var(--line); border-radius:10px; background:#fff}
+  .fview iframe.txt{height:38vh; background:var(--soft)}
+  .fvbtn{display:flex; gap:8px}
+  .fvbtn .btn{text-decoration:none; text-align:center; flex:1}
   .stag{background:var(--soft); border:1px dashed var(--line); border-radius:9px; padding:10px 12px; margin-bottom:9px}
   .stagh{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.03em; margin-bottom:6px}
   .stag .fitem.bad .fn,.stag .fitem.bad .fsz{color:var(--acc)}
@@ -682,7 +690,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v23-0';
+  var APP_VER='20260915-v23-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2032,53 +2040,70 @@
       })
       .catch(function(e){ setSync('err','\u4e0a\u8f09\u5931\u6557\uff1a'+(e.message||'')); if(cb) cb(false); });
   }
-  // 開附件。
-  // 🔴 關鍵：window.open 一定要喺撳落去嗰一刻**同步**叫，唔可以等 fetch／
-  // caches 返嚟才叫 —— 兩層 async 之後已經離開 user gesture，瀏覽器會當佢係
-  // 彈窗攔截落去，而且係靜靜咁擋（你撳中都好似冇反應）。
-  // 做法：先同步開一個空白 tab，攞到檔案才 set 佢個 location。
-  function openFile(f){
-    if(!f) return;
-    var w=null;
-    try{ w=window.open('', '_blank'); }catch(e){}
-    if(w){ try{ w.document.write('<title>'+esc(f.n)+'</title><p style="font:15px -apple-system,sans-serif;color:#666;padding:24px">開緊 '+esc(f.n)+'…</p>'); }catch(e){} }
-    setSync('','開緊 '+f.n+'…');
-
-    var show=function(blob){
-      var b2 = blob.type? blob : new Blob([blob],{type:f.t||'application/octet-stream'});
-      var u=URL.createObjectURL(b2);
-      if(w && !w.closed){ try{ w.location.href=u; }catch(e){ fallback(u); } }
-      else fallback(u);
-      setSync('ok','');
-      setTimeout(function(){ URL.revokeObjectURL(u); }, 120000);
+  // 開附件 = 直接喺 app 裡面睇。
+  //
+  // 為咩唔開新 tab：
+  //  (a) window.open 一定要喺撳落去嗰刻同步叫，等 fetch 返嚟就已經離開
+  //      user gesture，會被彈窗攔截，而且係靜靜咁擋。
+  //  (b) iOS Safari 對 blob: 新 tab 嘅支援唔穩。
+  //  (c) 你真正想要嘅係「即刻睇到張單」，唔係管理 tab。
+  // 所以：相同 PDF 直接喺面板裡面顯示，其他就畀你下載。
+  var fileBlobs={};                                  // path → objectURL（今次 session 內重用）
+  function fileKind(t, name){
+    t=String(t||''); name=String(name||'').toLowerCase();
+    if(t.indexOf('image')===0 || /\.(png|jpe?g|gif|webp|heic|heif|bmp)$/.test(name)) return 'img';
+    if(t.indexOf('pdf')>=0 || /\.pdf$/.test(name)) return 'pdf';
+    if(t.indexOf('text')===0 || /\.(txt|md|csv|json|log)$/.test(name)) return 'text';
+    return 'other';
+  }
+  function getFileBlob(f, cb){
+    if(fileBlobs[f.p]){ cb(fileBlobs[f.p], null); return; }
+    var done=function(blob){
+      // text 一定要補 charset，唔係中文會變亂碼（實測過）
+      var kind=fileKind(f.t, f.n);
+      var type = kind==='text' ? 'text/plain;charset=utf-8'
+               : (blob.type || f.t || 'application/octet-stream');
+      var u=URL.createObjectURL(new Blob([blob], {type:type}));
+      fileBlobs[f.p]=u; cb(u, null);
     };
-    var fallback=function(u){
-      // 彈窗被擋 → 用一條真 <a> 落 DOM 再 click（連 download 屬性，最少都存得到）
-      var a2=document.createElement('a');
-      a2.href=u; a2.target='_blank'; a2.rel='noopener'; a2.download=f.n;
-      document.body.appendChild(a2); a2.click(); a2.remove();
-      setSync('ok','如果冇開，瀏覽器可能擋咗彈窗 —— 已改成下載');
-    };
-    var fail=function(msg){
-      if(w && !w.closed){ try{ w.close(); }catch(e){} }
-      setSync('err','開唔到：'+msg);
-    };
-
     var fromNet=function(){
       fetch(stUrl(f.p), {headers:stHdr()})
         .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); })
-        .then(show)
-        .catch(function(e){ fail((e.message||'')+(navigator.onLine? '' : '（離線，而且冇預載）')); });
+        .then(done)
+        .catch(function(e){ cb(null, (e.message||'攞唔到')+(navigator.onLine? '' : '（離線，而且冇預載）')); });
     };
-
     if(window.caches){
       caches.match(stUrl(f.p)).then(function(m){
-        if(m) return m.blob().then(show);
+        if(m) return m.blob().then(done);
         fromNet();
       }).catch(fromNet);
       return;
     }
     fromNet();
+  }
+  // 附件檢視器
+  function viewFile(x, i){
+    if(!x) return;
+    var f=(x.files||[])[i]; if(!f) return;
+    var kind=fileKind(f.t, f.n);
+    var head='<h3>'+ic(fileIcon(f.t),18,'inline')+' '+esc(f.n)+'</h3>'+
+             '<div class="hint" style="margin:-6px 0 12px">'+fmtSize(f.s)+' · '+esc(x.name)+'</div>';
+    openSheet(head+'<div id="fv" class="fview"><span class="spin"></span>攞緊檔案…</div>');
+    $('pan').__reopen=function(){ viewFile(itemById(x.id), i); };
+    getFileBlob(f, function(u, err){
+      var box=$('fv'); if(!box) return;
+      if(err){ box.innerHTML='<div class="empty">開唔到：'+esc(err)+'</div>'; return; }
+      var h='';
+      if(kind==='img') h='<img src="'+esc(u)+'" alt="'+esc(f.n)+'">';
+      else if(kind==='pdf') h='<iframe src="'+esc(u)+'" title="'+esc(f.n)+'"></iframe>';
+      else if(kind==='text') h='<iframe src="'+esc(u)+'" class="txt" title="'+esc(f.n)+'"></iframe>';
+      else h='<div class="empty">呢個格式睇唔到，下面下載</div>';
+      h+='<div class="fvbtn">'+
+         '<a class="btn ghost sm" href="'+esc(u)+'" download="'+esc(f.n)+'">下載</a>'+
+         '<a class="btn ghost sm" href="'+esc(u)+'" target="_blank" rel="noopener">新 tab 開</a>'+
+         '</div>';
+      box.innerHTML=h;
+    });
   }
   function delFile(x, i){
     var f=(x.files||[])[i]; if(!f) return;
@@ -3589,6 +3614,7 @@
     });
   }
   function clearPrecache(){
+    fileBlobs={};
     if(!window.caches) return;
     caches.delete(ATTC).then(function(){ setSync('ok','已清走離線附件'); offlineSheet(); });
   }
@@ -3957,7 +3983,7 @@
       addOfKind(kk);
     }
     else if(act==='addkind2'){ addOfKind(el.getAttribute('data-k')); }
-    else if(act==='openfile'){ var xf=itemById(id); if(xf) openFile((xf.files||[])[+el.getAttribute('data-i')]); }
+    else if(act==='openfile'){ viewFile(itemById(id), +el.getAttribute('data-i')); }
     else if(act==='delfile'){ var xd=itemById(id); if(xd) delFile(xd, +el.getAttribute('data-i')); }
     else if(act==='explore'){ runExplore(); }
     else if(act==='exadd'){
