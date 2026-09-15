@@ -229,7 +229,8 @@
   .row.done .rcard .nm{text-decoration:line-through; text-decoration-color:var(--muted)}
   .rcard .kin{font-size:12px; color:var(--muted); font-weight:600; margin-right:5px}
   .rcard .ad{font-size:13px; color:var(--muted); margin-top:2px; word-break:break-word}
-  .rcard .nt{font-size:14px; color:var(--ink2); margin-top:5px; white-space:pre-wrap; word-break:break-word; line-height:1.5}
+  .rcard .nt{font-size:14px; color:var(--ink2); margin-top:5px; white-space:pre-wrap; word-break:break-word; line-height:1.5;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
   .chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
   .chip{font-size:12.5px; font-weight:700; border-radius:5px; padding:3px 8px; background:var(--link-soft); color:var(--link); white-space:nowrap}
   .chip.cost{background:var(--soft2); color:var(--ink2); border:1px solid var(--line)}
@@ -296,6 +297,7 @@
   .dayh .sp{flex:1}
   .dayh .tot{font-size:13px; color:var(--muted); font-weight:600}
   .dayw{font-size:12.5px; color:var(--muted); margin:-4px 0 9px 18px; letter-spacing:.01em}
+  .leg.from{color:var(--ink2); font-weight:600}
 
   /* ============ budget ============ */
   .bud{display:flex; flex-direction:column; gap:9px}
@@ -579,7 +581,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v17-0';
+  var APP_VER='20260915-v17-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -851,6 +853,8 @@
     var r=dayRoute(d);
     if(r && r.totalSec) return {sec:r.totalSec, m:r.totalM||0, real:true};
     var arr=dayItems(d).filter(function(x){ return kd(x.kind).geo && x.lat!=null; });
+    var org=dayOrigin(d);
+    if(org) arr=[org].concat(arr);
     if(arr.length<2) return null;
     var sec=0, m=0;
     for(var i=1;i<arr.length;i++){
@@ -867,9 +871,12 @@
     if(dr) bits.push('車程 '+minsTxt(dr.sec)+' · '+(dr.m/1000).toFixed(dr.m<10000?1:0)+'km'+(dr.real?'':'（估）'));
     if(w){
       if(w.mx!=null) bits.push(Math.round(w.mn)+'°~'+Math.round(w.mx)+'°');
-      if(WXI[w.cd]) bits.push(WXI[w.cd]);
-      if(+w.sn>0) bits.push('雪 '+(+w.sn).toFixed(0)+'cm');
-      else if(+w.pr>=1) bits.push('雨 '+(+w.pr).toFixed(0)+'mm');
+      // 有具體雨雪量就唔好再講一次「雨」（舊版會出「雨 · 雨 24mm」）
+      var amt='';
+      if(+w.sn>0) amt='雪 '+(+w.sn).toFixed(0)+'cm';
+      else if(+w.pr>=1) amt='雨 '+(+w.pr).toFixed(0)+'mm';
+      if(amt) bits.push(amt);
+      else if(WXI[w.cd]) bits.push(WXI[w.cd]);
     }
     var set = w&&w.set ? w.set : null;
     if(!set){
@@ -1110,7 +1117,10 @@
     tItems().forEach(function(x){ var c=itemCcy(x); if(+x.cost>0 && c!==h && !rates()[c]) out[c]=1; });
     return Object.keys(out);
   }
+  // ⚠️ sumCost 係「唔理貨幣嘅原始加總」，只可以用喺同一貨幣嘅情況。
+  // 要顯示畀人睇嘅總額一律用 sumHome()。
   function sumCost(arr){ return arr.reduce(function(a,x){ return a+(+x.cost||0); },0); }
+  function sumHome(arr){ return arr.reduce(function(a,x){ return a+toHome(x.cost, itemCcy(x)); },0); }
   function hav(a,b){
     var R=6371, dLat=(b[0]-a[0])*Math.PI/180, dLon=(b[1]-a[1])*Math.PI/180;
     var s=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(a[0]*Math.PI/180)*Math.cos(b[0]*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
@@ -1287,7 +1297,7 @@
       });
       var lg=getLog(d); if(lg&&lg.text) L.push('  〔日誌〕'+String(lg.text).slice(0,150));
     });
-    L.push('總使費：'+money(sumCost(tItems())));
+    L.push('總使費：'+money(sumHome(tItems())));
     return L.join('\n');
   }
   function sysPrompt(){
@@ -1501,7 +1511,33 @@
   }
 
   // ---------- 真路線（Google Routes，逐日 cache，簽名冇變就唔會再 call）----------
+  // 你今朝由邊度出發？＝上一日最後一個有座標嘅項目（通常就係酒店）。
+  // 唔計呢段，一個「新宿 → 箱根」嘅行車日會顯示成「車程 27 分鐘」，
+  // 因為 app 只計咗箱根內部幾段。自駕行程一日最長嗰段通常就係呢段。
+  function dayOrigin(d){
+    var ds=days(), i=ds.indexOf(d);
+    if(i<=0) return null;                       // 第一日冇「昨晚」
+    for(var k=i-1;k>=0;k--){
+      var prev=dayItems(ds[k]).filter(function(x){ return kd(x.kind).geo && x.lat!=null; });
+      if(prev.length) return prev[prev.length-1];
+    }
+    return null;
+  }
   function routeSig(pts){ return pts.map(function(p){ return p.lat.toFixed(4)+','+p.lng.toFixed(4); }).join('|'); }
+  // 「由昨晚住嘅地方去今日第一站」嗰段
+  function legFromPrev(d){
+    var r=dayRoute(d);
+    if(r && r.fromPrev && r.legs && r.legs[0]){
+      var l=r.legs[0], mins=Math.max(1,Math.round(l.sec/60)), km=l.m/1000;
+      return { name:r.fromPrev, t:minsTxt(l.sec)+' · '+(km<10?km.toFixed(1):Math.round(km))+' km', real:1 };
+    }
+    var org=dayOrigin(d);
+    if(!org) return null;
+    var first=dayItems(d).filter(function(x){ return kd(x.kind).geo && x.lat!=null; })[0];
+    if(!first) return null;
+    var e=legTxt(org, first);
+    return e? { name:org.name, t:e.t, real:0 } : null;
+  }
   function dayRoute(d){
     if(!state.routes) state.routes={};
     var t=curTrip(); if(!t) return null;
@@ -1510,9 +1546,12 @@
   function ensureRoute(d){
     if(GOOG===false || MODE!=='cloud') return;
     var t=curTrip(); if(!t) return;
-    var pts=dayItems(d).filter(function(x){ return kd(x.kind).geo && x.lat&&x.lng; }).map(function(x){ return {lat:x.lat,lng:x.lng}; });
+    var own=dayItems(d).filter(function(x){ return kd(x.kind).geo && x.lat!=null && x.lng!=null; });
+    var org=dayOrigin(d);
+    var pts=own.map(function(x){ return {lat:x.lat,lng:x.lng}; });
+    if(org) pts.unshift({lat:org.lat,lng:org.lng});
     if(pts.length<2) return;
-    var sig=routeSig(pts), k=t.id+'|'+d;
+    var sig=routeSig(pts)+(org?'|o':''), k=t.id+'|'+d;
     if(!state.routes) state.routes={};
     var cur2=state.routes[k];
     if(cur2 && cur2.sig===sig) return;
@@ -1523,14 +1562,17 @@
       if(err||!j||!j.legs){ return; }
       // totalSec／totalM 係 Google 計好一併回嚟嘅，舊版只存 legs 就掉咗佢哋。
       state.routes[k]={sig:sig, legs:j.legs, mode:j.mode,
-                       totalSec:j.totalSec||0, totalM:j.totalM||0, at:Date.now()};
+                       totalSec:j.totalSec||0, totalM:j.totalM||0,
+                       fromPrev: org? org.name : '', at:Date.now()};
       save(true); render();
     });
   }
   var routeBusy={};
   function legReal(d, i){
-    var r=dayRoute(d); if(!r||!r.legs||!r.legs[i]) return null;
-    var l=r.legs[i], mins=Math.max(1,Math.round(l.sec/60)), km=l.m/1000;
+    var r=dayRoute(d); if(!r||!r.legs) return null;
+    var off = r.fromPrev? 1 : 0;                 // legs[0] 係「由昨晚住嘅地方出發」嗰段
+    if(!r.legs[i+off]) return null;
+    var l=r.legs[i+off], mins=Math.max(1,Math.round(l.sec/60)), km=l.m/1000;
     var t2 = mins>=60 ? Math.floor(mins/60)+' 小時'+(mins%60?' '+(mins%60)+' 分':'') : mins+' 分鐘';
     return { ic:ic('car',15), t:t2+' · '+(km<10?km.toFixed(1):Math.round(km))+' km', real:1 };
   }
@@ -1762,7 +1804,7 @@
     if(!ds.length) return '<div class="sec" id="s-itin"><div class="sech">'+ic('chev',13,'chev')+'<h2>行程</h2></div><div class="panel pad"><div class="empty">未定日期<br>撳 hero 右上角「改」入返出發／返程日</div></div></div>';
     var h='<div class="sec" id="s-itin"><div class="sech big">'+ic('chev',13,'chev')+'<h2>行程</h2><span class="n">'+ds.length+' 日</span></div>';
     ds.forEach(function(d,i){
-      var arr=dayItems(d), c=dayColor(i), tot=sumCost(arr);
+      var arr=dayItems(d), c=dayColor(i), tot=sumHome(arr);
       var wxl=dayWx(d);
       h+='<div class="day" id="s-d'+i+'"><div class="dayh"><span class="dot" style="background:'+c+'"></span>'+
          '<h3>第'+(i+1)+'日</h3><span class="dd">'+longD(d)+'</span><span class="sp"></span>'+
@@ -1774,6 +1816,9 @@
         h+='<div class="rows">';
         var pn=0, prev=null, legIdx=0;
         ensureRoute(d);
+        var lp=legFromPrev(d);
+        if(lp) h+='<div class="leg from"><em>'+ic('car',15)+'</em>由 '+esc(lp.name)+' 出發 · '+
+                  esc(lp.t)+(lp.real?'':'<span class="est">估算</span>')+'</div>';
         arr.forEach(function(x){
           var idx=null; if(kd(x.kind).geo && x.lat){ pn++; idx={n:pn,c:c}; }
           if(prev){
@@ -1833,7 +1878,7 @@
       '<div class="rcard">'+
         '<div class="nm">'+(idx?'<span class="kin">'+kico(x.kind,14,'inline')+'</span>':'')+
           '<span data-act="focus" data-id="'+x.id+'" style="cursor:pointer">'+esc(x.name)+'</span></div>'+
-        (x.addr?'<div class="ad">'+esc(x.addr)+'</div>':'')+
+        (x.addr?'<div class="ad">'+esc(tidyAddr(x.addr))+'</div>':'')+
         (x.note?'<div class="nt">'+esc(x.note)+'</div>':'')+chk+
         (chips.length?'<div class="chips">'+chips.join('')+'</div>':'')+
       '</div>'+thumb+
@@ -1893,7 +1938,7 @@
     h+='<button data-act="go" data-s="s-explore">探索'+(exList()&&exList().items?'<i>'+exList().items.length+' 個推介</i>':'')+'</button>';
     h+='<button data-act="go" data-s="s-note">筆記</button>';
     tLists().forEach(function(l){ h+='<button data-act="go" data-s="s-'+l.id+'">'+esc(l.name)+'<i>'+listItems(l.id).length+' 項</i></button>'; });
-    h+='<button data-act="go" data-s="s-bud">預算<i>'+money(sumCost(tItems()))+'</i></button>';
+    h+='<button data-act="go" data-s="s-bud">預算<i>'+money(sumHome(tItems()))+'</i></button>';
     h+='</nav></div><div class="sgrp"><h4>'+ic('chev',12,'chev')+'行程</h4><nav>';
     days().forEach(function(d,i){
       var a=dayItems(d);
@@ -2212,6 +2257,22 @@
       else if(a && !a.length && x.ai){ x.unverified=1; save(true); }
       setTimeout(function(){ geoBusy=false; pumpGeo(); },1100);
     });
+  }
+  // Google formattedAddress 例：
+  //   "Sengokuhara, Hakone, Ashigarashimo District, Kanagawa 250-0631, Japan"
+  // 喺行裡面淨係要「Sengokuhara, Hakone」。國家、郵政編碼、郡／県 全部唔要。
+  function tidyAddr(a){
+    if(!a) return '';
+    var t=String(a).replace(/\s+/g,' ').trim();
+    t=t.replace(/[,、]?\s*(Japan|日本|Hong Kong|香港)\s*$/i,'');
+    t=t.replace(/〒?\d{3}-?\d{4}/g,'');                       // 郵政編碼
+    var seg=t.split(/\s*[,、]\s*/).map(function(x){ return x.trim(); }).filter(Boolean);
+    // 日文語序（県／府／都／道 開頭）由後面開始最具體；英文語序由前面開始
+    var jp=/[都道府県市区町村]/.test(seg[0]||'');
+    seg=seg.filter(function(x){ return !/\b(District|County|Prefecture)\b/i.test(x); });
+    if(!seg.length) return '';
+    var keep = jp? seg.slice(-2) : seg.slice(0,2);
+    return keep.join(', ');
   }
   function shortAddr(r){
     var a=r.address||{};
