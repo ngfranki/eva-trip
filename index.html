@@ -179,9 +179,15 @@
   .fitem.open:hover .fn{text-decoration:underline}
   .fitem.open:active{transform:scale(.995)}
   .fitem .fsz{font-size:11.5px; color:var(--muted); flex:0 0 auto}
-  .fadd{display:flex; align-items:center; gap:7px; padding:9px 11px; border:1px dashed var(--line);
-    border-radius:9px; font-size:13px; color:var(--muted); cursor:pointer}
+  /* 個 file input 自己蓋住粒掣（透明），唔靠 label 轉發 —— iOS Safari 對
+     display:none 嘅 file input 唔會由 label 轉發點擊，係出名嘅 bug */
+  .fadd{position:relative; display:flex; align-items:center; gap:7px; padding:9px 11px;
+    border:1px dashed var(--line); border-radius:9px; font-size:13px; color:var(--muted); cursor:pointer;
+    overflow:hidden; min-height:44px}
   .fadd:hover{border-color:var(--acc); color:var(--acc)}
+  .fadd .fadd-t{display:flex; align-items:center; gap:7px; pointer-events:none}
+  .fadd .fadd-in{position:absolute; inset:0; width:100%; height:100%; opacity:0;
+    cursor:pointer; font-size:16px; z-index:2}
   .chip.file{background:var(--soft2); color:var(--ink2); border:1px solid var(--line)}
 
   /* 探索卡（照 Wanderlog 橫向相片卡）*/
@@ -690,7 +696,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v23-1';
+  var APP_VER='20260915-v24-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2142,8 +2148,9 @@
            (okN? '<button class="btn acc sm" data-act="doupload" data-id="'+x.id+'">加落去（'+okN+' 個）</button>' : '')+
            '<button class="btn ghost sm" data-act="unstageall">唔要</button></div></div>';
       }
-      h+='<label class="fadd">'+ic('plus',15)+' \u63c0\u6a94\u6848\uff08\u6a5f\u7968\u3001\u55ae\u64da\u3001\u76f8\u2026\u6700\u5927 '+MAXMB+'MB\uff09'+
-         '<input type="file" multiple hidden data-act="pickfile" data-id="'+x.id+'"></label>';
+      h+='<label class="fadd"><span class="fadd-t">'+ic('plus',15)+' 揀檔案（機票、單據、相…最大 '+MAXMB+'MB）</span>'+
+         '<input type="file" multiple class="fadd-in" data-act="pickfile" data-id="'+x.id+'" '+
+         'accept="image/*,application/pdf,text/*,.pdf,.jpg,.jpeg,.png,.heic,.txt,.csv"></label>';
     }
     return h+'</div>';
   }
