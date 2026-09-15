@@ -409,6 +409,15 @@
   .mdb:hover{border-color:var(--acc); color:var(--acc)}
   .mdb:active{background:var(--soft)}
   .mdhint{font-size:11px; color:var(--muted2); margin-left:4px}
+  .mdb.on{background:var(--acc); color:#fff; border-color:var(--acc)}
+  /* contenteditable 編輯器：睇落同 textarea 一樣，但打粗體即刻見到粗體 */
+  .rte{min-height:130px; max-height:320px; overflow:auto; text-align:left; line-height:1.6;
+       white-space:pre-wrap; word-break:break-word; cursor:text}
+  .rte:empty:before{content:attr(data-ph); color:var(--muted2)}
+  .rte:focus{border-color:var(--acc); outline:none}
+  .rte ul,.rte ol{margin:4px 0 4px 20px; padding:0}
+  .rte li{margin:2px 0}
+  .rte a{color:var(--link)}
   .memo ul,.memo ol,.mdbody ul,.mdbody ol{margin:2px 0 2px 18px; padding:0}
   .memo li,.mdbody li{margin:1px 0}
   .memo .mdsp,.mdbody .mdsp{height:6px}
@@ -702,7 +711,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v24-1';
+  var APP_VER='20260915-v25-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2335,7 +2344,7 @@
           '<span data-act="focus" data-id="'+x.id+'" style="cursor:pointer">'+esc(x.name)+'</span></div>'+
         (x.addr?'<div class="ad">'+esc(tidyAddr(x.addr))+'</div>':'')+
         (x.note?'<div class="nt">'+esc(x.note)+'</div>':'')+chk+
-        (x.memo?'<div class="memo"><em>'+ic('note',12)+'我嘅標註</em>'+mdText(x.memo)+'</div>':'')+
+        (x.memo?'<div class="memo"><em>'+ic('note',12)+'我嘅標註</em>'+memoHtml(x.memo)+'</div>':'')+
         (chips.length?'<div class="chips">'+chips.join('')+'</div>':'')+
         // 兩粒掣直接擺喺格上面。之前我放喺「撳地點名彈出嗰張卡」，
         // 等於仲要多兩步 —— 呢兩樣係到咗現場最常做嘅動作，要一揿就到。
@@ -2990,6 +2999,110 @@
       .replace(/^\s*[-•]\s+/gm,'· ');
   }
 
+  // ==================== 標註：真 WYSIWYG ====================
+  // 存嘅係**過濾過嘅 HTML**（唔係 markdown）—— 用 contenteditable，打粗體即刻見到
+  // 粗體，唔會見到 **星星**。
+  //
+  // 存 HTML 就一定要過濾：memo 係你自己打嘅字，但亦可能貼入外面嘅內容，
+  // 直接 innerHTML 落去就係 XSS。所以存之前同顯示之前都過濾一次（雙重）。
+  var MEMO_TAGS={B:1,I:1,U:1,S:1,STRONG:1,EM:1,UL:1,OL:1,LI:1,BR:1,DIV:1,P:1,SPAN:1,A:1};
+  function sanitizeMemo(html){
+    var doc;
+    try{ doc=new DOMParser().parseFromString('<div id="r">'+String(html||'')+'</div>','text/html'); }
+    catch(e){ return esc(String(html||'')); }
+    var root=doc.getElementById('r'); if(!root) return '';
+    (function walk(n){
+      var kids=[].slice.call(n.childNodes);
+      kids.forEach(function(c){
+        if(c.nodeType===3) return;                       // 文字照留
+        if(c.nodeType!==1){ c.remove(); return; }         // 註釋等一律掉
+        var tag=c.tagName;
+        if(!MEMO_TAGS[tag]){                              // 唔准嘅標籤：留內容、拆殼
+          walk(c);
+          var f=doc.createDocumentFragment();
+          while(c.firstChild) f.appendChild(c.firstChild);
+          c.replaceWith(f);
+          return;
+        }
+        // 屬性：除咗 a[href] 全部掉（on* / style / class 都唔准）
+        [].slice.call(c.attributes).forEach(function(a){ c.removeAttribute(a.name); });
+        if(tag==='A'){
+          var href=String(c.getAttribute('href')||'');
+          if(!/^(https?:|mailto:|tel:)/i.test(href)) c.removeAttribute('href');
+          else { c.setAttribute('target','_blank'); c.setAttribute('rel','noopener'); }
+        }
+        walk(c);
+      });
+    })(root);
+    return root.innerHTML.replace(/(<br\s*\/?>\s*){3,}/gi,'<br><br>');
+  }
+  function isHtmlMemo(m){ return /^\s*</.test(String(m||'')); }
+  // 顯示用：新嘅係 HTML，舊嘅（markdown）照舊用 mdText 渲染
+  function memoHtml(m){
+    if(!m) return '';
+    return isHtmlMemo(m)? sanitizeMemo(m) : mdText(m);
+  }
+  // 純文字用（.ics／CSV）
+  function memoPlain(m){
+    if(!m) return '';
+    if(!isHtmlMemo(m)) return mdPlain(m);
+    var d=document.createElement('div');
+    d.innerHTML=sanitizeMemo(m);
+    d.querySelectorAll('li').forEach(function(li){ li.insertAdjacentText('afterbegin','· '); });
+    d.querySelectorAll('br,div,p,li').forEach(function(e){ e.insertAdjacentText('afterend','\n'); });
+    return (d.textContent||'').replace(/\n{3,}/g,'\n\n').trim();
+  }
+
+  // ── 工具條（execCommand；deprecated 但全部瀏覽器都仲行，而且唔使加 library）──
+  var RTEBTN=[
+    {k:'bold',          t:'<b>B</b>',  tip:'粗體'},
+    {k:'italic',        t:'<i>I</i>',  tip:'斜體'},
+    {k:'underline',     t:'<u>U</u>',  tip:'底線'},
+    {k:'strikeThrough', t:'<s>S</s>',  tip:'刪除線'},
+    {k:'insertUnorderedList', t:'•', tip:'項目符號'},
+    {k:'insertOrderedList',   t:'1.',    tip:'編號'},
+    {k:'__star', t:'★', tip:'星'},
+    {k:'__warn', t:'⚠', tip:'警告'},
+    {k:'removeFormat', t:'⌦', tip:'清走格式'}
+  ];
+  function rteBar(forId){
+    return '<div class="mdbar" data-bar="'+forId+'">'+RTEBTN.map(function(b){
+      return '<button type="button" class="mdb" data-act="rte" data-k="'+b.k+'" data-for="'+forId+
+             '" title="'+b.tip+'">'+b.t+'</button>';
+    }).join('')+'</div>';
+  }
+  function rteSync(forId){
+    var bar=document.querySelector('.mdbar[data-bar="'+forId+'"]'); if(!bar) return;
+    bar.querySelectorAll('.mdb').forEach(function(b){
+      var k=b.getAttribute('data-k');
+      if(k.indexOf('__')===0||k==='removeFormat') return;
+      var on=false; try{ on=document.queryCommandState(k); }catch(e){}
+      b.className='mdb'+(on?' on':'');
+    });
+  }
+  function rteApply(box, k){
+    if(!box) return;
+    box.focus();
+    try{
+      if(k==='__star') document.execCommand('insertText',false,'★ ');
+      else if(k==='__warn') document.execCommand('insertText',false,'⚠ ');
+      else document.execCommand(k,false,null);
+    }catch(e){}
+    rteSync(box.id);
+  }
+  // 貼入嘅嘢一律當純文字（唔好把外面嘅 style／script 帶入嚟）
+  function rteInit(box){
+    if(!box || box.__wired) return;
+    box.__wired=1;
+    box.addEventListener('paste',function(e){
+      e.preventDefault();
+      var t=(e.clipboardData||window.clipboardData).getData('text/plain')||'';
+      try{ document.execCommand('insertText',false,t); }catch(_){ box.textContent+=t; }
+    });
+    box.addEventListener('keyup',function(){ rteSync(box.id); });
+    box.addEventListener('mouseup',function(){ rteSync(box.id); });
+  }
+
   // ── 排版工具條（對 textarea 嘅選取範圍動手）──
   var MDBTN=[
     {k:'b',  t:'<b>B</b>',  w:['**','**'], tip:'粗體'},
@@ -3045,14 +3158,20 @@
       // 地點本身嘅描述（匯入／AI／Google）只做參考，唔喺呢度改 —— 改喺「改」入面
       (x.note? '<div class="fld"><label>地點資料（唔喺呢度改）</label>'+
                '<div class="noteref">'+esc(x.note)+'</div></div>' : '')+
-      '<div class="fld"><label>我嘅標註</label>'+ mdBar('qN')+
-      '<textarea class="inp" id="qN" style="min-height:130px" placeholder="寫落自己要記住嘅：呢間係酒店、泊車免費、門鎖密碼、幾點要走…">'+
-      esc(x.memo||'')+'</textarea>'+
-      '<div class="hint">**粗** *斜* __底線__ ~~刪除~~ · 行頭打 - 就係項目符號</div></div>'+
+      '<div class="fld"><label>我嘅標註</label>'+ rteBar('qN')+
+      '<div class="inp rte" id="qN" contenteditable="true" role="textbox" aria-multiline="true" '+
+      'data-ph="寫落自己要記住嘅：呢間係酒店、泊車免費、門鎖密碼、幾點要走…">'+
+      memoHtml(x.memo)+'</div>'+
+      '<div class="hint">揀咗字再撳粗體／斜體；⌘B ⌘I ⌘U 都用得</div></div>'+
       '<div class="btnrow"><button class="btn ghost" data-act="closesheet">唔改</button>'+
       '<button class="btn acc" data-act="qnotesave" data-id="'+x.id+'">儲存</button></div>');
     $('pan').__reopen=function(){ noteSheet(itemById(x.id)); };
-    setTimeout(function(){ var e=$('qN'); if(e){ e.focus(); try{ e.setSelectionRange(e.value.length,e.value.length); }catch(_){} } },90);
+    setTimeout(function(){
+      var e=$('qN'); if(!e) return;
+      rteInit(e); e.focus();
+      try{ var r=document.createRange(); r.selectNodeContents(e); r.collapse(false);
+           var sl=getSelection(); sl.removeAllRanges(); sl.addRange(r); }catch(_){}
+    },90);
   }
   // 揿「附件」：睇得到、開得到、加得到、刪得到
   function fileSheet(x){
@@ -3078,12 +3197,15 @@
       '<div class="fld"><label>擺喺邊</label><select class="inp" id="eScope">'+scopeOpts(x)+'</select></div>'+
       bkHTML(x)+
       '<div class="fld"><label>備註（地點資料）</label><textarea class="inp" id="eNote">'+esc(x.note||'')+'</textarea></div>'+
-      '<div class="fld"><label>我嘅標註</label>'+mdBar('eMemo')+'<textarea class="inp" id="eMemo" placeholder="自己要記住嘅嘢">'+esc(x.memo||'')+'</textarea></div>'+
+      '<div class="fld"><label>我嘅標註</label>'+rteBar('eMemo')+
+      '<div class="inp rte" id="eMemo" contenteditable="true" role="textbox" aria-multiline="true" '+
+      'data-ph="自己要記住嘅嘢">'+memoHtml(x.memo)+'</div></div>'+
       '<div class="fld"><label>附件</label>'+filesHTML(x,true)+'</div>'+
       (x.kind==='check'? '<div class="fld"><label>清單（一行一項）</label><textarea class="inp" id="eChecks">'+esc((x.checks||[]).map(function(c){return c.t;}).join('\n'))+'</textarea></div>':'')+
       '<div class="hint" id="eGeo">'+(x.lat? ic('pin',14,'inline')+' '+(+x.lat).toFixed(4)+', '+(+x.lng).toFixed(4)+(x.addr?' · '+esc(x.addr):'') : '冇座標，地圖上唔會出現')+'</div>'+
       '<div class="btnrow"><button class="btn ghost" data-act="relookup" data-id="'+x.id+'">🔍 重新定位</button>'+
       '<button class="btn acc" data-act="saveitem" data-id="'+x.id+'">儲存</button></div>');
+    setTimeout(function(){ rteInit($('eMemo')); },60);
   }
   function todayHourLine(x){
     if(!x.hours || !x.hours.length) return '';
@@ -3107,7 +3229,7 @@
     if(x.addr) rows.push([ic('pin',17), esc(x.addr), x.lat? 'https://www.google.com/maps/search/?api=1&query='+x.lat+','+x.lng : '']);
     var th=todayHourLine(x);
     if(th) rows.push([ic('clock',17), esc(th)+(x.hours.length>1?' <a data-act="allhours">\u5168\u9031</a>':''), '']);
-    if(x.memo) rows.push([ic('note',17), '<b>我嘅標註</b><div class="mdbody">'+mdText(x.memo)+'</div>', '']);
+    if(x.memo) rows.push([ic('note',17), '<b>我嘅標註</b><div class="mdbody">'+memoHtml(x.memo)+'</div>', '']);
     var hw2=hoursWarn(x);
     if(hw2) rows.push([ic('clock',17), '<b class="pshut">'+esc(hw2)+'</b>', '']);
     if(x.fno) rows.push([kico(x.kind,17), esc(x.fno), '']);
@@ -3502,7 +3624,7 @@
         if(x.term) bits.push(Lb.term[0]+'：'+x.term);
         if(x.phone) bits.push('電話：'+x.phone);
         if(+x.cost) bits.push('使費：'+fmtCcy(itemCcy(x), x.cost));
-        if(x.memo) bits.push('【標註】'+mdPlain(x.memo));
+        if(x.memo) bits.push('【標註】'+memoPlain(x.memo));
         if(x.note) bits.push(x.note);
         if(x.site) bits.push(x.site);
         L.push('BEGIN:VEVENT');
@@ -3826,7 +3948,8 @@
       x4.name=nm4; pendingNew=null;
       var on=$('eKinds').querySelector('.on'); if(on) x4.kind=on.getAttribute('data-k');
       x4.time=$('eTime').value||''; x4.cost=+$('eCost').value||0; x4.note=($('eNote').value||'').trim();
-      var em=$('eMemo'); if(em) x4.memo=(em.value||'').trim();
+      var em=$('eMemo');
+      if(em){ var hm=sanitizeMemo(em.innerHTML); x4.memo=(em.textContent||'').trim()? hm : ''; }
       var cc=($('eCcy').value||'').trim().toUpperCase(); x4.ccy = (cc && cc!==cur())? cc : '';
       ['fno','conf','seat','term'].forEach(function(key){
         var el2=$('e'+key.charAt(0).toUpperCase()+key.slice(1));
@@ -3930,6 +4053,7 @@
       reopenSheet(sid);
     }
     else if(act==='unstageall'){ var sid=staged&&staged.id; staged=null; if(sid) reopenSheet(sid); }
+    else if(act==='rte'){ ev.preventDefault(); rteApply($(el.getAttribute('data-for')), el.getAttribute('data-k')); }
     else if(act==='md'){ ev.preventDefault(); mdApply($(el.getAttribute('data-for')), el.getAttribute('data-k')); }
     else if(act==='qnote'){ noteSheet(itemById(id)); }
     else if(act==='qfile'){ fileSheet(itemById(id)); }
@@ -3947,7 +4071,9 @@
     }
     else if(act==='qnotesave'){
       var xq=itemById(id), tq=$('qN'); if(!xq||!tq) return;
-      snap(); xq.memo=tq.value.replace(/\s+$/,''); save(); closeSheet();
+      var html=sanitizeMemo(tq.innerHTML);
+      if(!(tq.textContent||'').trim()) html='';            // 得格式冇字就當清空
+      snap(); xq.memo=html; save(); closeSheet();
       setSync('ok', xq.memo? '標註存咗' : '標註清咗');
     }
     else if(act==='savepnote'){
