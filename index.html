@@ -711,7 +711,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v26-0';
+  var APP_VER='20260915-v26-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -3594,6 +3594,7 @@
   function kmlColor(hex){                       // #RRGGBB → KML 嘅 aabbggrr
     var h=String(hex||'#888888').replace('#','');
     if(h.length!==6) h='888888';
+    h=h.toLowerCase();                          // KML 顏色要細寫
     return 'ff'+h.slice(4,6)+h.slice(2,4)+h.slice(0,2);
   }
   function kmlDesc(x){
@@ -3601,10 +3602,13 @@
     if(x.addr) b.push(x.addr);
     if(x.time) b.push((kd(x.kind).tl? kd(x.kind).tl+' ':'')+x.time);
     if(+x.cost) b.push(fmtCcy(itemCcy(x), x.cost));
-    if(x.fno) b.push(bkLab(x.kind).fno[0]+'：'+x.fno);
-    if(x.conf) b.push(bkLab(x.kind).conf[0]+'：'+x.conf);
-    if(x.seat) b.push(bkLab(x.kind).seat[0]+'：'+x.seat);
-    if(x.term) b.push(bkLab(x.kind).term[0]+'：'+x.term);
+    // 值本身已經帶住個標題就唔好再加一次（例：term = "Check-out 2025-12-18"）
+    var lab=function(k,v){ v=String(v||''); var L=bkLab(x.kind)[k][0];
+      return v.indexOf(L)===0? v : L+'：'+v; };
+    if(x.fno) b.push(lab('fno',x.fno));
+    if(x.conf) b.push(lab('conf',x.conf));
+    if(x.seat) b.push(lab('seat',x.seat));
+    if(x.term) b.push(lab('term',x.term));
     if(x.phone) b.push('電話：'+x.phone);
     if(x.rating) b.push('★ '+(+x.rating).toFixed(1)+(x.ratingCount? ' ('+(+x.ratingCount).toLocaleString()+')':''));
     var m=memoPlain(x.memo); if(m) b.push('【我嘅標註】\n'+m);
