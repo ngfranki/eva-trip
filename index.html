@@ -644,7 +644,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v20-2';
+  var APP_VER='20260915-v20-3';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -3844,7 +3844,11 @@
     setNet(); refreshIfChanged();
     // 離線期間 Google Maps 個 script 一定載失敗 → gState 變 'fail' → 之後就算有網
     // 都永遠唔會再試，要 reload 才返得到 Google 底圖。返返網就俾佢再試一次。
-    if(gState==='fail' && mapKey()){ gState='off'; gTries=0; }
+    var retry=function(){ if(gState==='fail' && mapKey()){ gState='off'; gTries=0; drawMap(); } };
+    retry();
+    // 個 watchdog 要 2.5 秒 ×2 才判 'fail'，所以 online 嗰刻未必已經 fail。
+    // 補一次延遲重試接住呢個時序差（只做一次，唔會 thrash）。
+    setTimeout(retry, 6000);
     drawMap();
   });
   addEventListener('offline',setNet);
