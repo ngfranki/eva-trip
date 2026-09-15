@@ -581,7 +581,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v17-2';
+  var APP_VER='20260915-v17-3';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1617,7 +1617,8 @@
   function hero(t){
     var it=tItems(), done=it.filter(function(x){return x.done;}).length, n=days().length;
     var ph=heroPhoto();
-    return '<div class="hero'+(ph?' hasph':'')+'"'+(ph?' style="background-image:url('+JSON.stringify(ph)+')"':'')+'></div>'+
+    return '<div class="hero'+(ph?' hasph':'')+'"'+
+      (ph?' style="background-image:url(\''+esc(ph)+'\')"':'')+'></div>'+
       '<div class="herocard"><button class="tbtn hedit" data-act="edittrip">改</button>'+
       '<h1>'+esc(t.name)+'</h1><div class="sub">'+esc(t.dest||'')+(t.dest?' · ':'')+
       (t.start? md(t.start)+'–'+md(t.end)+' · '+n+'日':'未定日期')+'</div>'+
