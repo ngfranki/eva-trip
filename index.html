@@ -711,7 +711,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v25-1';
+  var APP_VER='20260915-v26-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -3582,6 +3582,138 @@
     box.innerHTML=h;
   }
 
+  // ==================== 匯出去 Google 地圖 ====================
+  // Wanderlog Pro 收費嘅「導出到 Google 地圖」做嘅係同一件事：
+  // 出一個檔案，你匯入 Google My Maps，之後喺 Google Maps app
+  // 「已儲存 → 地圖」就開得到。我哋出 KML，限制係每層 2,000 點／每圖
+  // 10,000 點 —— 你 63 個點差好遠。
+  function xesc(s){
+    return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]; });
+  }
+  function kmlColor(hex){                       // #RRGGBB → KML 嘅 aabbggrr
+    var h=String(hex||'#888888').replace('#','');
+    if(h.length!==6) h='888888';
+    return 'ff'+h.slice(4,6)+h.slice(2,4)+h.slice(0,2);
+  }
+  function kmlDesc(x){
+    var b=[];
+    if(x.addr) b.push(x.addr);
+    if(x.time) b.push((kd(x.kind).tl? kd(x.kind).tl+' ':'')+x.time);
+    if(+x.cost) b.push(fmtCcy(itemCcy(x), x.cost));
+    if(x.fno) b.push(bkLab(x.kind).fno[0]+'：'+x.fno);
+    if(x.conf) b.push(bkLab(x.kind).conf[0]+'：'+x.conf);
+    if(x.seat) b.push(bkLab(x.kind).seat[0]+'：'+x.seat);
+    if(x.term) b.push(bkLab(x.kind).term[0]+'：'+x.term);
+    if(x.phone) b.push('電話：'+x.phone);
+    if(x.rating) b.push('★ '+(+x.rating).toFixed(1)+(x.ratingCount? ' ('+(+x.ratingCount).toLocaleString()+')':''));
+    var m=memoPlain(x.memo); if(m) b.push('【我嘅標註】\n'+m);
+    if(x.note) b.push(x.note);
+    if(x.site) b.push(x.site);
+    if((x.files||[]).length) b.push('附件 '+x.files.length+' 個（喺 app 裡面睇）');
+    return b.join('\n\n');
+  }
+  function kmlOut(){
+    var t=curTrip(); if(!t) return '';
+    var L=['<?xml version="1.0" encoding="UTF-8"?>',
+           '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>',
+           '<name>'+xesc(t.name)+'</name>',
+           '<description>'+xesc((t.dest||'')+(t.start? ' '+t.start+'–'+t.end : ''))+'</description>'];
+    var ds=days(), n=0;
+    // 每日一個 style（同 app 裡面嘅日色一樣）
+    ds.forEach(function(d,i){
+      L.push('<Style id="d'+i+'"><IconStyle><color>'+kmlColor(dayColor(i))+'</color>'+
+             '<Icon><href>http://maps.google.com/mapfiles/kml/paddle/wht-blank.png</href></Icon></IconStyle>'+
+             '<LineStyle><color>'+kmlColor(dayColor(i))+'</color><width>4</width></LineStyle></Style>');
+    });
+    ds.forEach(function(d,i){
+      var arr=dayItems(d).filter(function(x){ return kd(x.kind).geo && x.lat!=null; });
+      if(!arr.length) return;
+      L.push('<Folder><name>'+xesc('第'+(i+1)+'日 '+md(d)+'（'+dow(d)+'）')+'</name>');
+      arr.forEach(function(x,k){
+        L.push('<Placemark><name>'+xesc((k+1)+'. '+x.name)+'</name>'+
+               '<styleUrl>#d'+i+'</styleUrl>'+
+               '<description><![CDATA['+kmlDesc(x).replace(/\]\]>/g,']]&gt;')+']]></description>'+
+               '<Point><coordinates>'+(+x.lng)+','+(+x.lat)+',0</coordinates></Point></Placemark>');
+        n++;
+      });
+      if(arr.length>1){
+        L.push('<Placemark><name>'+xesc('第'+(i+1)+'日 路線')+'</name><styleUrl>#d'+i+'</styleUrl>'+
+               '<LineString><tessellate>1</tessellate><coordinates>'+
+               arr.map(function(x){ return (+x.lng)+','+(+x.lat)+',0'; }).join(' ')+
+               '</coordinates></LineString></Placemark>');
+      }
+      L.push('</Folder>');
+    });
+    // 未排期嘅清單
+    tLists().forEach(function(l){
+      var arr=listItems(l.id).filter(function(x){ return kd(x.kind).geo && x.lat!=null; });
+      if(!arr.length) return;
+      L.push('<Folder><name>'+xesc(l.name)+'</name>');
+      arr.forEach(function(x){
+        L.push('<Placemark><name>'+xesc(x.name)+'</name>'+
+               '<description><![CDATA['+kmlDesc(x).replace(/\]\]>/g,']]&gt;')+']]></description>'+
+               '<Point><coordinates>'+(+x.lng)+','+(+x.lat)+',0</coordinates></Point></Placemark>');
+        n++;
+      });
+      L.push('</Folder>');
+    });
+    L.push('</Document></kml>');
+    kmlOut.n=n;
+    return L.join('\n');
+  }
+
+  // ── Google Maps 導航連結（逐日，超過 10 站就自動分段）──
+  // 限制：桌面最多 9 個中途點（共 10 站）；手機瀏覽器只支援 3 個中途點，
+  // 但連結交去 Google Maps app 之後 app 自己支援到 10 站。
+  function gmapLegs(d){
+    var pts=dayItems(d).filter(function(x){ return kd(x.kind).geo && x.lat!=null; });
+    var org=dayOrigin(d);
+    if(org) pts=[org].concat(pts);
+    if(pts.length<2) return [];
+    var out=[], MAX=10;
+    for(var i=0; i<pts.length-1; i+=MAX-1){
+      var seg=pts.slice(i, i+MAX);
+      if(seg.length<2) break;
+      var u='https://www.google.com/maps/dir/?api=1&travelmode=driving'+
+        '&origin='+seg[0].lat+','+seg[0].lng+
+        '&destination='+seg[seg.length-1].lat+','+seg[seg.length-1].lng;
+      if(seg.length>2) u+='&waypoints='+seg.slice(1,-1).map(function(p){ return p.lat+','+p.lng; }).join('|');
+      out.push({ url:u, n:seg.length, from:seg[0].name, to:seg[seg.length-1].name });
+    }
+    return out;
+  }
+  function gmapSheet(){
+    var t=curTrip(); if(!t) return;
+    var h='<h3>'+ic('route',19,'inline')+' 匯出去 Google 地圖</h3>';
+    h+='<div class="fld"><label>整個行程（推薦）</label>'+
+       '<button class="btn acc" data-act="exKml">'+ic('map',15,'inline')+' 下載 KML（'+
+       (function(){ kmlOut(); return kmlOut.n||0; })()+' 個點）</button>'+
+       '<div class="hint">同 Wanderlog Pro 嗰個「導出到 Google 地圖」做嘅係同一件事：<br>'+
+       '① 下載呢個檔 → ② 開 <b>google.com/mymaps</b> → 建立新地圖 → 匯入 → 揀個檔<br>'+
+       '之後喺 Google Maps app「已儲存 → 地圖」就開得到，逐日分開一層、有顏色、'+
+       '每個點都帶住地址／時間／確認號／你嘅標註。<br>'+
+       '上限每層 2,000 點，你呢個行程差好遠。</div></div>';
+    h+='<div class="fld" style="margin-top:18px"><label>逐日導航路線</label>';
+    var any=false;
+    days().forEach(function(d,i){
+      var legs=gmapLegs(d);
+      if(!legs.length) return;
+      any=true;
+      legs.forEach(function(g,k){
+        h+='<a class="btn ghost" style="text-align:left;margin-bottom:7px;text-decoration:none" href="'+
+           esc(g.url)+'" target="_blank" rel="noopener">'+
+           '第'+(i+1)+'日 '+md(d)+(legs.length>1? '（第 '+(k+1)+'/'+legs.length+' 段）':'')+
+           ' · '+g.n+' 站<span style="color:var(--muted);font-weight:500"> · '+
+           esc(g.from.slice(0,12))+' → '+esc(g.to.slice(0,12))+'</span></a>';
+      });
+    });
+    if(!any) h+='<div class="empty">仲未有排咗日子而又有座標嘅地點</div>';
+    h+='<div class="hint">Google 嘅連結最多 10 站，超過就自動分段。'+
+       '手機瀏覽器只支援 3 個中途點，但交去 Google Maps app 之後 app 自己頂到 10 站。</div></div>';
+    openSheet(h);
+  }
+
   function exportSheet(){
     openSheet('<h3>匯出</h3>'+
       '<button class="btn acc" data-act="print">'+ic('print',16,'inline')+' 列印 / 存做 PDF</button>'+
@@ -3589,7 +3721,7 @@
       '<button class="btn ghost" data-act="exJson">JSON 全份備份</button>'+
       '<button class="btn ghost" data-act="exCsv" style="margin-top:8px">CSV（Excel 開得）</button>'+
       '<button class="btn ghost" data-act="exShare" style="margin-top:8px">分享頁 data.json</button>'+
-      '<button class="btn ghost" data-act="exGmap" style="margin-top:8px">Google Maps 路線（今日）</button>'+
+      '<button class="btn ghost" data-act="exGmapSheet" style="margin-top:8px">'+ic('map',15,'inline')+' 匯出去 Google 地圖（KML ／ 導航路線）</button>'+
       '<button class="btn ghost" data-act="exIcs" style="margin-top:8px">'+ic('clock',15,'inline')+' 行事曆 .ics（入 iPhone 日曆）</button>'+
       '<div class="hint">.ics 用當地牆上時間，唔會換算成香港時間。</div>'+
       '<button class="btn ghost" data-act="offline" style="margin-top:12px">'+ic('note',15,'inline')+' 離線準備（預載附件）</button>'+
@@ -4230,6 +4362,14 @@
       dl('data.json', JSON.stringify({trip:{name:t4.name,dest:t4.dest,start:t4.start,end:t4.end,cur:t4.cur},
         stops:tItems().map(function(x){ return {name:x.name,cat:x.kind,date:x.date,time:x.time,addr:x.addr,note:x.note,cost:x.cost,done:!!x.done,lat:x.lat,lng:x.lng}; }),
         logs:lg, exportedAt:'匯出於 '+today()},null,2));
+    }
+    else if(act==='exGmapSheet'){ gmapSheet(); }
+    else if(act==='exKml'){
+      var txt=kmlOut();
+      if(!kmlOut.n){ setSync('err','冇有座標嘅地點'); return; }
+      var tn=(curTrip()||{}).name||'trip';
+      dl(tn.replace(/[^\w\u4e00-\u9fa5-]+/g,'_')+'.kml', txt, 'application/vnd.google-earth.kml+xml');
+      setSync('ok','出咗 '+kmlOut.n+' 個點嘅 KML');
     }
     else if(act==='exGmap'){
       var d4=mapDay==='all'? days()[0] : mapDay;
