@@ -376,6 +376,18 @@
   .mapoff .ico{color:var(--muted2)}
   .mapoff b{font-size:15px; color:var(--ink2)}
   .mapoff span{font-size:12.5px; line-height:1.55; max-width:320px}
+  /* 我嘅標註：獨立一格，唔同地點描述混做一堆 */
+  .rcard .memo{margin-top:8px; background:var(--bg); border:1px solid var(--line);
+               border-left:3px solid var(--acc); border-radius:7px; padding:8px 11px;
+               font-size:13.5px; color:var(--ink2); line-height:1.5; white-space:pre-wrap; word-break:break-word}
+  .rcard .memo em{display:flex; align-items:center; gap:5px; font-style:normal; font-size:11px;
+                  font-weight:800; color:var(--acc); letter-spacing:.04em; margin-bottom:4px}
+  .noteref{background:var(--soft); border-radius:8px; padding:10px 12px; font-size:13px;
+           color:var(--muted); line-height:1.5; white-space:pre-wrap; word-break:break-word;
+           max-height:120px; overflow:auto}
+  .stag{background:var(--soft); border:1px dashed var(--line); border-radius:9px; padding:10px 12px; margin-bottom:9px}
+  .stagh{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.03em; margin-bottom:6px}
+  .stag .fitem.bad .fn,.stag .fitem.bad .fsz{color:var(--acc)}
   .racts{display:flex; gap:7px; margin-top:9px}
   .ract{display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 11px;
         border-radius:7px; border:1px solid var(--line); background:var(--bg);
@@ -653,7 +665,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v21-3';
+  var APP_VER='20260915-v22-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1983,7 +1995,7 @@
   function fileIcon(t){ return String(t||'').indexOf('image')>=0 ? 'pin' : 'note'; }
   function uploadFile(x, file, cb){
     if(MODE!=='cloud'){ alert('要雲端模式先上載得到附件'); if(cb) cb(false); return; }
-    if(file.size > MAXMB*1048576){ alert('\u300c'+file.name+'\u300d\u6709 '+fmtSize(file.size)+'\uff0c\u5927\u904e '+MAXMB+'MB \u4e0a\u9650'); if(cb) cb(false); return; }
+    if(file.size > MAXMB*1048576){ setSync('err','「'+file.name+'」'+fmtSize(file.size)+'，大過 '+MAXMB+'MB'); if(cb) cb(false); return; }
     var safe=String(file.name||'file').replace(/[^\w.\-]+/g,'_').slice(-60);
     var path=curTrip().id+'/'+x.id+'/'+uid()+'-'+safe;
     setSync('','\u4e0a\u8f09 '+file.name+'\u2026');
@@ -2034,6 +2046,7 @@
       .then(function(){ snap(); x.files.splice(i,1); save(); setSync('ok','\u522a\u5497 '+f.n); })
       .catch(function(){ setSync('err','\u522a\u5514\u5230'); });
   }
+  var staged=null;                 // {id, files:[File]} —— 揀咗但仲未加落去
   function filesHTML(x, editable){
     var fs=x.files||[], h='<div class="files">';
     fs.forEach(function(f,i){
@@ -2043,9 +2056,26 @@
          (editable?'<button class="kebab" data-act="delfile" data-id="'+x.id+'" data-i="'+i+'" style="opacity:1">'+ic('x',14)+'</button>':'')+
          '</div>';
     });
-    if(editable)
-      h+='<label class="fadd">'+ic('plus',15)+' \u52a0\u9644\u4ef6\uff08\u6a5f\u7968\u3001\u78ba\u8a8d\u4fe1\u2026\u6700\u5927 '+MAXMB+'MB\uff09'+
+    if(editable){
+      // 揀完之後**唔會即刻上載** —— 先列出你揀咗咩，再撳「加落去」。
+      // 舊版係即時上載，冇確認、揀錯都退唔到，而且失敗你未必見到。
+      if(staged && staged.id===x.id && staged.files.length){
+        h+='<div class="stag"><div class="stagh">揀咗 '+staged.files.length+' 個，仲未加：</div>';
+        staged.files.forEach(function(f,i){
+          var big=f.size>MAXMB*1048576;
+          h+='<div class="fitem'+(big?' bad':'')+'"><span class="fic">'+ic(fileIcon(f.type),16)+'</span>'+
+             '<span class="fn">'+esc(f.name)+'</span>'+
+             '<span class="fsz">'+fmtSize(f.size)+(big? ' · 超過 '+MAXMB+'MB':'')+'</span>'+
+             '<button class="kebab" data-act="unstage" data-i="'+i+'" style="opacity:1">'+ic('x',14)+'</button></div>';
+        });
+        var okN=staged.files.filter(function(f){ return f.size<=MAXMB*1048576; }).length;
+        h+='<div class="btnrow2">'+
+           (okN? '<button class="btn acc sm" data-act="doupload" data-id="'+x.id+'">加落去（'+okN+' 個）</button>' : '')+
+           '<button class="btn ghost sm" data-act="unstageall">唔要</button></div></div>';
+      }
+      h+='<label class="fadd">'+ic('plus',15)+' \u63c0\u6a94\u6848\uff08\u6a5f\u7968\u3001\u55ae\u64da\u3001\u76f8\u2026\u6700\u5927 '+MAXMB+'MB\uff09'+
          '<input type="file" multiple hidden data-act="pickfile" data-id="'+x.id+'"></label>';
+    }
     return h+'</div>';
   }
 
@@ -2221,12 +2251,13 @@
           '<span data-act="focus" data-id="'+x.id+'" style="cursor:pointer">'+esc(x.name)+'</span></div>'+
         (x.addr?'<div class="ad">'+esc(tidyAddr(x.addr))+'</div>':'')+
         (x.note?'<div class="nt">'+esc(x.note)+'</div>':'')+chk+
+        (x.memo?'<div class="memo"><em>'+ic('note',12)+'我嘅標註</em>'+esc(x.memo)+'</div>':'')+
         (chips.length?'<div class="chips">'+chips.join('')+'</div>':'')+
         // 兩粒掣直接擺喺格上面。之前我放喺「撳地點名彈出嗰張卡」，
         // 等於仲要多兩步 —— 呢兩樣係到咗現場最常做嘅動作，要一揿就到。
         '<div class="racts">'+
-          '<button class="ract'+(x.note?' has':'')+'" data-act="qnote" data-id="'+x.id+'">'+
-            ic('note',13)+(x.note? '筆記' : '加筆記')+'</button>'+
+          '<button class="ract'+(x.memo?' has':'')+'" data-act="qnote" data-id="'+x.id+'">'+
+            ic('note',13)+(x.memo? '標註' : '加標註')+'</button>'+
           '<button class="ract'+((x.files||[]).length?' has':'')+'" data-act="qfile" data-id="'+x.id+'">'+
             ic('copy',13)+((x.files||[]).length? '附件 '+x.files.length : '加附件')+'</button>'+
         '</div>'+
@@ -2773,10 +2804,15 @@
     $('sidebd').className = 'sidebd'+(on?' show':'');
   }
   function openSheet(h){ $('pan').innerHTML='<button class="close" data-act="closesheet">關</button>'+h; $('sheet').className='sheet show'; }
+  function reopenSheet(id){
+    if($('sheet').className.indexOf('show')<0) return;
+    var r=$('pan').__reopen;
+    if(r) r(); else itemSheet(itemById(id));
+  }
   function closeSheet(){
     var pan=$('pan');
     if(pan.__now){ pan.__now=0; if(nowTimer){ clearInterval(nowTimer); nowTimer=null; } }
-    pan.__reopen=null;
+    pan.__reopen=null; staged=null;
     $('sheet').className='sheet'; pan.innerHTML=''; dropPendingNew();
   }
   function closeMenu(){ var m=document.querySelector('.menu'); if(m) m.remove(); }
@@ -2819,9 +2855,12 @@
   function noteSheet(x){
     if(!x) return;
     openSheet('<h3>'+kico(x.kind,18,'inline')+' '+esc(x.name)+'</h3>'+
-      '<div class="fld"><label>筆記／標註</label>'+
-      '<textarea class="inp" id="qN" style="min-height:130px" placeholder="例：呢間係酒店。泊車免費。門鎖密碼 6344。Check-out 11:00。">'+
-      esc(x.note||'')+'</textarea></div>'+
+      // 地點本身嘅描述（匯入／AI／Google）只做參考，唔喺呢度改 —— 改喺「改」入面
+      (x.note? '<div class="fld"><label>地點資料（唔喺呢度改）</label>'+
+               '<div class="noteref">'+esc(x.note)+'</div></div>' : '')+
+      '<div class="fld"><label>我嘅標註</label>'+
+      '<textarea class="inp" id="qN" style="min-height:130px" placeholder="寫落自己要記住嘅：呢間係酒店、泊車免費、門鎖密碼、幾點要走…">'+
+      esc(x.memo||'')+'</textarea></div>'+
       '<div class="btnrow"><button class="btn ghost" data-act="closesheet">唔改</button>'+
       '<button class="btn acc" data-act="qnotesave" data-id="'+x.id+'">儲存</button></div>');
     $('pan').__reopen=function(){ noteSheet(itemById(x.id)); };
@@ -2850,7 +2889,8 @@
         '<input class="inp" id="eCost" type="number" inputmode="decimal" value="'+(x.cost||'')+'" placeholder="0"></div></div></div>'+
       '<div class="fld"><label>擺喺邊</label><select class="inp" id="eScope">'+scopeOpts(x)+'</select></div>'+
       bkHTML(x)+
-      '<div class="fld"><label>備註</label><textarea class="inp" id="eNote">'+esc(x.note||'')+'</textarea></div>'+
+      '<div class="fld"><label>備註（地點資料）</label><textarea class="inp" id="eNote">'+esc(x.note||'')+'</textarea></div>'+
+      '<div class="fld"><label>我嘅標註</label><textarea class="inp" id="eMemo" placeholder="自己要記住嘅嘢">'+esc(x.memo||'')+'</textarea></div>'+
       '<div class="fld"><label>附件</label>'+filesHTML(x,true)+'</div>'+
       (x.kind==='check'? '<div class="fld"><label>清單（一行一項）</label><textarea class="inp" id="eChecks">'+esc((x.checks||[]).map(function(c){return c.t;}).join('\n'))+'</textarea></div>':'')+
       '<div class="hint" id="eGeo">'+(x.lat? ic('pin',14,'inline')+' '+(+x.lat).toFixed(4)+', '+(+x.lng).toFixed(4)+(x.addr?' · '+esc(x.addr):'') : '冇座標，地圖上唔會出現')+'</div>'+
@@ -2879,6 +2919,7 @@
     if(x.addr) rows.push([ic('pin',17), esc(x.addr), x.lat? 'https://www.google.com/maps/search/?api=1&query='+x.lat+','+x.lng : '']);
     var th=todayHourLine(x);
     if(th) rows.push([ic('clock',17), esc(th)+(x.hours.length>1?' <a data-act="allhours">\u5168\u9031</a>':''), '']);
+    if(x.memo) rows.push([ic('note',17), '<b>我嘅標註</b><br>'+esc(x.memo).replace(/\n/g,'<br>'), '']);
     var hw2=hoursWarn(x);
     if(hw2) rows.push([ic('clock',17), '<b class="pshut">'+esc(hw2)+'</b>', '']);
     if(x.fno) rows.push([kico(x.kind,17), esc(x.fno), '']);
@@ -3273,6 +3314,7 @@
         if(x.term) bits.push(Lb.term[0]+'：'+x.term);
         if(x.phone) bits.push('電話：'+x.phone);
         if(+x.cost) bits.push('使費：'+fmtCcy(itemCcy(x), x.cost));
+        if(x.memo) bits.push('【標註】'+x.memo);
         if(x.note) bits.push(x.note);
         if(x.site) bits.push(x.site);
         L.push('BEGIN:VEVENT');
@@ -3504,22 +3546,13 @@
   });
   document.addEventListener('change',function(e){
     if(e.target.getAttribute&&e.target.getAttribute('data-act')==='pickfile'){
-      var xp=itemById(e.target.getAttribute('data-id'));
+      var xpid=e.target.getAttribute('data-id');
       var fl=[].slice.call(e.target.files||[]);
       e.target.value='';
-      if(!xp||!fl.length) return;
-      var xpid=xp.id, reopen=$('pan').__reopen;
-      (function go(i){
-        if(i>=fl.length){
-          if($('sheet').className.indexOf('show')>=0){
-            if(reopen) reopen(); else itemSheet(itemById(xpid));
-          }
-          render(); return;
-        }
-        var cur3=itemById(xpid);                    // 每次重新拎，唔用舊引用
-        if(!cur3){ go(i+1); return; }
-        uploadFile(cur3, fl[i], function(){ go(i+1); });
-      })(0);
+      if(!itemById(xpid)||!fl.length) return;
+      // 只係記住你揀咗咩，等你撳「加落去」才上載
+      staged={ id:xpid, files:(staged&&staged.id===xpid? staged.files.concat(fl) : fl) };
+      reopenSheet(xpid);
       return;
     }
     if(e.target.getAttribute&&e.target.getAttribute('data-act')==='chk'){
@@ -3604,6 +3637,7 @@
       x4.name=nm4; pendingNew=null;
       var on=$('eKinds').querySelector('.on'); if(on) x4.kind=on.getAttribute('data-k');
       x4.time=$('eTime').value||''; x4.cost=+$('eCost').value||0; x4.note=($('eNote').value||'').trim();
+      var em=$('eMemo'); if(em) x4.memo=(em.value||'').trim();
       var cc=($('eCcy').value||'').trim().toUpperCase(); x4.ccy = (cc && cc!==cur())? cc : '';
       ['fno','conf','seat','term'].forEach(function(key){
         var el2=$('e'+key.charAt(0).toUpperCase()+key.slice(1));
@@ -3683,12 +3717,36 @@
         '<button class="dz" data-act="deltrip" data-id="'+id+'">刪咗成個旅程</button>');
     }
     else if(act==='edittripid'){ tripSheet(tripById(id)); }
+    else if(act==='doupload'){
+      if(!staged || staged.id!==id) return;
+      var list=staged.files.filter(function(f){ return f.size<=MAXMB*1048576; });
+      staged=null;
+      var okN=0, failN=0;
+      (function go(i){
+        if(i>=list.length){
+          setSync(failN?'err':'ok', '加咗 '+okN+' 個'+(failN? '，'+failN+' 個失敗':''));
+          reopenSheet(id); render(); return;
+        }
+        setSync('','上載 '+(i+1)+'/'+list.length+'…');
+        var z=itemById(id);
+        if(!z){ go(i+1); return; }
+        uploadFile(z, list[i], function(ok){ if(ok) okN++; else failN++; go(i+1); });
+      })(0);
+    }
+    else if(act==='unstage'){
+      if(!staged) return;
+      var sid=staged.id;                                  // 要喺 splice 之前拎住
+      staged.files.splice(+el.getAttribute('data-i'),1);
+      if(!staged.files.length) staged=null;
+      reopenSheet(sid);
+    }
+    else if(act==='unstageall'){ var sid=staged&&staged.id; staged=null; if(sid) reopenSheet(sid); }
     else if(act==='qnote'){ noteSheet(itemById(id)); }
     else if(act==='qfile'){ fileSheet(itemById(id)); }
     else if(act==='qnotesave'){
       var xq=itemById(id), tq=$('qN'); if(!xq||!tq) return;
-      snap(); xq.note=tq.value.replace(/\s+$/,''); save(); closeSheet();
-      setSync('ok', xq.note? '筆記存咗' : '筆記清咗');
+      snap(); xq.memo=tq.value.replace(/\s+$/,''); save(); closeSheet();
+      setSync('ok', xq.memo? '標註存咗' : '標註清咗');
     }
     else if(act==='savepnote'){
       var xn=itemById(id), ta=$('pNote'); if(!xn||!ta) return;
