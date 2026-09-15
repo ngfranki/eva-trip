@@ -589,7 +589,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v18-2';
+  var APP_VER='20260915-v18-3';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1053,6 +1053,15 @@
       else if(a&&a.updatedAt&&(!b.updatedAt||a.updatedAt>b.updatedAt)) out.logs[k]=a;
     });
     out.chat=Object.assign({}, out.chat||{}, mine.chat||{});
+    // 呢幾個係「攞過就唔想再攞」嘅 cache（路線／天氣／探索）。
+    // 舊版 out 由 theirs 整份複製，所以每次撞版都會丟失本機攞到嘅，
+    // 下次 render 又再燒一次 Google／Open-Meteo call。改成 additive：
+    // 對面冇嘅 key 就保留本機嗰份。
+    ['routes','wx','explore'].forEach(function(k){
+      var mix=Object.assign({}, mine[k]||{});
+      Object.keys(out[k]||{}).forEach(function(kk){ mix[kk]=out[k][kk]; });   // 對面嘅贏
+      out[k]=mix;
+    });
     out.settings=out.settings||{};
     var ms=mine.settings||{};
     if(ms.curTrip) out.settings.curTrip=ms.curTrip;              // 本機正在睇邊個行程
@@ -2297,13 +2306,15 @@
     }catch(e){}
   };
   function photoUrl(x, cb){
+    var pid=x.id;
     if(x.photoUrl){ cb(x.photoUrl); return; }
     if((x.photoBad||0)>=2){ cb(null); return; }
     if(!x.photoName){ cb(null); return; }
     if(photoMem[x.photoName]){ cb(photoMem[x.photoName]); return; }
     gCall({op:'photo',name:x.photoName,maxPx:400},function(j){
       var u=j&&j.url; if(!u){ cb(null); return; }
-      photoMem[x.photoName]=u; x.photoUrl=u; save(true); cb(u);
+      var z=itemById(pid)||x;                   // 同上：state 可能已經換過
+      photoMem[z.photoName||x.photoName]=u; z.photoUrl=u; save(true); cb(u);
     });
   }
   // 由 Google details 填落 item
@@ -2341,8 +2352,10 @@
     var id=geoQ.shift(); if(id==null){ if(state) setSync('ok','定位完'); return; }
     var x=itemById(id); if(!x||x.lat){ pumpGeo(); return; }
     geoBusy=true; setSync('','定位緊…剩 '+(geoQ.length+1));
-    var t=curTrip();
-    nomTry(x.name,function(a){
+    var t=curTrip(), nm=x.name;
+    nomTry(nm,function(a){
+      x=itemById(id);                                  // state 可能已經被 merge 換過
+      if(!x){ setTimeout(function(){ geoBusy=false; pumpGeo(); },50); return; }
       if(a&&a[0]){ x.lat=+a[0].lat; x.lng=+a[0].lon; if(!x.addr) x.addr=shortAddr(a[0]); x.unverified=0; save(); }
       else if(a && !a.length && x.ai){ x.unverified=1; save(true); }
       setTimeout(function(){ geoBusy=false; pumpGeo(); },1100);
@@ -2588,8 +2601,11 @@
          (x.placeId?'\u91cd\u65b0\u651d Google \u8cc7\u6599':'\u2728 \u651d Google \u8cc7\u6599\uff08\u76f8\uff0f\u8a55\u5206\uff0f\u6642\u9593\uff09')+'</button>';
     openSheet(h);
   }
+  // ⚠️ 由 gCall 返嚟嗰刻，state 可能已經被 persist() 撞版後嘅 mergeStates 整個換走，
+  // 所以一定要用 id 重新拎返個 item，唔可以繼續寫落入嚟嗰個 object（會變孤兒）。
   function enrich(x, cb){
     if(!x){ if(cb) cb(false); return; }
+    var xid=x.id;
     setSync('','\u6435 Google \u8cc7\u6599\u2026');
     // 已經有 placeId（例如由 Wanderlog 匯入嘅）就直接攞詳情 ——
     // 省一個 autocomplete call，而且唔會「搜返嚟係另一筆記錄」。
@@ -2604,6 +2620,7 @@
     function details(pid){
       gCall({op:'details',placeId:pid},function(d,e2){
         if(e2||!d){ setSync('err','\u651d\u5514\u5230\u8a73\u60c5'); if(cb) cb(false); return; }
+        x=itemById(xid)||x;                     // state 可能已經換過，重新拎
         snap(); fillFromDetails(x,d); save(); setSync('ok','\u5df2\u88dc '+x.name);
         if(x.photoName) photoUrl(x,function(){ render(); if(cb) cb(true); });
         else if(cb) cb(true);
@@ -3202,14 +3219,23 @@
     else if(act==='enrich'){ enrich(itemById(id), function(ok){ if(ok) placeSheet(itemById(id)); }); }
     else if(act==='enrichall'){
       var all=el.getAttribute('data-all')==='1';
-      var todo=tItems().filter(function(z){ return kd(z.kind).geo && (all || !z.placeId); });
+      // 一定要攞 id 唔好攞 object —— 見 enrich() 上面嘅註解
+      var todo=tItems().filter(function(z){ return kd(z.kind).geo && (all || !z.placeId); })
+                       .map(function(z){ return z.id; });
       if(!todo.length){ alert(all?'冇地點可以攝':'全部都已經有 Google 資料'); return; }
       if(!confirm('去 Google '+(all?'重新攝':'補')+' '+todo.length+' 個地點嘅資料？一秒一個，會慢慢行。')) return;
       closeSheet();
+      var okN=0, failN=0;
       (function go(i){
-        if(i>=todo.length){ setSync('ok','\u88dc\u5b8c '+todo.length+' \u500b'); render(); return; }
-        setSync('','\u88dc\u8cc7\u6599\u2026\u5269 '+(todo.length-i));
-        enrich(todo[i], function(){ setTimeout(function(){ go(i+1); }, 900); });
+        if(i>=todo.length){
+          setSync(failN?'err':'ok', '補完 '+okN+' 個'+(failN? '，'+failN+' 個失敗':''));
+          render(); return;
+        }
+        setSync('','補資料…剩 '+(todo.length-i));
+        var z=itemById(todo[i]);
+        if(!z){ go(i+1); return; }                      // 中途被刪就跳過
+        enrich(z, function(ok){ if(ok) okN++; else failN++;
+          setTimeout(function(){ go(i+1); }, 900); });
       })(0);
     }
     else if(act==='tick'){ var x2=itemById(id); if(x2){ snap(); x2.done=!x2.done; save(); } }
