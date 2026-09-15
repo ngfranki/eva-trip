@@ -549,7 +549,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260914-v16-0';
+  var APP_VER='20260915-v16-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2650,9 +2650,10 @@
     else if(act==='allhours'){ var e9=$('pAllHours'); if(e9) e9.className = e9.className.indexOf('hide')>=0? 'phours':'phours hide'; }
     else if(act==='enrich'){ enrich(itemById(id), function(ok){ if(ok) placeSheet(itemById(id)); }); }
     else if(act==='enrichall'){
-      var todo=tItems().filter(function(z){ return kd(z.kind).geo && !z.placeId; });
-      if(!todo.length){ alert('\u5168\u90e8\u90fd\u5df2\u7d93\u6709 Google \u8cc7\u6599'); return; }
-      if(!confirm('\u53bb Google \u88dc '+todo.length+' \u500b\u5730\u9ede\u5605\u8cc7\u6599\uff1f\u4e00\u79d2\u4e00\u500b\uff0c\u6703\u6162\u6162\u884c\u3002')) return;
+      var all=el.getAttribute('data-all')==='1';
+      var todo=tItems().filter(function(z){ return kd(z.kind).geo && (all || !z.placeId); });
+      if(!todo.length){ alert(all?'冇地點可以攝':'全部都已經有 Google 資料'); return; }
+      if(!confirm('去 Google '+(all?'重新攝':'補')+' '+todo.length+' 個地點嘅資料？一秒一個，會慢慢行。')) return;
       closeSheet();
       (function go(i){
         if(i>=todo.length){ setSync('ok','\u88dc\u5b8c '+todo.length+' \u500b'); render(); return; }
@@ -2980,7 +2981,9 @@
         (mapKey()?'<button class="btn ghost" data-act="clrgmk">清走，用返 OSM</button>':'')+'</div>'+
 
         '<button class="btn ghost" data-act="offline" style="margin-top:18px">'+ic('note',15,'inline')+' 離線準備（預載附件）</button>'+
-        '<button class="btn ghost" data-act="enrichall" style="margin-top:8px">'+ic('spark',15,'inline')+' 一次補齊所有地點嘅 Google 資料</button>'+
+        '<button class="btn ghost" data-act="enrichall" style="margin-top:8px">'+ic('spark',15,'inline')+' 補齊未有 Google 資料嘅地點</button>'+
+        '<button class="btn ghost" data-act="enrichall" data-all="1" style="margin-top:8px">'+ic('spark',15,'inline')+' 全部重新攝一次（'+tItems().filter(function(z){return kd(z.kind).geo;}).length+' 個）</button>'+
+        '<div class="hint">加咗新欄位（例如當地時區）之後，舊項目要重攝一次才有。每個地點大約兩個 Google call。</div>'+
         '<button class="btn ghost" data-act="exJson" style="margin-top:8px">匯出備份</button>'+
         (MODE==='cloud'?'<button class="btn warn" data-act="logout" style="margin-top:8px">登出</button>':''));
     }
