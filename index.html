@@ -653,7 +653,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v21-1';
+  var APP_VER='20260915-v21-2';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1076,6 +1076,15 @@
   function cacheSave(){ try{ localStorage.setItem('tripCache', JSON.stringify({state:state,updated_at:lastUpdated})); }catch(e){} }
   function cacheLoad(){ try{ var s=localStorage.getItem('tripCache'); return s?JSON.parse(s):null; }catch(e){ return null; } }
   function setSync(c,t){ var e=$('sync'); e.className='sync '+(c||''); e.textContent=t; }
+  // 撳一下狀態列即刻重試（出錯時個訊息會叫你撳）
+  addEventListener('DOMContentLoaded',function(){
+    var e=$('sync'); if(!e) return;
+    e.style.cursor='pointer';
+    e.addEventListener('click',function(){
+      if(MODE!=='cloud') return;
+      pRetry=0; setSync('','重試緊…'); persist();
+    });
+  });
   function hdr(){ return {apikey:SBK, Authorization:'Bearer '+SBK, 'x-client-info':KEY, 'Content-Type':'application/json'}; }
 
   // ---------- undo ----------
@@ -1168,6 +1177,20 @@
     if(ms.traffic!=null) out.settings.traffic=ms.traffic;
     return out;
   }
+  var lastErr='';
+  function httpErr(r){                                   // 保留真 status，唔好 throw 0
+    return r.text().then(function(t){
+      var e=new Error('HTTP '+r.status+(t? ' '+t.slice(0,120):''));
+      e.status=r.status; throw e;
+    }, function(){ var e=new Error('HTTP '+r.status); e.status=r.status; throw e; });
+  }
+  function persistFail(e){
+    lastErr=(e&&e.message)||'unknown';
+    if(!navigator.onLine){ setSync('err','離線，資料未同步'); }
+    else if(e&&e.status){ setSync('err','存唔到（'+e.status+'）撳一下重試'); }
+    else { setSync('err','存唔到，網絡唔通　'+lastErr.slice(0,40)); }
+    setTimeout(persist,8000);
+  }
   function persist(){
     if(!state||MODE!=='cloud'||!KEY) return;
     var ts=new Date().toISOString();
@@ -1176,16 +1199,16 @@
       fetch(SB+'/rest/v1/'+TABLE+'?on_conflict=id',{method:'POST',
         headers:Object.assign(hdr(),{Prefer:'resolution=merge-duplicates,return=representation'}),
         body:JSON.stringify([{id:'main',state:state,updated_at:ts}])})
-      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(r){ return r.ok? r.json() : httpErr(r); })
       .then(function(rows){ dirty=false; pRetry=0; if(rows&&rows[0]) lastUpdated=rows[0].updated_at; setBase(); cacheSave(); setSync('ok','已儲低 '+nowT()); })
-      .catch(function(){ setSync('err','離線，資料未同步'); setTimeout(persist,8000); });
+      .catch(persistFail);
       return;
     }
     // 之後每次都帶住「我讀到嘅版本」做條件，唔啱就唔覆蓋
     fetch(SB+'/rest/v1/'+TABLE+'?id=eq.main&updated_at=eq.'+encodeURIComponent(lastUpdated),
       {method:'PATCH', headers:Object.assign(hdr(),{Prefer:'return=representation'}),
        body:JSON.stringify({state:state, updated_at:ts})})
-    .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+    .then(function(r){ return r.ok? r.json() : httpErr(r); })
     .then(function(rows){
       if(rows && rows[0]){ dirty=false; pRetry=0; lastUpdated=rows[0].updated_at; setBase(); cacheSave(); setSync('ok','已儲低 '+nowT()); return; }
       // 0 row ＝ 其他裝置喺我讀完之後寫過 → 合併，唔可以覆蓋
@@ -1194,12 +1217,19 @@
       setSync('','其他裝置有改動，合併緊…');
       fetchRow(function(row){
         if(!row){ setTimeout(persist,3000); return; }
-        state=mergeStates(state, migrate(row.state||{}));
+        // 合併本身千萬唔可以靜靜咁 throw —— 之前 throw 咗會被 fetchRow 個
+        // catch 食掉，persist 永遠唔會再試，畫面就卡死喺一個舊訊息。
+        try{
+          state=mergeStates(state, migrate(row.state||{}));
+        }catch(e){
+          setSync('err','合併出錯，本機資料未上傳：'+(e.message||'').slice(0,40));
+          return;
+        }
         lastUpdated=row.updated_at; cacheSave(); render();
         setTimeout(persist,150);
       });
     })
-    .catch(function(){ setSync('err','離線，資料未同步'); setTimeout(persist,8000); });
+    .catch(persistFail);
   }
   function fetchRow(cb){
     var done=false,ctrl=null; try{ctrl=new AbortController();}catch(e){}
