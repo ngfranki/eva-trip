@@ -133,6 +133,10 @@
   .herocard h1{margin:0; font-size:34px; font-weight:700; letter-spacing:-.03em; line-height:1.1}
   .herocard .sub{display:flex; align-items:center; gap:6px; margin-top:9px; font-size:14px; color:var(--muted); font-weight:600}
   .hstats{display:flex; gap:22px; margin-top:16px; padding-top:14px; border-top:1px solid var(--line)}
+  .hstats div{flex:none}
+  .hstats div span{white-space:nowrap}
+  /* 375px 闊：加咗〔工具〕掣之後「已完成／未排期」會摺行，收窄間距 */
+  @media (max-width:420px){ .hstats{gap:12px} .hstats div b{font-size:18px} .hfx{min-width:46px; padding:6px 7px} }
   .hstats div b{display:block; font-size:20px; font-weight:700; line-height:1.15; letter-spacing:-.02em}
   .hstats div span{font-size:12px; color:var(--muted)}
   .hedit{position:absolute; top:14px; right:12px; z-index:3; opacity:1; width:36px; height:36px; font-size:20px; color:var(--muted)}
@@ -770,7 +774,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260916-v29-2';
+  var APP_VER='20260916-v29-3';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
