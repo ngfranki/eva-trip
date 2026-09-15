@@ -376,6 +376,15 @@
   .mapoff .ico{color:var(--muted2)}
   .mapoff b{font-size:15px; color:var(--ink2)}
   .mapoff span{font-size:12.5px; line-height:1.55; max-width:320px}
+  .racts{display:flex; gap:7px; margin-top:9px}
+  .ract{display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 11px;
+        border-radius:7px; border:1px solid var(--line); background:var(--bg);
+        color:var(--muted); font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap}
+  .ract .ico{flex:0 0 auto}
+  .ract:hover{border-color:var(--muted2); color:var(--ink2)}
+  .ract.has{background:var(--link-soft); border-color:transparent; color:var(--link)}
+  .ract.has:hover{color:var(--link)}
+  @media print{ .racts{display:none} }
   .pnote{margin-top:16px}
   .pnote textarea.inp{min-height:84px}
   .btnrow2{display:flex; align-items:center; gap:10px; margin-top:7px}
@@ -644,7 +653,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v20-3';
+  var APP_VER='20260915-v21-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1919,8 +1928,10 @@
       body:file})
       .then(function(r){ if(!r.ok) return r.text().then(function(t){ throw new Error(r.status+' '+t.slice(0,80)); }); return r.json(); })
       .then(function(){
-        snap(); if(!x.files) x.files=[];
-        x.files.push({p:path, n:file.name, s:file.size, t:file.type||'', at:Date.now()});
+        snap();
+        var z=itemById(x.id)||x;                    // merge 可能已經換走 state
+        if(!z.files) z.files=[];
+        z.files.push({p:path, n:file.name, s:file.size, t:file.type||'', at:Date.now()});
         save(); setSync('ok','\u4e0a\u8f09\u5b8c '+file.name); if(cb) cb(true);
       })
       .catch(function(e){ setSync('err','\u4e0a\u8f09\u5931\u6557\uff1a'+(e.message||'')); if(cb) cb(false); });
@@ -2144,6 +2155,14 @@
         (x.addr?'<div class="ad">'+esc(tidyAddr(x.addr))+'</div>':'')+
         (x.note?'<div class="nt">'+esc(x.note)+'</div>':'')+chk+
         (chips.length?'<div class="chips">'+chips.join('')+'</div>':'')+
+        // 兩粒掣直接擺喺格上面。之前我放喺「撳地點名彈出嗰張卡」，
+        // 等於仲要多兩步 —— 呢兩樣係到咗現場最常做嘅動作，要一揿就到。
+        '<div class="racts">'+
+          '<button class="ract'+(x.note?' has':'')+'" data-act="qnote" data-id="'+x.id+'">'+
+            ic('note',13)+(x.note? '筆記' : '加筆記')+'</button>'+
+          '<button class="ract'+((x.files||[]).length?' has':'')+'" data-act="qfile" data-id="'+x.id+'">'+
+            ic('copy',13)+((x.files||[]).length? '附件 '+x.files.length : '加附件')+'</button>'+
+        '</div>'+
       '</div>'+thumb+
       '<div class="rt">'+
         '<button class="tick" data-act="tick" data-id="'+x.id+'">✓</button>'+
@@ -2690,6 +2709,7 @@
   function closeSheet(){
     var pan=$('pan');
     if(pan.__now){ pan.__now=0; if(nowTimer){ clearInterval(nowTimer); nowTimer=null; } }
+    pan.__reopen=null;
     $('sheet').className='sheet'; pan.innerHTML=''; dropPendingNew();
   }
   function closeMenu(){ var m=document.querySelector('.menu'); if(m) m.remove(); }
@@ -2727,6 +2747,28 @@
     return '<div class="bkbox"><div class="bkh">訂單資料</div>'+
       '<div class="two">'+f('eFno','fno')+f('eConf','conf')+'</div>'+
       '<div class="two">'+f('eSeat','seat')+f('eTerm','term')+'</div></div>';
+  }
+  // 揿「筆記」：即刻寫，儲存就完。唔使入「改」再碌。
+  function noteSheet(x){
+    if(!x) return;
+    openSheet('<h3>'+kico(x.kind,18,'inline')+' '+esc(x.name)+'</h3>'+
+      '<div class="fld"><label>筆記／標註</label>'+
+      '<textarea class="inp" id="qN" style="min-height:130px" placeholder="例：呢間係酒店。泊車免費。門鎖密碼 6344。Check-out 11:00。">'+
+      esc(x.note||'')+'</textarea></div>'+
+      '<div class="btnrow"><button class="btn ghost" data-act="closesheet">唔改</button>'+
+      '<button class="btn acc" data-act="qnotesave" data-id="'+x.id+'">儲存</button></div>');
+    $('pan').__reopen=function(){ noteSheet(itemById(x.id)); };
+    setTimeout(function(){ var e=$('qN'); if(e){ e.focus(); try{ e.setSelectionRange(e.value.length,e.value.length); }catch(_){} } },90);
+  }
+  // 揿「附件」：睇得到、開得到、加得到、刪得到
+  function fileSheet(x){
+    if(!x) return;
+    var n=(x.files||[]).length;
+    openSheet('<h3>'+kico(x.kind,18,'inline')+' '+esc(x.name)+'</h3>'+
+      '<div class="fld"><label>檔案'+(n? '（'+n+' 個）':'')+'</label>'+filesHTML(x,true)+'</div>'+
+      '<div class="hint">單據、門票、確認信、酒店圖都擺得。每個檔上限 '+MAXMB+'MB。<br>'+
+      '出門前記得去「匯出 → 離線準備」預載，咁冇訊號都開得到。</div>');
+    $('pan').__reopen=function(){ fileSheet(itemById(x.id)); };
   }
   function itemSheet(x){
     var k=kd(x.kind);
@@ -3399,9 +3441,17 @@
       var fl=[].slice.call(e.target.files||[]);
       e.target.value='';
       if(!xp||!fl.length) return;
+      var xpid=xp.id, reopen=$('pan').__reopen;
       (function go(i){
-        if(i>=fl.length){ if($('sheet').className.indexOf('show')>=0) itemSheet(itemById(xp.id)); return; }
-        uploadFile(xp, fl[i], function(){ go(i+1); });
+        if(i>=fl.length){
+          if($('sheet').className.indexOf('show')>=0){
+            if(reopen) reopen(); else itemSheet(itemById(xpid));
+          }
+          render(); return;
+        }
+        var cur3=itemById(xpid);                    // 每次重新拎，唔用舊引用
+        if(!cur3){ go(i+1); return; }
+        uploadFile(cur3, fl[i], function(){ go(i+1); });
       })(0);
       return;
     }
@@ -3566,6 +3616,13 @@
         '<button class="dz" data-act="deltrip" data-id="'+id+'">刪咗成個旅程</button>');
     }
     else if(act==='edittripid'){ tripSheet(tripById(id)); }
+    else if(act==='qnote'){ noteSheet(itemById(id)); }
+    else if(act==='qfile'){ fileSheet(itemById(id)); }
+    else if(act==='qnotesave'){
+      var xq=itemById(id), tq=$('qN'); if(!xq||!tq) return;
+      snap(); xq.note=tq.value.replace(/\s+$/,''); save(); closeSheet();
+      setSync('ok', xq.note? '筆記存咗' : '筆記清咗');
+    }
     else if(act==='savepnote'){
       var xn=itemById(id), ta=$('pNote'); if(!xn||!ta) return;
       snap(); xn.note=ta.value.replace(/\s+$/,''); save();
