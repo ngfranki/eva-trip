@@ -410,6 +410,10 @@
   .mdb:active{background:var(--soft)}
   .mdhint{font-size:11px; color:var(--muted2); margin-left:4px}
   .mdb.on{background:var(--acc); color:#fff; border-color:var(--acc)}
+  .rsrc{font-size:10.5px; font-weight:800; padding:2px 6px; border-radius:4px; margin-left:6px;
+        letter-spacing:.03em; vertical-align:1px}
+  .rsrc.auto{background:var(--link-soft); color:var(--link)}
+  .rsrc.man{background:var(--soft2); color:var(--muted); border:1px solid var(--line)}
   /* contenteditable 編輯器：睇落同 textarea 一樣，但打粗體即刻見到粗體 */
   .rte{min-height:130px; max-height:320px; overflow:auto; text-align:left; line-height:1.6;
        white-space:pre-wrap; word-break:break-word; cursor:text}
@@ -479,6 +483,38 @@
   .nowbtns{margin-top:16px; display:flex; flex-direction:column; gap:8px}
   .nowbtns .btn{text-align:center; text-decoration:none}
   .tfbtn.on{background:var(--acc)!important; color:#fff!important; border-color:var(--acc)!important}
+
+  /* ── 而家／今日 分頁 ── */
+  .ntabs{display:flex; gap:6px; margin:0 0 12px; padding-right:46px}
+  .ntab{flex:1; padding:9px 0; min-height:40px; border:1px solid var(--line); border-radius:9px;
+        background:var(--card); color:var(--muted); font-size:14px; font-weight:700}
+  .ntab.on{background:var(--acc); border-color:var(--acc); color:#fff}
+
+  /* ── 今日一頁 ── */
+  .tdnav{display:flex; align-items:center; gap:8px; margin:0 0 8px}
+  .tdnav b{flex:1; text-align:center; font-size:15px; font-weight:800; letter-spacing:-.01em}
+  .tdb{width:34px; height:34px; border-radius:9px; border:1px solid var(--line);
+       background:var(--card); color:var(--fg); font-size:17px; line-height:1}
+  .tdb:disabled{opacity:.3}
+  .tdwx{font-size:12.5px; color:var(--muted); font-weight:600; margin:0 0 4px}
+  .tdfrom{font-size:12.5px; color:var(--muted); font-weight:600; margin:0 0 4px}
+  .tdmeta{font-size:12px; color:var(--muted2); font-weight:600; margin:0 0 12px}
+  .tdlist{display:flex; flex-direction:column}
+  .tdrow{display:flex; align-items:flex-start; gap:9px; padding:10px 0;
+         border-top:1px solid var(--line)}
+  .tdrow.done{opacity:.45}
+  .tdrow .tick{flex:none; margin-top:1px; color:var(--muted2)}
+  .tdrow.done .tick{background:var(--ok); border-color:var(--ok); color:#fff}
+  .tdt{flex:none; width:44px; text-align:right; font-size:13.5px; font-weight:800;
+       font-variant-numeric:tabular-nums; line-height:1.25; padding-top:2px}
+  .tdt.est{color:var(--muted2); font-weight:700; font-size:12.5px}
+  .tdmid{flex:1; min-width:0}
+  .tdn{font-size:14.5px; font-weight:700; line-height:1.35; word-break:break-word}
+  .tdw{font-size:12px; color:var(--warn); font-weight:700; margin-top:3px}
+  .tdc{font-size:11.5px; color:var(--muted2); font-weight:600; margin-top:3px}
+  .tdc .sep{margin:0 5px; opacity:.5}
+  .tdgo{flex:none; width:38px; height:38px; display:flex; align-items:center; justify-content:center;
+        border-radius:9px; border:1px solid var(--line); color:var(--acc); text-decoration:none}
 
   /* ── 首頁：行程格 ── */
   .ico.rot90{transform:rotate(90deg)}
@@ -711,7 +747,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v26-1';
+  var APP_VER='20260915-v27-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -881,6 +917,7 @@
     if(t>last[1]) return x.time+' 到，但 '+minHM(last[1])+' 關門';
     return x.time+' 唔喺營業時間內（'+H.spans.map(function(sp){ return minHM(sp[0])+'–'+minHM(sp[1]); }).join('、')+'）';
   }
+  function hm2m(hm){ var p=String(hm||'0:00').split(':'); return (+p[0]||0)*60+(+p[1]||0); }
   function minHM(m){ m=((m%1440)+1440)%1440; return pad(Math.floor(m/60))+':'+pad(m%60); }
   // 即時開／關：有當地時區就用當地時間算，冇就用部機時間（會註明）
   function openState(x){
@@ -1364,6 +1401,43 @@
   function cur(){ var t=curTrip(); return (t&&t.cur)||'HKD'; }
   function money(n){ return cur()+' '+Math.round(+n||0).toLocaleString(); }
   function rates(){ var t=curTrip(); if(!t) return {}; if(!t.rates) t.rates={}; return t.rates; }
+  function rateSrc(){ var t=curTrip(); if(!t) return {}; if(!t.ratesSrc) t.ratesSrc={}; return t.ratesSrc; }
+
+  // 自動匯率。Frankfurter 免 key、免登記、無 quota，資料來自 98 間央行（ECB 為底）。
+  // 🔴 唔會蓋走你自己入嘅：ratesSrc[ccy]==='man' 就跳過。
+  // ⚠️ ECB 嗰套冇台幣（TWD）等，攞唔到就留返手動。
+  var fxBusy=false;
+  function fxFetch(force){
+    var t=curTrip(); if(!t) return;
+    if(fxBusy) return;
+    if(!force && t.fxAt && (Date.now()-t.fxAt)<12*3600*1000) return;   // 匯率一日更新一次，半日內唔重複攞
+    var home=(t.cur||'HKD').toUpperCase();
+    var need={}, src=rateSrc();
+    tItems().forEach(function(x){ var c=itemCcy(x); if(c && c!==home) need[c.toUpperCase()]=1; });
+    Object.keys(rates()).forEach(function(c){ need[c.toUpperCase()]=1; });
+    var want=Object.keys(need).filter(function(c){ return src[c]!=='man'; });
+    if(!want.length) return;
+    fxBusy=true;
+    // base=home，回嚟係「1 home = N 外幣」，我哋要倒過嚟
+    fetch('https://api.frankfurter.dev/v1/latest?base='+encodeURIComponent(home)+
+          '&symbols='+want.join(','))
+      .then(function(r){ return r.ok? r.json() : null; })
+      .then(function(j){
+        fxBusy=false;
+        var t2=curTrip(); if(!t2||!j||!j.rates) return;
+        if(!t2.rates) t2.rates={}; if(!t2.ratesSrc) t2.ratesSrc={};
+        var n=0;
+        Object.keys(j.rates).forEach(function(c){
+          var per=+j.rates[c];                    // 1 home = per 外幣
+          if(!per) return;
+          if(t2.ratesSrc[c]==='man') return;      // 你自己入嘅，唔碰
+          t2.rates[c]=1/per;                      // 1 外幣 = ? home
+          t2.ratesSrc[c]='auto'; n++;
+        });
+        if(n){ t2.fxAt=Date.now(); t2.fxDate=j.date||''; save(true); render(); }
+      })
+      .catch(function(){ fxBusy=false; });
+  }
   function itemCcy(x){ return x.ccy || cur(); }
   // 換算去旅程主幣種。匯率係你自己喺旅程設定入面填（唔駁 API，離線都準）。
   function toHome(amt, ccy){
@@ -1877,6 +1951,7 @@
     }
     ensureList();
     if(MODE==='cloud') wxFetch();      // 自己有守衛，唔會每次 render 都打
+    fxFetch();                          // 自動匯率，同樣有守衛
     var h='<div class="page">';
     h+=hero(t);
     h+=twoUp();
@@ -2282,16 +2357,21 @@
         if(lp) h+='<div class="leg from"><em>'+ic('car',15)+'</em>由 '+esc(lp.name)+' 出發 · '+
                   esc(lp.t)+(lp.real?'':'<span class="est">估算</span>')+'</div>';
         arr.forEach(function(x){
-          var idx=null; if(kd(x.kind).geo && x.lat){ pn++; idx={n:pn,c:c}; }
-          if(prev){
+          // 🔴 一定要同 ensureRoute 嘅 filter 一模一樣（lat!=null && lng!=null），
+          // 唔係嘅話 legs 會對錯段。
+          var isGeo = kd(x.kind).geo && x.lat!=null && x.lng!=null;
+          var idx=null; if(isGeo){ pn++; idx={n:pn,c:c}; }
+          // 2026-09-15 修：舊版凡有 prev 就 legIdx++，連「備註」「待辦」呢啲冇座標嘅
+          // 都食一格。Google 只會回有座標嗰啲之間嘅 legs，所以一行備註夾喺中間，
+          // 之後每一段車程都會錯位一格（顯示嘅係下一段嘅時間）。只有兩邊都有座標才算一段。
+          if(prev && isGeo){
             var lt = legReal(d, legIdx) || legTxt(prev,x);
             if(lt) h+='<div class="leg"><em>'+lt.ic+'</em>'+esc(lt.t)+(lt.real?'':'<span class="est">估算</span>')+
               '<a href="#" data-act="legnav" data-a="'+prev.id+'" data-b="'+x.id+'">路線</a></div>';
             legIdx++;
           }
           h+=rowHTML(x,idx);
-          if(x.lat && kd(x.kind).geo) prev=x;   // 一定要同 ensureRoute 嘅 filter 一致，
-                                                 // 唔係嘅話被定位過嘅航班會令 legs 對錯段
+          if(isGeo) prev=x;
         });
         h+='</div>';
       } else h+='<div class="empty">今日仲未有安排</div>';
@@ -2896,7 +2976,13 @@
     $('side').classList.toggle('open', !!on);
     $('sidebd').className = 'sidebd'+(on?' show':'');
   }
-  function openSheet(h){ $('pan').innerHTML='<button class="close" data-act="closesheet">關</button>'+h; $('sheet').className='sheet show'; }
+  function openSheet(h){
+    var pan=$('pan');
+    // 開新內容即係離開「而家／今日」卡：唔清 __now，30 秒個 timer 會一直空轉。
+    if(pan.__now){ pan.__now=0; if(nowTimer){ clearInterval(nowTimer); nowTimer=null; } }
+    pan.innerHTML='<button class="close" data-act="closesheet">關</button>'+h;
+    $('sheet').className='sheet show';
+  }
   function reopenSheet(id){
     if($('sheet').className.indexOf('show')<0) return;
     var r=$('pan').__reopen;
@@ -3468,11 +3554,99 @@
     return atTz(n, tz);
   }
 
-  function nowSheet(){
-    openSheet('<div id="nowBox" class="nowwrap"></div>');
+  // ── 今日一頁：途中最常開嗰版。全日一眼睇完，唔使碌七日 ──
+  // 每項顯示時間：你自己排咗就用你排嘅；冇排就「上一站時間＋車程＋停留」推算，標「約」。
+  // 停留時間係假設，唔係真數 —— 所以推算出嚟嘅一律加「約」，唔好扮準。
+  var DWELL={ place:45, eat:60, buy:45, stay:20, car:20, flight:0, note:0, check:0 };
+  // 兩站之間幾多分鐘。有 Google 真數就用真數（同行程頁、同地圖一致），
+  // 冇就用 legTxt 同一條 haversine 公式，唔好兩個地方兩套估法。
+  function legMins(d, gi, a, b){
+    var r=dayRoute(d);
+    if(r && r.legs){
+      var off = r.fromPrev? 1 : 0;
+      var l=r.legs[gi+off];
+      if(l && l.sec) return Math.max(1, Math.round(l.sec/60));
+    }
+    if(a && b && a.lat!=null && b.lat!=null){
+      var km=hav([a.lat,a.lng],[b.lat,b.lng])*1.3, kmh;
+      if(km<2) kmh=4.5; else if(km<15) kmh=26; else if(km<60) kmh=40; else kmh=55;
+      return Math.max(1, Math.round(km/kmh*60));
+    }
+    return 0;
+  }
+  function dayPlan(d){
+    var arr=dayItems(d);
+    var seed=arr.filter(function(x){ return x.time; })[0];
+    var clock = seed? hm2m(seed.time) : 9*60;
+    var gi=0, out=[], prevGeo=null;
+    arr.forEach(function(x){
+      var isGeo = kd(x.kind).geo && x.lat!=null && x.lng!=null;
+      if(x.time){ clock=hm2m(x.time); }
+      else if(prevGeo && isGeo){ clock += legMins(d, gi-1, prevGeo, x); }
+      out.push({ x:x, at:clock, est:!x.time });
+      clock += (DWELL[x.kind]!=null? DWELL[x.kind] : 30);
+      if(isGeo){ prevGeo=x; gi++; }
+    });
+    return out;
+  }
+  var tdDay=null;                               // 今日一頁而家睇邊日
+  function todayHTML(){
+    var t=curTrip(); if(!t) return '<div class="empty">仲未有旅程</div>';
+    var ds=days(), td=today();
+    if(!ds.length) return '<div class="empty">未定日期<br>撳 hero 右上角「改」入返出發／返程日</div>';
+    var d = (tdDay && ds.indexOf(tdDay)>=0)? tdDay
+          : (ds.indexOf(td)>=0? td : (ds.filter(function(z){ return z>=td; })[0] || ds[0]));
+    tdDay=d;
+    var i=ds.indexOf(d), arr=dayItems(d);
+    ensureRoute(d);
+    var done=arr.filter(function(z){ return z.done; }).length;
+    var h='<div class="tdnav">'+
+       '<button class="tdb" data-act="tdday" data-d="'+(ds[i-1]||'')+'"'+(i<=0?' disabled':'')+'>‹</button>'+
+       '<b>第'+(i+1)+'日 · '+longD(d)+(d===td? ' · 今日':'')+'</b>'+
+       '<button class="tdb" data-act="tdday" data-d="'+(ds[i+1]||'')+'"'+(i>=ds.length-1?' disabled':'')+'>›</button>'+
+       '</div>';
+    var wl=dayWx(d);
+    if(wl) h+='<div class="tdwx">'+esc(wl)+'</div>';
+    var lp=legFromPrev(d);
+    if(lp) h+='<div class="tdfrom">'+ic('car',14,'inline')+' 由 '+esc(lp.name)+' 出發 · '+
+              esc(lp.t)+(lp.real?'':'（估）')+'</div>';
+    var tot=sumHome(arr);
+    h+='<div class="tdmeta">'+arr.length+' 項'+(done? ' · 去咗 '+done+'/'+arr.length:'')+
+       (tot? ' · '+esc(money(tot)) : '')+'</div>';
+    if(!arr.length) return h+'<div class="empty">今日仲未有安排</div>';
+    h+='<div class="tdlist">';
+    dayPlan(d).forEach(function(r){
+      var x=r.x, warn=hoursWarn(x), bits=[];
+      if(x.memo) bits.push(ic('note',11,'inline')+' 標註');
+      if((x.files||[]).length) bits.push(ic('copy',11,'inline')+' '+x.files.length);
+      if(x.conf) bits.push(esc(x.conf));
+      if(+x.cost) bits.push(esc(fmtCcy(itemCcy(x), x.cost)));
+      h+='<div class="tdrow'+(x.done?' done':'')+'">'+
+        '<button class="tick tap" data-act="tick" data-id="'+x.id+'">✓</button>'+
+        '<div class="tdt'+(r.est?' est':'')+'">'+(r.est?'約<br>':'')+minHM(r.at)+'</div>'+
+        '<div class="tdmid tap" data-act="focus" data-id="'+x.id+'">'+
+          '<div class="tdn">'+kico(x.kind,14,'inline')+' '+esc(x.name)+'</div>'+
+          (warn? '<div class="tdw">'+ic('clock',11,'inline')+' '+esc(warn)+'</div>':'')+
+          (bits.length? '<div class="tdc">'+bits.join('<span class="sep">·</span>')+'</div>':'')+
+        '</div>'+
+        (x.lat!=null? '<a class="tdgo tap" href="https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+
+           x.lat+','+x.lng+'" target="_blank" rel="noopener" title="導航">'+ic('route',16)+'</a>' : '')+
+        '</div>';
+    });
+    return h+'</div><div class="hint">冇打時間嗰啲係推算（標「約」）：上一站＋車程＋'+
+           '停留假設（景點 45 分、食飯 60 分）。想準就自己入時間。</div>';
+  }
+
+  var nowTab='now';
+  function nowSheet(tab){
+    if(tab) nowTab=tab;
+    openSheet('<div class="ntabs">'+
+      '<button class="ntab'+(nowTab==='now'?' on':'')+'" data-act="nowtab" data-t="now">而家</button>'+
+      '<button class="ntab'+(nowTab==='today'?' on':'')+'" data-act="nowtab" data-t="today">今日</button>'+
+      '</div><div id="nowBox" class="nowwrap"></div>');
     $('pan').__now=1;
     nowRender();
-    if(!gpsOn()) gpsStart(function(){ nowRender(); });
+    if(nowTab==='now' && !gpsOn()) gpsStart(function(){ nowRender(); });
     if(nowTimer) clearInterval(nowTimer);
     nowTimer=setInterval(function(){
       if($('pan').__now) nowRender();
@@ -3482,6 +3656,7 @@
 
   function nowRender(){
     var box=$('nowBox'); if(!box) return;
+    if(nowTab==='today'){ box.innerHTML=todayHTML(); return; }
     var t=curTrip();
     var h='';
     if(!t){ box.innerHTML='<div class="empty">仲未有旅程</div>'; return; }
@@ -4057,7 +4232,10 @@
           setTimeout(function(){ go(i+1); }, 900); });
       })(0);
     }
-    else if(act==='tick'){ var x2=itemById(id); if(x2){ snap(); x2.done=!x2.done; save(); } }
+    else if(act==='tick'){ var x2=itemById(id); if(x2){ snap(); x2.done=!x2.done; save();
+      if($('pan').__now) nowRender(); } }
+    else if(act==='nowtab'){ nowSheet(el.getAttribute('data-t')); }
+    else if(act==='tdday'){ var nd=el.getAttribute('data-d'); if(nd){ tdDay=nd; nowRender(); } }
     else if(act==='rowmenu'){
       var x3=itemById(id); if(!x3) return;
       openMenu(ev,'<button data-act="edititem" data-id="'+id+'">改</button>'+
@@ -4310,16 +4488,32 @@
       state.items.push(x8); save(); itemSheet(x8);
       setTimeout(function(){ try{ var e=$('eName'); e.focus(); e.select(); }catch(e){} },80);
     }
+    else if(act==='fxnow'){
+      var tf=curTrip(); if(tf) tf.fxAt=0;
+      setSync('','攞匯率…'); fxFetch(true);
+      setTimeout(function(){ if($('sheet').className.indexOf('show')>=0){
+        var b=document.createElement('button'); b.setAttribute('data-act','rateset');
+        document.body.appendChild(b); b.click(); b.remove(); } }, 1800);
+    }
     else if(act==='rateset'){
       var t9=curTrip(), rr=rates(), all={};
       tItems().forEach(function(x){ var c=itemCcy(x); if(c!==cur()) all[c]=1; });
       Object.keys(rr).forEach(function(c){ all[c]=1; });
       var list=Object.keys(all);
-      var h9='<h3>匯率設定</h3><div class="hint" style="margin-bottom:14px">1 單位外幣 ＝ 幾多 '+esc(cur())+
-        '。自己填，唔駁 API，所以離線都準、唔會突然變。</div>';
+      var src9=rateSrc();
+      var h9='<h3>匯率設定</h3><div class="hint" style="margin-bottom:12px">1 單位外幣 ＝ 幾多 '+esc(cur())+
+        '。<b>會自動更新</b>（Frankfurter · 98 間央行 · 免 key）'+
+        (t9&&t9.fxDate? '，最後更新 '+esc(t9.fxDate) : '')+'。<br>'+
+        '你自己入過嘅會標住「自己入」，自動更新<b>唔會蓋走</b>。攞唔到嘅幣種（例如台幣）留返手動。</div>'+
+        '<button class="btn ghost sm" data-act="fxnow" style="margin-bottom:14px">即刻更新匯率</button>';
       if(!list.length) h9+='<div class="empty">而家所有使費都係 '+esc(cur())+'<br>喺項目度改幣種就會出現喺呢度</div>';
       list.forEach(function(c){
-        h9+='<div class="fld"><label>1 '+esc(c)+' = ? '+esc(cur())+'</label><input class="inp rate" data-c="'+esc(c)+'" type="number" step="0.0001" inputmode="decimal" value="'+(rr[c]||'')+'" placeholder="例：0.052"></div>';
+        var tagc = src9[c]==='man'? '<span class="rsrc man">自己入</span>'
+                 : (src9[c]==='auto'? '<span class="rsrc auto">自動</span>' : '');
+        h9+='<div class="fld"><label>1 '+esc(c)+' = ? '+esc(cur())+' '+tagc+'</label>'+
+            '<input class="inp rate" data-c="'+esc(c)+'" type="number" step="0.000001" inputmode="decimal" value="'+
+            (rr[c]!=null? (+rr[c]).toFixed(6).replace(/0+$/,'').replace(/\.$/,'') : '')+'" placeholder="例：0.0507">'+
+            (src9[c]==='auto'? '<div class="hint">改咗就會變「自己入」，之後唔會再自動更新</div>':'')+'</div>';
       });
       h9+='<div class="fld"><label>加一個幣種</label><div style="display:flex;gap:7px">'+
           '<input class="inp" id="nrC" placeholder="JPY" style="width:88px;text-transform:uppercase">'+
@@ -4330,12 +4524,18 @@
     else if(act==='saverates'){
       var t10=curTrip(); if(!t10) return; snap();
       if(!t10.rates) t10.rates={};
+      if(!t10.ratesSrc) t10.ratesSrc={};
       $('pan').querySelectorAll('.rate').forEach(function(i){
         var c=i.getAttribute('data-c'), v=parseFloat(i.value);
-        if(v>0) t10.rates[c]=v; else delete t10.rates[c];
+        var old=+t10.rates[c];
+        if(v>0){
+          // 同自動攞到嘅唔同 → 當你自己入，之後唔再自動蓋
+          if(!(old && Math.abs(old-v)/Math.max(old,v) < 1e-6)) t10.ratesSrc[c]='man';
+          t10.rates[c]=v;
+        } else { delete t10.rates[c]; delete t10.ratesSrc[c]; }
       });
       var nc=($('nrC').value||'').trim().toUpperCase(), nv=parseFloat($('nrV').value);
-      if(nc && nv>0) t10.rates[nc]=nv;
+      if(nc && nv>0){ t10.rates[nc]=nv; t10.ratesSrc[nc]='man'; }
       save(); closeSheet();
     }
     else if(act==='rephoto'){
