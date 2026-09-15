@@ -653,7 +653,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v21-0';
+  var APP_VER='20260915-v21-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1059,9 +1059,12 @@
     });
     return o;
   }
+  var baseJson=null;                      // 最後一次同雲端一致嘅 state（三路合併用）
+  function setBase(){ try{ baseJson=JSON.stringify(state); }catch(e){ baseJson=null; } }
   function applyState(row){
     state=migrate((row&&row.state)||{});
     lastUpdated=(row&&row.updated_at)||null;
+    setBase();
     if(!curTrip() && state.trips.length) state.settings.curTrip=state.trips[0].id;
     ensureList();
   }
@@ -1096,20 +1099,54 @@
   }
   // 兩部機同時用嘅時候，舊 state 唔可以盲目覆蓋新 state。
   // 以 id 做 union：兩邊新增嘅都保留；同一個 id 兩邊都改過就以伺服器（較新）為準。
+  // 三路合併（mine / theirs / base）。
+  //
+  // 🔴 2026-09-15：舊版對「兩邊都有嘅項目」一律採用對面版本
+  //   （out 由 theirs 整份複製，然後只 push 對面冇嘅 id），
+  //   即係**任何對現有項目嘅修改，撞版就會靜靜消失**。實測：喺一格寫完筆記
+  //   撳儲存，撞正一次合併，筆記就冇咗，而且畫面顯示「已儲低」。
+  //   只有全新項目先生存得到。
+  //
+  // 而家用 baseline 分辨邊邊改過：
+  //   我改過（mine ≠ base）→ 用我嘅
+  //   我冇改（mine = base）→ 用對面嘅
+  //   兩邊都改 → 用我嘅（我係現場嗰個；對面版本唔會丟，喺 undo 堆疊度）
+  function idMap(arr){ var m={}; (arr||[]).forEach(function(x){ if(x&&x.id) m[x.id]=x; }); return m; }
+  function same(a,b){ return JSON.stringify(a||null)===JSON.stringify(b||null); }
   function mergeStates(mine, theirs){
     var out=JSON.parse(JSON.stringify(theirs));
-    // 兩邊嘅墓碑合埋，再剪走太舊嘅
+    var base=null;
+    try{ base=baseJson? JSON.parse(baseJson) : null; }catch(e){ base=null; }
+
+    // 墓碑：兩邊合埋，剪走太舊嘅。刪贏改。
     var del=Object.assign({}, theirs.del||{}, mine.del||{});
     var cut=DELCUT();
     Object.keys(del).forEach(function(id){ var t=+new Date(del[id]); if(t && t<cut) delete del[id]; });
     out.del=del;
-    // 規矩：刪贏改。一邊刪咗、另一邊改過，都當刪 —— 簡單、可預期。
+
     ['trips','lists','items'].forEach(function(k){
-      if(!Array.isArray(out[k])) out[k]=[];
-      out[k]=out[k].filter(function(x){ return !(x && del[x.id]); });
-      var seen={}; out[k].forEach(function(x){ seen[x.id]=1; });
-      (mine[k]||[]).forEach(function(x){ if(x&&x.id&&!seen[x.id]&&!del[x.id]) out[k].push(x); });
+      var M=idMap(mine[k]), T=idMap(theirs[k]), B=idMap(base? base[k] : []);
+      var ids=[], seen={};
+      (theirs[k]||[]).forEach(function(x){ if(x&&x.id&&!seen[x.id]){ seen[x.id]=1; ids.push(x.id); } });
+      (mine[k]||[]).forEach(function(x){ if(x&&x.id&&!seen[x.id]){ seen[x.id]=1; ids.push(x.id); } });
+      var res=[];
+      ids.forEach(function(id){
+        if(del[id]) return;                              // 有墓碑＝刪咗，兩邊都唔要
+        var m=M[id], t=T[id], b=B[id];
+        if(m && t){
+          // 兩邊都有：我改過就用我嘅，冇改就用對面嘅
+          res.push(same(m,b)? t : m);
+        } else if(m && !t){
+          // 對面冇：base 有過＝對面刪咗（但冇墓碑，例如舊版本客戶）→ 保守保留我嘅
+          res.push(m);
+        } else if(t){
+          // 我冇：可能係對面新加，亦可能係我刪咗但冇記墓碑 → 保留對面嘅
+          res.push(t);
+        }
+      });
+      out[k]=res;
     });
+
     out.logs=out.logs||{};
     Object.keys(mine.logs||{}).forEach(function(k){
       var a=mine.logs[k], b=out.logs[k];
@@ -1117,22 +1154,20 @@
       else if(a&&a.updatedAt&&(!b.updatedAt||a.updatedAt>b.updatedAt)) out.logs[k]=a;
     });
     out.chat=Object.assign({}, out.chat||{}, mine.chat||{});
-    // 呢幾個係「攞過就唔想再攞」嘅 cache（路線／天氣／探索）。
-    // 舊版 out 由 theirs 整份複製，所以每次撞版都會丟失本機攞到嘅，
-    // 下次 render 又再燒一次 Google／Open-Meteo call。改成 additive：
-    // 對面冇嘅 key 就保留本機嗰份。
+    // 呢幾個係「攞過就唔想再攞」嘅 cache（路線／天氣／探索）：additive，
+    // 唔係每次撞版就丟失本機攞到嘅，下次 render 又再燒一次 API call。
     ['routes','wx','explore'].forEach(function(k){
       var mix=Object.assign({}, mine[k]||{});
-      Object.keys(out[k]||{}).forEach(function(kk){ mix[kk]=out[k][kk]; });   // 對面嘅贏
+      Object.keys(out[k]||{}).forEach(function(kk){ mix[kk]=out[k][kk]; });
       out[k]=mix;
     });
     out.settings=out.settings||{};
     var ms=mine.settings||{};
     if(ms.curTrip) out.settings.curTrip=ms.curTrip;              // 本機正在睇邊個行程
     if(ms.gmapKey && !out.settings.gmapKey) out.settings.gmapKey=ms.gmapKey;
+    if(ms.traffic!=null) out.settings.traffic=ms.traffic;
     return out;
   }
-  var pRetry=0;
   function persist(){
     if(!state||MODE!=='cloud'||!KEY) return;
     var ts=new Date().toISOString();
@@ -1142,7 +1177,7 @@
         headers:Object.assign(hdr(),{Prefer:'resolution=merge-duplicates,return=representation'}),
         body:JSON.stringify([{id:'main',state:state,updated_at:ts}])})
       .then(function(r){ if(!r.ok) throw 0; return r.json(); })
-      .then(function(rows){ dirty=false; pRetry=0; if(rows&&rows[0]) lastUpdated=rows[0].updated_at; cacheSave(); setSync('ok','已儲低 '+nowT()); })
+      .then(function(rows){ dirty=false; pRetry=0; if(rows&&rows[0]) lastUpdated=rows[0].updated_at; setBase(); cacheSave(); setSync('ok','已儲低 '+nowT()); })
       .catch(function(){ setSync('err','離線，資料未同步'); setTimeout(persist,8000); });
       return;
     }
@@ -1152,7 +1187,7 @@
        body:JSON.stringify({state:state, updated_at:ts})})
     .then(function(r){ if(!r.ok) throw 0; return r.json(); })
     .then(function(rows){
-      if(rows && rows[0]){ dirty=false; pRetry=0; lastUpdated=rows[0].updated_at; cacheSave(); setSync('ok','已儲低 '+nowT()); return; }
+      if(rows && rows[0]){ dirty=false; pRetry=0; lastUpdated=rows[0].updated_at; setBase(); cacheSave(); setSync('ok','已儲低 '+nowT()); return; }
       // 0 row ＝ 其他裝置喺我讀完之後寫過 → 合併，唔可以覆蓋
       if(pRetry>=4){ setSync('err','同步衝突，撳一下狀態重試'); return; }
       pRetry++;
