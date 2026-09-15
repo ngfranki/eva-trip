@@ -747,7 +747,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v27-0';
+  var APP_VER='20260915-v27-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1877,6 +1877,9 @@
     var r=dayRoute(d);
     if(r && r.fromPrev && r.legs && r.legs[0]){
       var l=r.legs[0], mins=Math.max(1,Math.round(l.sec/60)), km=l.m/1000;
+      // 昨晚住嘅地方同今日第一項係同一個位（例：退房就係嗰間酒店）→
+      // 出「由 X 出發 · 1 分鐘 · 0.0 km」係廢話，索性唔出。
+      if(l.m<150) return null;
       return { name:r.fromPrev, t:minsTxt(l.sec)+' · '+(km<10?km.toFixed(1):Math.round(km))+' km', real:1 };
     }
     var org=dayOrigin(d);
@@ -3618,8 +3621,9 @@
     dayPlan(d).forEach(function(r){
       var x=r.x, warn=hoursWarn(x), bits=[];
       if(x.memo) bits.push(ic('note',11,'inline')+' 標註');
-      if((x.files||[]).length) bits.push(ic('copy',11,'inline')+' '+x.files.length);
-      if(x.conf) bits.push(esc(x.conf));
+      if((x.files||[]).length) bits.push(ic('copy',11,'inline')+' 附件 '+x.files.length);
+      // 訂單號要標明係咩號碼，唔係嘅話同附件數字黏埋一齊讀（「3·1658108…」）
+      if(x.conf) bits.push(esc(bkLab(x.kind).conf[0]+' '+x.conf));
       if(+x.cost) bits.push(esc(fmtCcy(itemCcy(x), x.cost)));
       h+='<div class="tdrow'+(x.done?' done':'')+'">'+
         '<button class="tick tap" data-act="tick" data-id="'+x.id+'">✓</button>'+
