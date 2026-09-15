@@ -634,7 +634,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260915-v19-0';
+  var APP_VER='20260915-v19-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1756,17 +1756,29 @@
   var view='trip';
 
   function tripItems(tid){ return state.items.filter(function(x){ return x.tripId===tid; }); }
+  // 「最靚、最重要嘅地標」怎樣揀：
+  // 評分人數代表知名度，但唔可以只睇人數 —— 商場同機場嘅評分人數極多，
+  // 但兩樣都唔係靚地標。實測：例子行程純睇人數會揀「御殿場 Outlet」(29,185)，
+  // 而唔係「大石公園（富士山展望）」(23,657)。所以按類型加權。
+  var COVW={ place:1, eat:0.4, stay:0.3, buy:0.22, car:0.12 };
+  function coverScore(x){
+    if((+x.rating||0) < 4) return -1;                    // 評分唔達標唔做封面
+    var n=+x.ratingCount||0;
+    if(n < 50) return -1;                                // 太少人評，唔算地標
+    var w=COVW[x.kind]; if(w==null) w=0.5;
+    var ty=(x.gtypes||[]).join(',');
+    if(/tourist_attraction|natural_feature|park|scenic/.test(ty)) w*=1.6;   // 景點加分
+    if(/airport|train_station|parking|car_rental|convenience_store/.test(ty)) w*=0.3;
+    return n*w;
+  }
   function tripPhoto(t){
-    if(t.cover) return t.cover;
+    if(t.cover) return t.cover;                          // 你自己揀過就聽你
     var c=tripItems(t.id).filter(function(x){ return x.photoUrl; });
     if(!c.length) return '';
-    c.sort(function(a,b){
-      var ga=(+a.rating||0)>=4 ? 1:0, gb=(+b.rating||0)>=4 ? 1:0;
-      if(ga!==gb) return gb-ga;                          // 先要評分達標
-      var na=+a.ratingCount||0, nb=+b.ratingCount||0;
-      if(na!==nb) return nb-na;                          // 再要最多人評（＝地標）
-      return (+b.rating||0)-(+a.rating||0);
-    });
+    var best=null, bs=-1;
+    c.forEach(function(x){ var sc=coverScore(x); if(sc>bs){ bs=sc; best=x; } });
+    if(best) return best.photoUrl;
+    // 全部都唔達標（新行程／冷門地方）就隨便揀一張，好過空白
     return c[0].photoUrl;
   }
   function tripDays(t){
