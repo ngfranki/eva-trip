@@ -811,7 +811,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260916-v32-2';
+  var APP_VER='20260916-v32-3';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -3972,12 +3972,13 @@
     if(!nearState.list){ nearGo(); return h+'<div class="empty"><span class="spin"></span>搜尋中…</div>'; }
     if(!nearState.list.length) return h+'<div class="empty">'+(nearState.radius/1000)+
       ' km 內找不到<br>試按大一點的範圍</div>';
+    var catName=(NEAR_CATS.filter(function(c){ return c.k===nearState.kind; })[0]||{}).n||'地點';
     h+='<div class="nrlist">';
     nearState.list.slice(0,20).forEach(function(x){
       var km = x.d<1? Math.round(x.d*1000)+' m' : x.d.toFixed(1)+' km';
       h+='<div class="nrrow">'+
          '<div class="nrd">'+esc(km)+'</div>'+
-         '<div class="nrmid"><div class="nrn">'+esc(x.name||'（沒有名稱）')+'</div>'+
+         '<div class="nrmid"><div class="nrn">'+esc(x.name || ('（'+catName+'，沒有名稱）'))+'</div>'+
          (x.hours? '<div class="nrh">'+esc(String(x.hours).slice(0,44))+'</div>':'')+'</div>'+
          '<a class="tdgo tap" href="https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+
          x.lat+','+x.lng+'" target="_blank" rel="noopener" title="導航">'+ic('route',16)+'</a>'+

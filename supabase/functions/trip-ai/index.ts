@@ -238,14 +238,17 @@ Deno.serve(async (req) => {
       return null;
     };
 
-    const q = `[out:json][timeout:25];(${k.osm.map((x) => `nwr${x}(around:${r},${lat},${lng});`).join("")});out center 40;`;
+    // 🔴 timeout 要細。2026-09-16 實測：三個鏡像順序試、每個 25 秒，
+    //    加起嚟超過 50 秒，client 同 edge function 都會斷。
+    //    改成 Overpass 自己 10 秒、fetch 硬斷 12 秒、最多試兩個鏡像。
+    const q = `[out:json][timeout:10];(${k.osm.map((x) => `nwr${x}(around:${r},${lat},${lng});`).join("")});out center 40;`;
     const tryOsm = async () => {
       for (const host of ["https://overpass-api.de/api/interpreter",
-                          "https://overpass.kumi.systems/api/interpreter",
-                          "https://overpass.private.coffee/api/interpreter"]) {
+                          "https://overpass.kumi.systems/api/interpreter"]) {
         try {
           const rr2 = await fetch(host + "?data=" + encodeURIComponent(q), {
             headers: { "User-Agent": "eva-trip/1.0 (personal trip planner; +https://ngfranki.github.io/eva-trip/)" },
+            signal: AbortSignal.timeout(12000),
           });
           if (!rr2.ok) continue;
           const d2 = JSON.parse(await rr2.text());
