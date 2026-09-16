@@ -811,7 +811,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260916-v32-4';
+  var APP_VER='20260916-v33-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2706,16 +2706,21 @@
         position:{lat:p.x.lat,lng:p.x.lng}, map:gmap,
         icon:pinIcon(p.n||'·', p.c, big), title:p.x.name, zIndex:big?999:1
       });
+      m.__id=p.x.id; m.__n=p.n||'·'; m.__c=p.c;
       m.addListener('click',function(){
         hlId=p.x.id;
-        gInfo.setContent('<div style="font:14px -apple-system,PingFang HK,sans-serif;min-width:150px">'+
-          '<b style="display:block;margin-bottom:3px">'+esc(p.x.name)+'</b>'+
-          (p.x.rating?'<span style="color:#C9700A;font-weight:700">'+ic('star',12,'inline')+' '+(+p.x.rating).toFixed(1)+'</span> ':'')+
-          (p.x.addr?'<span style="color:#6C757D;font-size:12.5px">'+esc(p.x.addr)+'</span>':'')+
-          '<a href="https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+p.x.lat+','+p.x.lng+
-          '" target="_blank" rel="noopener" style="display:block;margin-top:6px;color:#3F52E3;font-weight:700;font-size:12.5px">導航 →</a></div>');
+        gInfo.setContent(mapPop(p.x));
         gInfo.open({anchor:m, map:gmap});
-        render(); scrollTo(p.x.id);
+        // 🔴 2026-09-16 修：本來呢度叫 render()，但 render() 會 drawMap()，
+        //    而 drawMap() 第一句就係 gmarks.forEach(setMap(null)) —— 連
+        //    InfoWindow 錨住嗰個 marker 一齊清走，資訊框即開即消失。
+        //    用家見到就係「撳完冇反應」。所以唔可以 render()：
+        //    highlight 自己換 icon 就夠。
+        gmarks.forEach(function(mm){
+          if(mm.__id && mm.setIcon) mm.setIcon(pinIcon(mm.__n, mm.__c, mm.__id===hlId));
+          if(mm.__id && mm.setZIndex) mm.setZIndex(mm.__id===hlId? 999 : 1);
+        });
+        scrollTo(p.x.id);
       });
       gmarks.push(m); bounds.extend(m.getPosition());
       if(p.d){ (lines[p.d]=lines[p.d]||{c:p.c,a:[]}).a.push({lat:p.x.lat,lng:p.x.lng}); }
@@ -2762,6 +2767,23 @@
       : '';
     $('mapbar').innerHTML = t? (tf+'<button data-act="mapday" data-d="all" class="'+(mapDay==='all'?'on':'')+'">全程</button>'+
       days().map(function(d,i){ return '<button data-act="mapday" data-d="'+d+'" class="'+(mapDay===d?'on':'')+'">'+md(d)+'</button>'; }).join('')) : '';
+  }
+  // 地圖氣泡內容。兩個底圖（Google InfoWindow ／ Leaflet popup）共用。
+  // 「詳情」入口好緊要 —— 標註、附件、營業時間全部喺地點卡裏面，
+  // 喺地圖上面睇唔到。
+  function mapPop(x){
+    return '<div style="font:14px -apple-system,PingFang HK,sans-serif;min-width:160px">'+
+      '<b style="display:block;margin-bottom:3px">'+esc(x.name)+'</b>'+
+      (x.rating?'<span style="color:#C9700A;font-weight:700">'+ic('star',12,'inline')+' '+(+x.rating).toFixed(1)+'</span> ':'')+
+      (x.addr?'<span style="color:#6C757D;font-size:12.5px">'+esc(tidyAddr(x.addr))+'</span>':'')+
+      ((x.files||[]).length||x.memo? '<div style="color:#6C757D;font-size:12px;margin-top:4px">'+
+        (x.memo?'有標註':'')+((x.files||[]).length? (x.memo?' · ':'')+'附件 '+x.files.length:'')+'</div>':'')+
+      '<div style="display:flex;gap:12px;margin-top:7px">'+
+      '<a href="#" data-act="mapdetail" data-id="'+x.id+'" '+
+        'style="color:#3F52E3;font-weight:700;font-size:12.5px;text-decoration:none">詳情 ›</a>'+
+      '<a href="https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+x.lat+','+x.lng+
+        '" target="_blank" rel="noopener" style="color:#3F52E3;font-weight:700;font-size:12.5px;text-decoration:none">導航 →</a>'+
+      '</div></div>';
   }
   function drawMap(){
     // 線上就清走離線提示。一定要喺呢度做：Leaflet 路徑係 append 唔係換 innerHTML，
@@ -2812,7 +2834,9 @@
       var m=L.marker([p.x.lat,p.x.lng],{icon:L.divIcon({className:'',
         html:'<div class="pin'+(big?' big':'')+'" style="background:'+p.c+'"><b>'+(p.n||'·')+'</b></div>',
         iconSize:[25,25], iconAnchor:[12,25]}), zIndexOffset: big?1000:0});
-      m.on('click',function(){ hlId=p.x.id; render(); scrollTo(p.x.id); });
+      // 同 Google 路徑一樣：render() 會清走 marker，popup 即開即消失
+      m.bindPopup(mapPop(p.x), {maxWidth:260});
+      m.on('click',function(){ hlId=p.x.id; scrollTo(p.x.id); });
       m.bindTooltip(p.x.name,{direction:'top',offset:[0,-22]});
       m.addTo(map); markers.push(m); ll.push([p.x.lat,p.x.lng]);
       if(p.d){ (lines[p.d]=lines[p.d]||{c:p.c,a:[]}).a.push([p.x.lat,p.x.lng]); }
@@ -4697,6 +4721,7 @@
       var inp2=wrap.querySelector('input'), q=inp2.value.trim();
       addItem(sc, i>=0? (sugData[i].name||sugData[i].display_name||'').split(',')[0] : q, i>=0? sugData[i] : null);
     }
+    else if(act==='mapdetail'){ ev.preventDefault(); var xm=itemById(id); if(xm) placeSheet(xm); }
     else if(act==='focus'){ var x=itemById(id); if(x){ hlId=x.id; render(); if(x.lat) flyTo(x); placeSheet(x); } }
     else if(act==='allhours'){ var e9=$('pAllHours'); if(e9) e9.className = e9.className.indexOf('hide')>=0? 'phours':'phours hide'; }
     else if(act==='enrich'){ enrich(itemById(id), function(ok){ if(ok) placeSheet(itemById(id)); }); }
