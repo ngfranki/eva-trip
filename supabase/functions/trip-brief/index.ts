@@ -172,8 +172,17 @@ async function loadState() {
   return rows?.[0]?.state ?? null;
 }
 
-function pickTrip(state: any) {
+// 🔴 唔可以只靠 settings.curTrip —— 嗰個係「app 入面而家揭開邊個旅程」。
+//    如果出門前你最後揭嘅係另一個旅程，早報就會因為日期對唔上而全程靜音，
+//    而你唔會知。所以：先揀「今日落喺出發～返程之間」嗰個，冇才用 curTrip。
+function pickTrip(state: any, today: string) {
   const trips = state.trips ?? [];
+  const live = trips.filter((t: any) => t.start && t.end && t.start <= today && today <= t.end);
+  if (live.length) {
+    // 多過一個就揀最短嗰個（最貼「而家真係去緊」）
+    live.sort((a: any, b: any) => (Date.parse(a.end) - Date.parse(a.start)) - (Date.parse(b.end) - Date.parse(b.start)));
+    return live[0];
+  }
   const cur = state.settings?.curTrip;
   return trips.find((t: any) => t.id === cur) ?? trips[0] ?? null;
 }
@@ -212,12 +221,58 @@ function hoursWarn(x: any, ds: string, atMin: number | null) {
   return null;
 }
 
+// 即場問 Google 計全日車程。起點沿用 app 嘅規矩：前一日住嘅地方優先。
+async function liveRoute(state: any, trip: any, ds: string) {
+  const key = env("GOOGLE_MAPS_KEY");
+  if (!key) return null;
+  const own = dayItems(state, trip.id, ds)
+    .filter((x: any) => GEO_KINDS.has(x.kind) && x.lat != null && x.lng != null);
+  if (!own.length) return null;
+  const prev = dstr(new Date(Date.parse(ds) - 86400000));
+  const pd = dayItems(state, trip.id, prev)
+    .filter((x: any) => GEO_KINDS.has(x.kind) && x.lat != null && x.lng != null);
+  const org = [...pd].reverse().find((x: any) => x.kind === "stay") ?? pd[pd.length - 1];
+  const pts = [...(org ? [org] : []), ...own].map((x: any) => ({
+    location: { latLng: { latitude: +x.lat, longitude: +x.lng } },
+  }));
+  if (pts.length < 2) return null;
+  const firstT = (own.find((x: any) => x.time)?.time) ?? "09:00";
+  const depMs = Date.parse(`${ds}T${firstT}:00+09:00`);
+  const traffic = depMs > Date.now() + 5 * 60000;
+  const payload: Record<string, unknown> = {
+    origin: pts[0], destination: pts[pts.length - 1], travelMode: "DRIVE",
+    languageCode: "zh-HK", units: "METRIC",
+  };
+  if (pts.length > 2) payload.intermediates = pts.slice(1, -1);
+  if (traffic) {
+    payload.routingPreference = "TRAFFIC_AWARE";
+    payload.departureTime = new Date(depMs).toISOString();
+  }
+  try {
+    const r = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json", "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": "routes.duration,routes.distanceMeters",
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const rt0 = j.routes?.[0];
+    if (!rt0) return null;
+    const sec = typeof rt0.duration === "string" ? parseInt(rt0.duration) : +(rt0.duration ?? 0);
+    return { totalSec: sec || 0, totalM: rt0.distanceMeters ?? 0, traffic };
+  } catch { return null; }
+}
+
 // ── 三種報告 ────────────────────────────────────────────────
 async function build(slot: string, state: any, dsOverride?: string) {
-  const trip = pickTrip(state);
-  if (!trip) return null;
   const now = jstNow();
   const today = dsOverride ?? dstr(now);
+  const trip = pickTrip(state, today);
+  if (!trip) return null;
   const target = slot === "evening" ? dstr(new Date(Date.parse(today) + 86400000)) : today;
 
   const { start, end } = trip;
@@ -236,7 +291,10 @@ async function build(slot: string, state: any, dsOverride?: string) {
   const dn = Math.round((Date.parse(target) - d0) / 86400000) + 1;
   const total = Math.round((Date.parse(end) - d0) / 86400000) + 1;
 
-  const rt = state.routes?.[`${trip.id}|${target}`];
+  // 🔴 state.routes 只有「你喺 app 揭開過嗰日」才有（實測「日本之旅 2026」0/15 日）。
+  //    冇就自己問 Google，唔好靜靜哋少一行。
+  let rt = state.routes?.[`${trip.id}|${target}`];
+  if (!rt?.totalSec) rt = await liveRoute(state, trip, target);
   const driveLine = rt?.totalSec
     ? `🚗 全日車程 ${minsTxt(rt.totalSec)}　${((rt.totalM ?? 0) / 1000).toFixed(0)}km${rt.traffic ? "（計路況）" : ""}`
     : null;
