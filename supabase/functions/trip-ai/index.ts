@@ -3,7 +3,8 @@
 //
 // secrets：
 //   OPENROUTER_API_KEY  AI（同 meal-vision 共用）
-//   MEAL_KEY            暗號閘（同 meal-vision 共用）
+//   TRIP_KEY            旅程自己嘅暗號閘（2026-09-16 起）
+//   MEAL_KEY            舊嘅共用暗號閘（過渡期仍然收；同 meal-vision 共用，唔准改）
 //   GOOGLE_MAPS_KEY     Google Places + Routes（eva-trip server key）
 //
 // 用法（一律 POST，回 {…} JSON）：
@@ -43,8 +44,15 @@ async function gPost(url: string, body: unknown, fieldMask: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
-  const key = Deno.env.get("MEAL_KEY") ?? "";
-  if (!key || req.headers.get("x-client-info") !== key) return json({ error: "unauthorized" }, 401);
+  // 暗號閘。2026-09-16 換暗號：TRIP_KEY 係旅程自己嘅新暗號，MEAL_KEY 係舊嘅共用暗號。
+  // 過渡期兩個都收；喺手機同 Mac 都入完新暗號、確認正常之後，
+  // 就喺 Supabase 後台刪走 MEAL_KEY 對呢個 function 嘅依賴（見 換暗號_步驟2）。
+  // 🔴 MEAL_KEY 係飲食 app 嘅 meal-vision 共用，所以呢度只加唔改。
+  const sent = req.headers.get("x-client-info") ?? "";
+  const tripKey = Deno.env.get("TRIP_KEY") ?? "";
+  const oldKey = Deno.env.get("MEAL_KEY") ?? "";
+  const ok = (tripKey && sent === tripKey) || (oldKey && sent === oldKey);
+  if (!ok) return json({ error: "unauthorized" }, 401);
 
   const body = await req.json().catch(() => ({}));
 
