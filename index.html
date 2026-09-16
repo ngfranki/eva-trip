@@ -811,7 +811,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260916-v33-1';
+  var APP_VER='20260916-v33-2';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2924,6 +2924,7 @@
     });
     if(!map.__fit || mapDay!==map.__lastDay){ map.fitBounds(L.latLngBounds(ll).pad(.25)); if(ll.length===1) map.setZoom(14); map.__fit=1; map.__lastDay=mapDay; }
     setTimeout(function(){ map.invalidateSize(); },60);
+    bindMapFallback();          // 🔴 之前只綁咗 Google 路徑，OSM 路徑冇綁
   }
   function flyTo(x){
     if(!x.lat) return;
