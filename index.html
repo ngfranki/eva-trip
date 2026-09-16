@@ -426,6 +426,39 @@
         letter-spacing:.03em; vertical-align:1px}
   .rsrc.auto{background:var(--link-soft); color:var(--link)}
   .rsrc.man{background:var(--soft2); color:var(--muted); border:1px solid var(--line)}
+  /* ── 氣象廳警報 ── */
+  .jma{font-size:12.5px; font-weight:700; line-height:1.45; margin:4px 0 6px; padding:7px 10px;
+       border-radius:8px; display:flex; flex-wrap:wrap; align-items:baseline; gap:6px}
+  .jma.ok{background:var(--soft); color:var(--muted)}
+  .jma.warn{background:#FFF4E2; color:#9A5B00}
+  .jma.bad{background:#FFE9E9; color:#B42318}
+  .jma.load,.jma.stale{background:var(--soft); color:var(--muted2); font-weight:600}
+  .jmawhen{font-weight:600; opacity:.7; font-size:11.5px}
+  .jma a{margin-left:auto; color:inherit; text-decoration:underline; font-size:11.5px; opacity:.8}
+  @media (prefers-color-scheme:dark){
+    .jma.warn{background:#3A2A0C; color:#F5C06B}
+    .jma.bad{background:#3A1414; color:#F09A94}
+  }
+
+  /* ── 搵附近 ── */
+  .nrchips{display:flex; flex-wrap:wrap; gap:5px; margin:0 0 8px}
+  .nrc{padding:6px 9px; min-height:32px; border:1px solid var(--line); border-radius:99px;
+       background:var(--card); font-size:12px; font-weight:700; color:var(--ink2)}
+  .nrc.on{background:var(--acc); border-color:var(--acc); color:#fff}
+  .nrbar{display:flex; align-items:center; gap:5px; margin:0 0 6px}
+  .nrr{padding:5px 10px; min-height:30px; border:1px solid var(--line); border-radius:99px;
+       background:var(--card); font-size:12px; font-weight:700; color:var(--muted)}
+  .nrr.on{background:var(--ink); border-color:var(--ink); color:var(--surf)}
+  .nrbar .sp{flex:1}
+  .nrfrom{font-size:11.5px; color:var(--muted2); font-weight:600; margin:0 0 10px}
+  .nrlist{display:flex; flex-direction:column}
+  .nrrow{display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--line)}
+  .nrd{flex:none; width:52px; text-align:right; font-size:13px; font-weight:800;
+       font-variant-numeric:tabular-nums; color:var(--muted)}
+  .nrmid{flex:1; min-width:0}
+  .nrn{font-size:14px; font-weight:700; line-height:1.35; word-break:break-word}
+  .nrh{font-size:11.5px; color:var(--muted2); font-weight:600; margin-top:2px}
+
   /* ── 換算器 ── */
   .cvpair{display:flex; align-items:center; gap:10px; margin:2px 0 12px}
   .cvsel{width:auto; min-width:96px; font-weight:800; font-size:16px}
@@ -778,7 +811,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260916-v31-1';
+  var APP_VER='20260916-v32-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2820,7 +2853,8 @@
   var GOOG=null;           // null=未知 true=有 false=冇
   var photoMem={};         // photoName → url（今次 session 用）
   function gCall(body,cb){
-    if(MODE!=='cloud' || GOOG===false){ cb(null,'no-google'); return; }
+    // body.near 係 OpenStreetMap 代理，唔關 Google 事 —— 就算冇 Google key 都要行得
+    if(MODE!=='cloud' || (GOOG===false && !body.near)){ cb(null,'no-google'); return; }
     fetch(AI_URL,{method:'POST',headers:{apikey:SBK,Authorization:'Bearer '+SBK,'x-client-info':KEY,'Content-Type':'application/json'},
       body:JSON.stringify(body)})
       .then(function(r){
@@ -3674,6 +3708,8 @@
        '</div>';
     var wl=dayWx(d);
     if(wl) h+='<div class="tdwx">'+esc(wl)+'</div>';
+    var jp=dayPt(d);
+    if(jp) h+=jmaHTML(jp.lat, jp.lng, function(){ if($('pan').__now && nowTab==='today') nowRender(); });
     var lp=legFromPrev(d);
     if(lp) h+='<div class="tdfrom">'+ic('car',14,'inline')+' 由 '+esc(lp.name)+' 出發 · '+
               esc(lp.t)+(lp.real?'':'（估）')+'</div>';
@@ -3767,6 +3803,188 @@
     if(from==='A'){ cv.a=A.value; var a=num(A.value); cv.b = a==null? '' : cvFmt(a*r); B.value=cv.b; }
     else { cv.b=B.value; var b=num(B.value); cv.a = b==null? '' : cvFmt(b/r); A.value=cv.a; }
   }
+
+  // ══════════ 日本氣象廳 警報／注意報（免 key · 只即時攞，唔 cache 落 state）══════════
+  // 🔴 2026-09-16 實測到一個陷阱：JMA 個 JSON 會「永遠保留最後一次發表」。
+  //    全部地區當日拎到嘅都係 112 日前（5 月）嘅警報，status 仍然寫「発表」。
+  //    即係唔驗時間就會把四個月前嘅雷注意報當成現在 —— 呢個比冇功能更危險。
+  //    所以：reportDatetime 超過 12 個鐘就當「冇生效中嘅警報」，而且一律顯示發表時間。
+  // 府県予報区（58 個）＋ 代表座標，揀最近嗰個。
+  var JMA_OFF = ('011000,45.40,141.75,宗谷|012000,43.77,142.37,上川・留萌|013000,43.98,144.25,網走・北見・紋別|'+
+    '014030,42.92,143.20,十勝|014100,43.00,144.38,釧路・根室|015000,42.63,141.60,胆振・日高|'+
+    '016000,43.06,141.35,石狩・空知・後志|017000,41.77,140.73,渡島・檜山|020000,40.82,140.74,青森|'+
+    '030000,39.70,141.15,岩手|040000,38.27,140.87,宮城|050000,39.72,140.10,秋田|060000,38.24,140.36,山形|'+
+    '070000,37.75,140.47,福島|080000,36.34,140.45,茨城|090000,36.57,139.88,栃木|100000,36.39,139.06,群馬|'+
+    '110000,35.86,139.65,埼玉|120000,35.61,140.12,千葉|130000,35.69,139.69,東京|140000,35.45,139.64,神奈川|'+
+    '150000,37.90,139.02,新潟|160000,36.70,137.21,富山|170000,36.59,136.63,石川|180000,36.07,136.22,福井|'+
+    '190000,35.66,138.57,山梨|200000,36.65,138.18,長野|210000,35.39,136.72,岐阜|220000,34.98,138.38,静岡|'+
+    '230000,35.18,136.91,愛知|240000,34.73,136.51,三重|250000,35.00,135.87,滋賀|260000,35.02,135.76,京都|'+
+    '270000,34.69,135.52,大阪|280000,34.69,135.18,兵庫|290000,34.69,135.83,奈良|300000,34.23,135.17,和歌山|'+
+    '310000,35.50,134.24,鳥取|320000,35.47,133.05,島根|330000,34.66,133.93,岡山|340000,34.40,132.46,広島|'+
+    '350000,34.19,131.47,山口|360000,34.07,134.56,徳島|370000,34.34,134.04,香川|380000,33.84,132.77,愛媛|'+
+    '390000,33.56,133.53,高知|400000,33.61,130.42,福岡|410000,33.25,130.30,佐賀|420000,32.74,129.87,長崎|'+
+    '430000,32.79,130.74,熊本|440000,33.24,131.61,大分|450000,31.91,131.42,宮崎|460040,28.38,129.49,奄美|'+
+    '460100,31.56,130.56,鹿児島|471000,26.21,127.68,沖縄本島|472000,25.83,131.23,大東島|473000,24.81,125.28,宮古島|'+
+    '474000,24.34,124.16,八重山').split('|').map(function(r){
+      var a=r.split(','); return {c:a[0], lat:+a[1], lng:+a[2], n:a[3]};
+    });
+  // JMA 警報碼。自駕最要緊嗰啲加返中文。
+  var JMA_W = {
+    '02':['暴風雪警報（吹雪）',2], '03':['大雨警報',2], '04':['洪水警報',2], '05':['暴風警報',2],
+    '06':['大雪警報',2], '07':['波浪警報',2], '08':['高潮警報',2],
+    '10':['大雨注意報',1], '12':['大雪注意報',1], '13':['風雪注意報（吹雪）',1], '14':['雷注意報',1],
+    '15':['強風注意報',1], '16':['波浪注意報',1], '17':['融雪注意報',1], '18':['洪水注意報',1],
+    '19':['高潮注意報',1], '20':['濃霧注意報（能見度）',1], '21':['乾燥注意報',1],
+    '22':['なだれ注意報（雪崩）',1], '23':['低温注意報',1], '24':['霜注意報',1],
+    '25':['着雪注意報（結雪）',1], '26':['着氷注意報（結冰）',1], '27':['其他注意報',1],
+    '32':['暴風雪特別警報',3], '33':['大雨特別警報',3], '35':['暴風特別警報',3],
+    '36':['大雪特別警報',3], '37':['波浪特別警報',3], '38':['高潮特別警報',3]
+  };
+  // 自駕遊要睇嘅注意報（其餘只計數，唔霸位）
+  var JMA_DRIVE = {'12':1,'13':1,'20':1,'22':1,'23':1,'25':1,'26':1,'15':1,'17':1};
+  var jmaMem={}, jmaBusy={};                  // 只留喺記憶，reload 就重新攞
+  function jmaOffice(lat,lng){
+    if(lat==null||lng==null) return null;
+    var best=null, bd=1e9;
+    JMA_OFF.forEach(function(o){
+      var d=hav([lat,lng],[o.lat,o.lng]);
+      if(d<bd){ bd=d; best=o; }
+    });
+    // 離日本太遠（例如香港）就唔出
+    return bd<600? best : null;
+  }
+  function jmaFetch(code, cb){
+    var m=jmaMem[code];
+    if(m && (Date.now()-m.at)<10*60000){ if(cb) cb(m); return m; }
+    if(jmaBusy[code]) return null;
+    jmaBusy[code]=1;
+    fetch('https://www.jma.go.jp/bosai/warning/data/warning/'+code+'.json')
+      .then(function(r){ return r.ok? r.json() : null; })
+      .then(function(j){
+        delete jmaBusy[code];
+        if(!j){ jmaMem[code]={at:Date.now(), err:1}; if(cb) cb(jmaMem[code]); return; }
+        var codes={};
+        (j.areaTypes||[]).forEach(function(at){
+          (at.areas||[]).forEach(function(a){
+            (a.warnings||[]).forEach(function(w){
+              if(w.status && w.status!=='解除') codes[w.code]=1;
+            });
+          });
+        });
+        var rt=Date.parse(j.reportDatetime||'') || 0;
+        var ageH = rt? (Date.now()-rt)/3600000 : 9999;
+        jmaMem[code]={ at:Date.now(), codes:Object.keys(codes), rt:rt, ageH:ageH,
+                       head:j.headlineText||'', office:j.publishingOffice||'' };
+        if(cb) cb(jmaMem[code]);
+      })
+      .catch(function(){ delete jmaBusy[code]; jmaMem[code]={at:Date.now(), err:1}; if(cb) cb(jmaMem[code]); });
+    return null;
+  }
+  // 回一段 HTML；冇嘢講就回空字串
+  function jmaHTML(lat, lng, onload){
+    var o=jmaOffice(lat,lng); if(!o) return '';
+    var d=jmaFetch(o.c, onload);
+    if(!d) d=jmaMem[o.c];
+    if(!d) return '<div class="jma load"><span class="spin"></span>取得氣象廳警報…</div>';
+    if(d.err) return '<div class="jma stale">取不到氣象廳警報（'+esc(o.n)+'）</div>';
+    var fresh = d.ageH <= 12;
+    var when = d.rt? new Date(d.rt) : null;
+    var whenTxt = when? (when.getMonth()+1)+'/'+when.getDate()+' '+pad(when.getHours())+':'+pad(when.getMinutes()) : '?';
+    var link='https://www.jma.go.jp/bosai/warning/#area_type=offices&area_code='+o.c;
+    if(!fresh || !d.codes.length){
+      return '<div class="jma ok">'+esc(o.n)+'：暫時沒有生效中的警報'+
+             '<span class="jmawhen">最後發表 '+esc(whenTxt)+'</span>'+
+             '<a href="'+link+'" target="_blank" rel="noopener">官方</a></div>';
+    }
+    var lv=0, show=[], more=0;
+    d.codes.forEach(function(c){
+      var w=JMA_W[c]; if(!w){ more++; return; }
+      if(w[1]>lv) lv=w[1];
+      if(w[1]>=2 || JMA_DRIVE[c]) show.push(w[0]); else more++;
+    });
+    if(!show.length && !more) return '';
+    var cls = lv>=3? 'bad' : (lv>=2? 'bad' : 'warn');
+    return '<div class="jma '+cls+'">'+ic('clock',13,'inline')+' '+esc(o.n)+'：'+
+           esc(show.join('、')||'注意報')+(more? '（＋'+more+' 項）':'')+
+           '<span class="jmawhen">'+esc(whenTxt)+' 發表</span>'+
+           '<a href="'+link+'" target="_blank" rel="noopener">官方</a></div>';
+  }
+
+  // ══════════ 搵附近（OpenStreetMap · 經 trip-ai 代理）══════════
+  // 為什麼要代理：overpass-api.de 會 406 擋走似瀏覽器嘅 User-Agent，
+  // 而 fetch() 改唔到 UA（2026-09-16 實測）。好處係完全免費、冇配額，
+  // 唔使燒 Google Places 嘅額。
+  var NEAR_CATS=[
+    {k:'fuel',    n:'油站',   i:'car'},
+    {k:'conv',    n:'便利店', i:'buy'},
+    {k:'toilet',  n:'廁所',   i:'pin'},
+    {k:'rest',    n:'道の駅', i:'map'},
+    {k:'onsen',   n:'温泉',   i:'spark'},
+    {k:'parking', n:'停車場', i:'car'},
+    {k:'super',   n:'超市',   i:'buy'},
+    {k:'pharmacy',n:'藥房',   i:'note'},
+    {k:'hospital',n:'醫院',   i:'check'}
+  ];
+  var nearState={ kind:'fuel', radius:5000, busy:false, err:'', list:null, at:null, from:null };
+  function nearPoint(){
+    if(myPos) return {lat:myPos.lat, lng:myPos.lng, src:'你的位置'};
+    var td=today(), ds=days();
+    var d = (ds.indexOf(td)>=0? td : (tdDay && ds.indexOf(tdDay)>=0? tdDay : ds[0]));
+    var p = d? dayPt(d) : tripCentre();
+    return p? {lat:p.lat, lng:p.lng, src: d? (md(d)+' 的中心'):'旅程中心'} : null;
+  }
+  function nearGo(force){
+    var p=nearPoint(); if(!p){ nearState.err='沒有位置'; return; }
+    var sig=nearState.kind+'|'+nearState.radius+'|'+p.lat.toFixed(3)+','+p.lng.toFixed(3);
+    if(!force && nearState.sig===sig && nearState.list) return;
+    if(nearState.busy) return;
+    if(MODE!=='cloud'){ nearState.err='本機模式用不到（需要雲端同步）'; return; }
+    nearState.busy=true; nearState.err=''; nearState.list=null; nearState.sig=sig; nearState.from=p.src;
+    gCall({near:{lat:p.lat, lng:p.lng, kind:nearState.kind, radius:nearState.radius}}, function(j, err){
+      nearState.busy=false;
+      if(err || !j || !j.places){ nearState.err='取不到（OpenStreetMap 沒有回應，稍後再試）'; }
+      else {
+        nearState.list=j.places.map(function(x){
+          x.d=hav([p.lat,p.lng],[x.lat,x.lng]); return x;
+        }).sort(function(a,b){ return a.d-b.d; });
+        nearState.at=Date.now();
+      }
+      if($('pan').__now && nowTab==='near') nowRender();
+    });
+  }
+  function nearHTML(){
+    var t=curTrip(); if(!t) return '<div class="empty">還未有旅程</div>';
+    var h='<div class="nrchips">'+NEAR_CATS.map(function(c){
+      return '<button class="nrc'+(nearState.kind===c.k?' on':'')+'" data-act="nearkind" data-k="'+c.k+'">'+
+             ic(c.i,12,'inline')+' '+c.n+'</button>'; }).join('')+'</div>';
+    h+='<div class="nrbar">'+[2000,5000,15000].map(function(r){
+      return '<button class="nrr'+(nearState.radius===r?' on':'')+'" data-act="nearrad" data-r="'+r+'">'+
+             (r/1000)+' km</button>'; }).join('')+
+      '<span class="sp"></span><button class="nrr" data-act="nearagain">重新搜尋</button></div>';
+    var p=nearPoint();
+    h+='<div class="nrfrom">'+(p? '由 '+esc(nearState.from||p.src)+' 起計'
+        +(myPos?'':'（開啟「現在位置」分頁可以用 GPS）') : '沒有位置')+'</div>';
+    if(nearState.busy) return h+'<div class="empty"><span class="spin"></span>搜尋中…</div>';
+    if(nearState.err) return h+'<div class="empty">'+esc(nearState.err)+'</div>';
+    if(!nearState.list){ nearGo(); return h+'<div class="empty"><span class="spin"></span>搜尋中…</div>'; }
+    if(!nearState.list.length) return h+'<div class="empty">'+(nearState.radius/1000)+
+      ' km 內找不到<br>試按大一點的範圍</div>';
+    h+='<div class="nrlist">';
+    nearState.list.slice(0,20).forEach(function(x){
+      var km = x.d<1? Math.round(x.d*1000)+' m' : x.d.toFixed(1)+' km';
+      h+='<div class="nrrow">'+
+         '<div class="nrd">'+esc(km)+'</div>'+
+         '<div class="nrmid"><div class="nrn">'+esc(x.name||'（沒有名稱）')+'</div>'+
+         (x.hours? '<div class="nrh">'+esc(String(x.hours).slice(0,44))+'</div>':'')+'</div>'+
+         '<a class="tdgo tap" href="https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+
+         x.lat+','+x.lng+'" target="_blank" rel="noopener" title="導航">'+ic('route',16)+'</a>'+
+         '</div>';
+    });
+    h+='</div><div class="hint">資料來自 OpenStreetMap（免費、由志願者維護）。'+
+       '營業時間未必齊全或最新，去之前最好打個電話。</div>';
+    return h;
+  }
+
   var nowTab='now';
   function nowSheet(tab){
     if(tab) nowTab=tab;
@@ -3774,6 +3992,7 @@
       '<button class="ntab'+(nowTab==='now'?' on':'')+'" data-act="nowtab" data-t="now">現在位置</button>'+
       '<button class="ntab'+(nowTab==='today'?' on':'')+'" data-act="nowtab" data-t="today">今日行程</button>'+
       '<button class="ntab'+(nowTab==='fx'?' on':'')+'" data-act="nowtab" data-t="fx">換算</button>'+
+      '<button class="ntab'+(nowTab==='near'?' on':'')+'" data-act="nowtab" data-t="near">附近</button>'+
       '</div><div id="nowBox" class="nowwrap"></div>');
     $('pan').__now=1;
     nowRender();
@@ -3788,6 +4007,7 @@
   function nowRender(){
     var box=$('nowBox'); if(!box) return;
     if(nowTab==='today'){ box.innerHTML=todayHTML(); return; }
+    if(nowTab==='near'){ box.innerHTML=nearHTML(); return; }
     if(nowTab==='fx'){
       box.innerHTML=fxHTML();
       var A=$('cvA'); if(A && !cv.a && !cv.b) setTimeout(function(){ A.focus(); },80);
@@ -3874,6 +4094,8 @@
       else if(liveWxNA) h+='<div class="nowwx" style="color:var(--muted)">'+esc(liveWxNA)+'</div>';
       else { h+='<div class="nowwx"><span class="spin"></span>正在取得現場天氣…</div>'; liveWx(function(){ nowRender(); }); }
     }
+    var jq = myPos || pt;
+    if(jq) h+=jmaHTML(jq.lat, jq.lng, function(){ if($('pan').__now && nowTab==='now') nowRender(); });
 
     h+='<div class="nowbtns">';
     if(ns) h+='<button class="btn acc" data-act="nav" data-id="'+ns.x.id+'">'+ic('route',16,'inline')+' 導航到這一站</button>';
@@ -4033,7 +4255,8 @@
     openSheet('<h3>匯出</h3>'+
       '<button class="btn acc" data-act="print">'+ic('print',16,'inline')+' 列印 / 存做 PDF</button>'+
       '<div class="hint" style="margin:6px 0 12px">在列印對話框選擇「Save as PDF」即可輸出 PDF。</div>'+
-      '<button class="btn ghost" data-act="exJson">JSON 全份備份</button>'+
+      '<button class="btn ghost" data-act="exJson">JSON 全份備份（只有資料）</button>'+
+      '<button class="btn ghost" data-act="exZip" style="margin-top:8px">'+ic('copy',15,'inline')+' 完整備份：資料 ＋ 附件（zip）</button>'+
       '<button class="btn ghost" data-act="exCsv" style="margin-top:8px">CSV（Excel 開得）</button>'+
       '<button class="btn ghost" data-act="exShare" style="margin-top:8px">分享頁 data.json</button>'+
       '<button class="btn ghost" data-act="exGmapSheet" style="margin-top:8px">'+ic('map',15,'inline')+' 匯出去 Google 地圖（KML ／ 導航路線）</button>'+
@@ -4248,6 +4471,119 @@
     setTimeout(function(){ URL.revokeObjectURL(u); a.remove(); },300);
   }
 
+
+  // ══════════ 附件打包下載（ZIP · store，唔壓縮）══════════
+  // JSON 備份只包資料，唔包附件 —— 誤刪就救唔返單據同確認信。
+  // 附件多數係 PDF／JPG／PNG，本身已經壓縮過，所以用 store 就夠，
+  // 唔使搬一個 deflate 實作入嚟。
+  var CRCT=null;
+  function crc32(buf){
+    if(!CRCT){
+      CRCT=new Int32Array(256);
+      for(var n=0;n<256;n++){ var c=n; for(var k=0;k<8;k++) c = (c&1)? (0xEDB88320^(c>>>1)) : (c>>>1); CRCT[n]=c; }
+    }
+    var c=-1;
+    for(var i=0;i<buf.length;i++) c = CRCT[(c^buf[i])&0xFF] ^ (c>>>8);
+    return (c^-1)>>>0;
+  }
+  function zipName(s2){
+    // ZIP 入面唔好用路徑分隔符同 Windows 禁用字
+    return String(s2||'').replace(/[\/\\:*?"<>|]/g,'_').replace(/\s+/g,' ').trim().slice(0,90) || 'file';
+  }
+  function zipBuild(files){                     // files=[{name, data:Uint8Array}]
+    var enc=new TextEncoder(), parts=[], cen=[], off=0;
+    files.forEach(function(f){
+      var nb=enc.encode(f.name), crc=crc32(f.data), sz=f.data.length;
+      var lh=new DataView(new ArrayBuffer(30));
+      lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true);
+      lh.setUint16(6,0x0800,true);              // bit 11：檔名係 UTF-8
+      lh.setUint16(8,0,true);                   // store（唔壓縮）
+      lh.setUint16(10,0,true); lh.setUint16(12,0x2100,true);   // 時間／日期：隨便一個合法值
+      lh.setUint32(14,crc,true); lh.setUint32(18,sz,true); lh.setUint32(22,sz,true);
+      lh.setUint16(26,nb.length,true); lh.setUint16(28,0,true);
+      parts.push(new Uint8Array(lh.buffer), nb, f.data);
+      var ch=new DataView(new ArrayBuffer(46));
+      ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true);
+      ch.setUint16(8,0x0800,true); ch.setUint16(10,0,true);
+      ch.setUint16(12,0,true); ch.setUint16(14,0x2100,true);
+      ch.setUint32(16,crc,true); ch.setUint32(20,sz,true); ch.setUint32(24,sz,true);
+      ch.setUint16(28,nb.length,true); ch.setUint16(30,0,true); ch.setUint16(32,0,true);
+      ch.setUint16(34,0,true); ch.setUint16(36,0,true); ch.setUint32(38,0,true);
+      ch.setUint32(42,off,true);
+      cen.push(new Uint8Array(ch.buffer), nb);
+      off += 30+nb.length+sz;
+    });
+    var cenLen=cen.reduce(function(a,x){ return a+x.length; },0);
+    var eo=new DataView(new ArrayBuffer(22));
+    eo.setUint32(0,0x06054b50,true);
+    eo.setUint16(8,files.length,true); eo.setUint16(10,files.length,true);
+    eo.setUint32(12,cenLen,true); eo.setUint32(16,off,true);
+    return new Blob(parts.concat(cen,[new Uint8Array(eo.buffer)]), {type:'application/zip'});
+  }
+  function allFiles(){
+    var out=[];
+    tItems().forEach(function(x){
+      (x.files||[]).forEach(function(f){ out.push({ f:f, item:x }); });
+    });
+    return out;
+  }
+  function zipSheet(){
+    var t=curTrip(); if(!t) return;
+    var list=allFiles();
+    if(!list.length){ openSheet('<h3>完整備份</h3><div class="empty">這個旅程還沒有附件<br>可以直接用「JSON 全份備份」</div>'); return; }
+    var tot=list.reduce(function(a,x){ return a+(+x.f.s||0); },0);
+    openSheet('<h3>完整備份（資料 ＋ 附件）</h3>'+
+      '<div class="hint" style="margin-bottom:12px">把 <b>'+list.length+' 個附件</b>（'+fmtSize(tot)+'）'+
+      '連同 JSON 資料打包成一個 zip 下載。<br>'+
+      'JSON 備份本身<b>不包附件</b> —— 附件只在雲端，誤刪就救不回。</div>'+
+      '<div id="zipMsg" class="hint"></div>'+
+      '<button class="btn acc" data-act="zipgo">'+ic('copy',16,'inline')+' 開始打包</button>'+
+      '<div class="hint">附件會按日期分好資料夾。檔案多要等一會，期間不要關掉。</div>');
+  }
+  var zipBusy=false;
+  function zipGo(){
+    if(zipBusy) return; zipBusy=true;
+    var t=curTrip(), list=allFiles(), got=[], fail=[];
+    var msg=function(h){ var e=$('zipMsg'); if(e) e.innerHTML=h; };
+    // 一個一個攞，唔一次過 —— 唔想撞爆 Storage 或者食爆記憶體
+    var i=0;
+    (function next(){
+      if(i>=list.length){
+        msg('<span class="spin"></span>打包中…');
+        var files=[{name:'旅程資料.json',
+                    data:new TextEncoder().encode(JSON.stringify(state,null,2))}];
+        got.forEach(function(g){ files.push(g); });
+        if(fail.length) files.push({name:'取不到的檔案.txt',
+          data:new TextEncoder().encode(fail.join('\n'))});
+        try{
+          var blob=zipBuild(files);
+          var u=URL.createObjectURL(blob);
+          var a=document.createElement('a');
+          a.href=u; a.download='eva-trip-'+zipName(t.name)+'-'+today()+'.zip';
+          document.body.appendChild(a); a.click();
+          setTimeout(function(){ URL.revokeObjectURL(u); a.remove(); },400);
+          msg('✅ 已下載 '+got.length+' 個附件 ＋ JSON（'+fmtSize(blob.size)+'）'+
+              (fail.length? '<br>⚠️ '+fail.length+' 個取不到（見 zip 內的 txt）':''));
+        }catch(e){ msg('❌ 打包失敗：'+esc(e.message||'')); }
+        zipBusy=false; return;
+      }
+      var g=list[i], f=g.f, x=g.item;
+      msg('<span class="spin"></span>取得 '+(i+1)+' / '+list.length+'：'+esc(f.n||''));
+      var folder = (x.date? x.date : '未排期') + '_' + zipName(x.name);
+      fetch(stUrl(f.p), {headers:stHdr()})
+        .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
+        .then(function(ab){
+          got.push({ name: zipName(folder)+'/'+zipName(f.n||('file'+i)),
+                     data: new Uint8Array(ab) });
+          i++; next();
+        })
+        .catch(function(e){
+          fail.push((x.name||'')+' / '+(f.n||'')+' → '+(e.message||'失敗'));
+          i++; next();
+        });
+    })();
+  }
+
   // ---------- events ----------
   document.addEventListener('input',function(e){
     var a=e.target.getAttribute&&e.target.getAttribute('data-act');
@@ -4383,6 +4719,9 @@
       if($('pan').__now) nowRender(); } }
     else if(act==='nowtab'){ nowSheet(el.getAttribute('data-t')); }
     else if(act==='fxsheet'){ nowSheet('fx'); }
+    else if(act==='nearkind'){ nearState.kind=el.getAttribute('data-k'); nearState.list=null; nearState.sig=''; nowRender(); }
+    else if(act==='nearrad'){ nearState.radius=+el.getAttribute('data-r'); nearState.list=null; nearState.sig=''; nowRender(); }
+    else if(act==='nearagain'){ nearGo(true); nowRender(); }
     else if(act==='cvswap'){ var c0=cvCcy(), c1=cvCcy2(); cv.ccy=c1; cv.ccy2=c0; var oa=cv.a; cv.a=cv.b; cv.b=oa; nowRender(); }
     else if(act==='cvq'){ cv.a=el.getAttribute('data-v'); var A0=$('cvA'); if(A0){ A0.value=cv.a; cvCalc('A'); } }
     else if(act==='cvfx'){
@@ -4709,6 +5048,8 @@
     else if(act==='print'){ closeSheet(); setTimeout(function(){ window.print(); },250); }
     else if(act==='export'){ exportSheet(); }
     else if(act==='exJson'){ dl('eva-trip-'+today()+'.json', JSON.stringify(state,null,2)); }
+    else if(act==='exZip'){ zipSheet(); }
+    else if(act==='zipgo'){ zipGo(); }
     else if(act==='exCsv'){
       var rows=[['日期','時間','類型','名','地址','使費','備註','完成']];
       days().forEach(function(d){ dayItems(d).forEach(function(x){

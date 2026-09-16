@@ -14,6 +14,7 @@
 //   {op:'details', placeId}                  地點詳情（名／地址／座標／評分／時間／相）
 //   {op:'photo', name, maxPx?}               相片 URL（回 {url}）
 //   {op:'route', points:[{lat,lng}…], mode?} 真路線時間距離
+//   {near:{lat,lng,kind,radius?}}            搵附近（OSM Overpass 代理）
 const OR = "https://openrouter.ai/api/v1/chat/completions";
 const MODEL = "anthropic/claude-sonnet-5";
 const cors = {
@@ -55,6 +56,7 @@ Deno.serve(async (req) => {
   if (!ok) return json({ error: "unauthorized" }, 401);
 
   const body = await req.json().catch(() => ({}));
+
 
   // ---------- Google ----------
   if (body.op) {
@@ -170,6 +172,88 @@ Deno.serve(async (req) => {
     }
 
     return json({ error: "unknown op" }, 400);
+  }
+
+  // ---------- 搵附近 ----------
+  // 🔴 2026-09-16 實測：本來想用 OpenStreetMap Overpass（免費無配額），但係
+  //    公共 Overpass 伺服器靠唔住 —— overpass-api.de 用 406 擋（連 Deno 出去都擋，
+  //    大概係封雲端共用 IP），kumi／private.coffee 回 429，osm.jp 連唔上。
+  //    所以主路改用 Google Places searchNearby（你已經有 key），Overpass 留做後備。
+  //    ⚠️ fieldMask 故意只攞 displayName ＋ location：加 openingHours／rating
+  //    會跳去 Enterprise SKU（免費額只約 1,000／月）。距離喺前端自己算。
+  if (body.near) {
+    const lat = +body.near.lat, lng = +body.near.lng;
+    if (!isFinite(lat) || !isFinite(lng)) return json({ error: "bad latlng" }, 400);
+    const r = Math.min(20000, Math.max(300, +body.near.radius || 5000));
+    const KIND: Record<string, { g: string[]; osm: string[] }> = {
+      fuel:     { g: ["gas_station"],                   osm: ['["amenity"="fuel"]'] },
+      conv:     { g: ["convenience_store"],             osm: ['["shop"="convenience"]'] },
+      toilet:   { g: ["public_bath", "rest_stop"],      osm: ['["amenity"="toilets"]'] },
+      rest:     { g: ["rest_stop"],                     osm: ['["amenity"="rest_area"]', '["highway"="rest_area"]', '["highway"="services"]'] },
+      onsen:    { g: ["spa", "public_bath"],            osm: ['["amenity"="public_bath"]', '["leisure"="spa"]'] },
+      parking:  { g: ["parking"],                       osm: ['["amenity"="parking"]'] },
+      super:    { g: ["supermarket"],                   osm: ['["shop"="supermarket"]'] },
+      pharmacy: { g: ["pharmacy", "drugstore"],         osm: ['["amenity"="pharmacy"]', '["shop"="chemist"]'] },
+      hospital: { g: ["hospital"],                      osm: ['["amenity"="hospital"]', '["amenity"="clinic"]'] },
+    };
+    const k = KIND[String(body.near.kind ?? "")];
+    if (!k) return json({ error: "bad kind" }, 400);
+    let gErr: { status: number; detail: string } | null = null;
+
+    // ① Google Places searchNearby
+    if (GKEY()) {
+      const rr = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": GKEY(),
+          "X-Goog-FieldMask": "places.displayName,places.location,places.primaryTypeDisplayName",
+        },
+        body: JSON.stringify({
+          includedTypes: k.g,
+          maxResultCount: 20,
+          languageCode: "zh-HK",
+          rankPreference: "DISTANCE",
+          locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: r } },
+        }),
+      });
+      const txt = await rr.text();
+      if (rr.ok) {
+        const d = JSON.parse(txt);
+        const places = (d.places ?? []).map((x: any) => ({
+          name: x.displayName?.text ?? "",
+          brand: x.primaryTypeDisplayName?.text ?? "",
+          hours: "",
+          lat: x.location?.latitude ?? null,
+          lng: x.location?.longitude ?? null,
+        })).filter((x: any) => x.lat != null);
+        return json({ kind: body.near.kind, radius: r, src: "google", places });
+      }
+      // Google 唔得（例如 type 名唔認）就跌落 Overpass，同時帶返錯誤方便診斷
+      gErr = { status: rr.status, detail: txt.slice(0, 200) };
+    }
+
+    // ② Overpass 後備
+    const q = `[out:json][timeout:25];(${k.osm.map((x) => `nwr${x}(around:${r},${lat},${lng});`).join("")});out center 40;`;
+    for (const host of ["https://overpass-api.de/api/interpreter",
+                        "https://overpass.kumi.systems/api/interpreter",
+                        "https://overpass.private.coffee/api/interpreter"]) {
+      try {
+        const rr2 = await fetch(host + "?data=" + encodeURIComponent(q), {
+          headers: { "User-Agent": "eva-trip/1.0 (personal trip planner; +https://ngfranki.github.io/eva-trip/)" },
+        });
+        if (!rr2.ok) continue;
+        const d2 = JSON.parse(await rr2.text());
+        const places = (d2.elements ?? []).map((e: any) => {
+          const t = e.tags ?? {};
+          const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
+          if (la == null || lo == null) return null;
+          return { name: t["name:zh"] ?? t.name ?? t.brand ?? t.operator ?? "", brand: t.brand ?? "", hours: t.opening_hours ?? "", lat: la, lng: lo };
+        }).filter(Boolean);
+        return json({ kind: body.near.kind, radius: r, src: "osm", places });
+      } catch { /* 試下一個 */ }
+    }
+    return json({ error: "near-failed", google: gErr }, 502);
   }
 
   // ---------- AI ----------
