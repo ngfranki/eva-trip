@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 換暗號 · 第一步：加新暗號（舊暗號照用，唔會斷線）
-喺 Terminal 跑：  /usr/bin/python3 ~/eva-trip-pub/supabase/換暗號1_加新暗號.py
+喺 Terminal 跑：  /usr/bin/python3 ~/eva-trip-pub/supabase/rotate1.py
 
 做嘅嘢：
   ① 問你兩個新暗號（打嘅時候唔會顯示，唔會入 shell history，唔會入 log）
@@ -136,7 +136,7 @@ for label, n, want_open in checks:
 print()
 if bad:
     print('❌ 有 %d 項唔對。想即刻回到原狀，跑：' % bad)
-    print('     /usr/bin/python3 ~/eva-trip-pub/supabase/換暗號_取消.py')
+    print('     /usr/bin/python3 ~/eva-trip-pub/supabase/rotate_undo.py')
 else:
     print('🎉 第一步完成。你嘅 app 而家新舊暗號都通，唔會斷線。')
     print()
@@ -146,4 +146,4 @@ else:
     print('            （第三樣證明 TRIP_KEY 設對）')
     print()
     print('兩部機都正常之後，跑第二步收緊（刪走舊暗號）：')
-    print('  /usr/bin/python3 ~/eva-trip-pub/supabase/換暗號2_收緊.py')
+    print('  /usr/bin/python3 ~/eva-trip-pub/supabase/rotate2.py')
