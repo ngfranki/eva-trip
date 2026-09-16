@@ -811,7 +811,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260916-v33-3dbg';
+  var APP_VER='20260916-v33-3';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2825,27 +2825,6 @@
       if(lm && lm.openPopup) lm.openPopup();
     }
   }
-  window.__dbg=function(cx,cy){                 // 臨時：查後備命中判定
-    var el=$('map'), r=el.getBoundingClientRect();
-    var out={rect:[r.left,r.top,r.width,r.height], pts:mapPts().length, base:(gmap?'g':(map?'l':'none'))};
-    try{
-      if(map&&map.getBounds){ var b=map.getBounds();
-        out.bounds=[b.getNorth(),b.getSouth(),b.getEast(),b.getWest()]; }
-      if(gmap&&gmap.getBounds){ var g=gmap.getBounds();
-        out.bounds=[g.getNorthEast().lat(),g.getSouthWest().lat(),g.getNorthEast().lng(),g.getSouthWest().lng()]; }
-    }catch(e){ out.bErr=String(e); }
-    var hit=mapHit(cx,cy); out.hit=hit? hit.name : null;
-    if(out.bounds){
-      var n=out.bounds[0],s2=out.bounds[1],e2=out.bounds[2],w2=out.bounds[3];
-      var my=mercY(n), ms=mercY(s2);
-      out.proj=mapPts().slice(0,4).map(function(p){
-        return {n:p.x.name.slice(0,12),
-          px:Math.round((p.x.lng-w2)/(e2-w2)*r.width),
-          py:Math.round((my-mercY(p.x.lat))/(my-ms)*r.height)};
-      });
-    }
-    return out;
-  };
   function bindMapFallback(){
     var el=$('map'); if(!el || el.__hit) return;
     el.__hit=1;
@@ -2853,7 +2832,11 @@
       if(Date.now()-lastPinAt < 400) return;      // 底圖自己嗰個事件已經處理過
       var x=mapHit(ev.clientX, ev.clientY);
       if(!x) return;
-      openPin(x); scrollTo(x.id);
+      // 🔴 一定要等呢個 click 處理完才開氣泡。Leaflet 同 Google 都有
+      //    「撳地圖＝關氣泡」嘅預設行為，而我哋喺 capture 階段跑（早過佢哋）——
+      //    同步開嘅話，佢哋跟住就即刻關咗，又變「撳完冇反應」。
+      //    （2026-09-16 實測：mapHit 本來就命中，係開完被關。）
+      setTimeout(function(){ openPin(x); scrollTo(x.id); }, 60);
     }, true);
   }
   function mapPop(x){
