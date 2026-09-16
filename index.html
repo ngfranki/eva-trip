@@ -545,7 +545,7 @@
 
   /* ── 而家／今日 分頁 ── */
   .ntabs{display:flex; gap:6px; margin:0 0 12px; padding-right:46px}
-  .ntab{flex:1; padding:9px 0; min-height:40px; border:1px solid var(--line); border-radius:9px;
+  .ntab{flex:1; padding:9px 2px; min-height:40px; white-space:nowrap; font-size:13.5px; border:1px solid var(--line); border-radius:9px;
         background:var(--card); color:var(--muted); font-size:14px; font-weight:700}
   .ntab.on{background:var(--acc); border-color:var(--acc); color:#fff}
 
@@ -811,7 +811,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260916-v32-0';
+  var APP_VER='20260916-v32-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -3855,7 +3855,10 @@
   }
   function jmaFetch(code, cb){
     var m=jmaMem[code];
-    if(m && (Date.now()-m.at)<10*60000){ if(cb) cb(m); return m; }
+    // 🔴 快取命中一定要「只回值、唔叫 cb」。叫 cb 就會 cb → nowRender →
+    //    jmaHTML → 快取命中 → cb → … 同步無限遞迴（2026-09-16 實測爆 stack，
+    //    同之前 fetchEta／liveWx 同一個陷阱）。
+    if(m && (Date.now()-m.at)<10*60000) return m;
     if(jmaBusy[code]) return null;
     jmaBusy[code]=1;
     fetch('https://www.jma.go.jp/bosai/warning/data/warning/'+code+'.json')
@@ -3989,8 +3992,8 @@
   function nowSheet(tab){
     if(tab) nowTab=tab;
     openSheet('<div class="ntabs">'+
-      '<button class="ntab'+(nowTab==='now'?' on':'')+'" data-act="nowtab" data-t="now">現在位置</button>'+
-      '<button class="ntab'+(nowTab==='today'?' on':'')+'" data-act="nowtab" data-t="today">今日行程</button>'+
+      '<button class="ntab'+(nowTab==='now'?' on':'')+'" data-act="nowtab" data-t="now">現在</button>'+
+      '<button class="ntab'+(nowTab==='today'?' on':'')+'" data-act="nowtab" data-t="today">今日</button>'+
       '<button class="ntab'+(nowTab==='fx'?' on':'')+'" data-act="nowtab" data-t="fx">換算</button>'+
       '<button class="ntab'+(nowTab==='near'?' on':'')+'" data-act="nowtab" data-t="near">附近</button>'+
       '</div><div id="nowBox" class="nowwrap"></div>');
