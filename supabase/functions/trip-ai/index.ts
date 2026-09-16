@@ -185,17 +185,17 @@ Deno.serve(async (req) => {
     const lat = +body.near.lat, lng = +body.near.lng;
     if (!isFinite(lat) || !isFinite(lng)) return json({ error: "bad latlng" }, 400);
     const r = Math.min(20000, Math.max(300, +body.near.radius || 5000));
-    // osmFirst：2026-09-16 實測 Google 對呢三類答得好差 ——
-    //   廁所 → 出酒店同 spa（Google 冇「公共廁所」type）
-    //   温泉 → 出 Dormy Inn 之類嘅酒店大浴場
-    //   道の駅 → 旭川 5km 內只搵到 2 個
-    // OSM 喺日本呢三類嘅標記反而齊，所以先行 OSM，唔得才跌落 Google。
-    const KIND: Record<string, { g: string[]; osm: string[]; osmFirst?: boolean }> = {
+    // 2026-09-16 最後結論：全部 Google 優先，OSM 只做「Google 完全冇結果」嘅後備。
+    // 中間試過 osmFirst（因為 OSM 對廁所／温泉／道の駅 標記齊），但實測由
+    // Supabase edge 出去 Overpass 完全唔通 —— overpass-api.de 406（封雲端共用 IP）、
+    // kumi 鏡像 timeout。結果只係白等 12 秒才跌落 Google。所以取消 osmFirst。
+    // 副作用：冇「公共廁所」呢類，Google 只會回道の駅／休息站 —— 所以前端
+    // 索性拿走「廁所」分類，改為提示「便利店同道の駅一定有廁所」。
+    const KIND: Record<string, { g: string[]; osm: string[] }> = {
       fuel:     { g: ["gas_station"],                   osm: ['["amenity"="fuel"]'] },
       conv:     { g: ["convenience_store"],             osm: ['["shop"="convenience"]'] },
-      toilet:   { g: ["rest_stop"],                     osm: ['["amenity"="toilets"]'], osmFirst: true },
-      rest:     { g: ["rest_stop"],                     osm: ['["amenity"="rest_area"]', '["highway"="rest_area"]', '["highway"="services"]'], osmFirst: true },
-      onsen:    { g: ["spa", "public_bath"],            osm: ['["amenity"="public_bath"]', '["leisure"="spa"]'], osmFirst: true },
+      rest:     { g: ["rest_stop"],                     osm: ['["amenity"="rest_area"]', '["highway"="rest_area"]', '["highway"="services"]'] },
+      onsen:    { g: ["spa", "public_bath"],            osm: ['["amenity"="public_bath"]', '["leisure"="spa"]'] },
       parking:  { g: ["parking"],                       osm: ['["amenity"="parking"]'] },
       super:    { g: ["supermarket"],                   osm: ['["shop"="supermarket"]'] },
       pharmacy: { g: ["pharmacy", "drugstore"],         osm: ['["amenity"="pharmacy"]', '["shop"="chemist"]'] },
@@ -264,7 +264,7 @@ Deno.serve(async (req) => {
       return null;
     };
 
-    const order = k.osmFirst ? [tryOsm, tryGoogle] : [tryGoogle, tryOsm];
+    const order = [tryGoogle, tryOsm];
     for (const f of order) {
       const got = await f();
       if (got) return json({ kind: body.near.kind, radius: r, ...got });

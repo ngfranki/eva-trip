@@ -811,7 +811,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260916-v32-3';
+  var APP_VER='20260916-v32-4';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -3920,7 +3920,6 @@
   var NEAR_CATS=[
     {k:'fuel',    n:'油站',   i:'car'},
     {k:'conv',    n:'便利店', i:'buy'},
-    {k:'toilet',  n:'廁所',   i:'pin'},
     {k:'rest',    n:'道の駅', i:'map'},
     {k:'onsen',   n:'温泉',   i:'spark'},
     {k:'parking', n:'停車場', i:'car'},
@@ -3987,7 +3986,8 @@
     var srcTxt = nearState.src==='google' ? 'Google 地圖'
                : (nearState.src==='osm' ? 'OpenStreetMap（由志願者維護，未必齊全）' : '');
     h+='</div><div class="hint">'+(srcTxt? '資料來自 '+esc(srcTxt)+'。':'')+
-       '營業時間未必最新，去之前最好打個電話或者撳導航睇 Google 地圖。</div>';
+       '營業時間未必最新，去之前最好打個電話或者撳導航睇 Google 地圖。<br>'+
+       '要廁所就去便利店或者道の駅 —— 日本兩者都一定有，而且免費。</div>';
     return h;
   }
 
