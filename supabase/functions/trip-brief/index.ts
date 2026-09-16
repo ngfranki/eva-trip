@@ -149,33 +149,59 @@ const WMO: Record<number, [string, string]> = {
 };
 const wmoTxt = (c: number | null | undefined) => (c == null ? null : (WMO[c] ?? ["", ""]));
 
-type Spot = { name: string; lat: number; lng: number };
+type Spot = { name: string; lat: number; lng: number; ord: number };
 type Wx = {
   name: string; mx: number | null; mn: number | null; pr: number; sn: number;
-  wind: number; set: string; code: number | null; nowT?: number; nowCode?: number;
+  wind: number; set: string; code: number | null; elev: number | null;
+  nowT?: number; nowCode?: number;
 };
 
-// 揀當日代表地點：起點、離起點最遠嗰個、收工住宿。相距 <8km 當同一個。
-function anchors(items: any[], max = 3): Spot[] {
+// 揀當日代表地點：起點、離起點最遠嗰個、收工住宿，＋ 最長一段路嘅中點。
+//   · 相距 <8km 當同一個天氣（8km 唔係「每 8 公里報一次」，係去重門檻）
+//   · 最多 4 行
+//   · 🔴「途中」係 Franki 2026-09-16 指出嘅真缺口：起點同終點都報咗，但爬山
+//      過程冇 —— 而十二月吹雪、路面結冰多數正正發生喺山峠，唔係喺市區。
+//      所以最長一段路（≥60km）會加報中點。
+//   · 出嚟嘅次序按當日行程次序（朝早 → 夜晚），唔係按揀嘅次序
+const MIN_MID_KM = 60;
+function anchors(items: any[], max = 4): Spot[] {
   const g = items.filter((x: any) => GEO_KINDS.has(x.kind) && x.lat != null && x.lng != null);
   if (!g.length) return [];
-  const mk = (x: any): Spot => ({ name: String(x.name ?? "").slice(0, 22), lat: +x.lat, lng: +x.lng });
-  const first = mk(g[0]);
-  const out: Spot[] = [first];
+  const mk = (x: any, i: number): Spot =>
+    ({ name: String(x.name ?? "").slice(0, 22), lat: +x.lat, lng: +x.lng, ord: i });
+  const out: Spot[] = [mk(g[0], 0)];
   const push = (sp: Spot) => {
     if (out.length >= max) return;
     if (out.some((o) => hav([o.lat, o.lng], [sp.lat, sp.lng]) < 8)) return;
     out.push(sp);
   };
-  let far = null as null | Spot, fd = 0;
-  for (const x of g) {
-    const sp = mk(x), d = hav([first.lat, first.lng], [sp.lat, sp.lng]);
-    if (d > fd) { fd = d; far = sp; }
+  // 收工住宿
+  let stayIdx = -1;
+  for (let i = g.length - 1; i >= 0; i--) if (g[i].kind === "stay") { stayIdx = i; break; }
+  if (stayIdx >= 0) push(mk(g[stayIdx], stayIdx));
+  // 離起點最遠
+  let far = -1, fd = 0;
+  for (let i = 0; i < g.length; i++) {
+    const d = hav([out[0].lat, out[0].lng], [+g[i].lat, +g[i].lng]);
+    if (d > fd) { fd = d; far = i; }
   }
-  const stay = [...g].reverse().find((x: any) => x.kind === "stay");
-  if (stay) push(mk(stay));
-  if (far) push(far);
-  return out;
+  if (far >= 0) push(mk(g[far], far));
+  // 最長一段路嘅中點
+  let li = -1, ld = 0;
+  for (let i = 0; i < g.length - 1; i++) {
+    const d = hav([+g[i].lat, +g[i].lng], [+g[i + 1].lat, +g[i + 1].lng]);
+    if (d > ld) { ld = d; li = i; }
+  }
+  if (li >= 0 && ld >= MIN_MID_KM) {
+    const a = g[li], b = g[li + 1];
+    const nm = (x: any) => String(x.name ?? "").slice(0, 9);
+    push({
+      name: `途中（${nm(a)}→${nm(b)}）`,
+      lat: (+a.lat + +b.lat) / 2, lng: (+a.lng + +b.lng) / 2,
+      ord: li + 0.5,
+    });
+  }
+  return out.sort((x, y) => x.ord - y.ord);
 }
 
 async function weatherAt(spots: Spot[], ds: string, withNow = false): Promise<Wx[]> {
@@ -201,6 +227,7 @@ async function weatherAt(spots: Spot[], ds: string, withNow = false): Promise<Wx
         wind: d.windspeed_10m_max?.[0] ?? 0,
         set: String(d.sunset?.[0] ?? "").slice(-5),
         code: d.weathercode?.[0] ?? null,
+        elev: x.elevation ?? null,
         nowT: x.current?.temperature_2m, nowCode: x.current?.weathercode,
       } as Wx;
     }).filter(Boolean) as Wx[];
@@ -219,6 +246,9 @@ function wxLine(w: Wx | null, withName = true) {
   if (w.sn > 0) b.push(`雪 ${w.sn.toFixed(0)}cm`);
   else if (w.pr >= 1) b.push(`雨 ${w.pr.toFixed(0)}mm`);
   if (w.wind >= 40) b.push(`風 ${w.wind.toFixed(0)}km/h`);
+  // Open-Meteo 本身已經計海拔（實測旭岳 1297m、大涌谷 1042m、旭川 112m 都準），
+  // 唔使自己修正；但寫出嚟你就明點解山上凍成咁。
+  if (w.elev != null && w.elev >= 600) b.push(`海拔 ${Math.round(w.elev)}m`);
   return b.join("　");
 }
 // 最惡劣嗰個（畀 remarks 用）
@@ -257,8 +287,20 @@ function hoursZh(line: string) {
     .trim();
 }
 // 睇完數字之後，加一句人話。唔會亂加 —— 只喺真係要留意嗰陣出聲。
-function remarks(w: Wx | null, rtSec: number, items: any[], ds: string, when = "今日") {
+function remarks(w: Wx | null, rtSec: number, items: any[], ds: string, when = "今日", all: Wx[] = []) {
   const out: string[] = [];
+  // 同一日之內溫差大（山上 vs 市區）—— 實測旭岳同旭川可以差九度
+  if (all.length > 1) {
+    const mins = all.map((x) => x.mn).filter((v): v is number => v != null);
+    const maxs = all.map((x) => x.mx).filter((v): v is number => v != null);
+    if (mins.length > 1) {
+      const spread = Math.max(...maxs) - Math.min(...mins);
+      if (spread >= 8) {
+        const cold = [...all].sort((a, b) => (a.mn ?? 99) - (b.mn ?? 99))[0];
+        out.push(`${when}山上同低地差 ${Math.round(spread)} 度（${cold.name} 最凍 ${Math.round(cold.mn!)}°）—— 衫著洋蔥式，落車前加返。`);
+      }
+    }
+  }
   if (w) {
     if (w.sn >= 5) out.push("落大雪，路面會滑，車程預鬆啲、慢慢開 🐭");
     else if (w.sn > 0) out.push("有雪，路面可能滑。");
@@ -418,7 +460,7 @@ async function build(slot: string, state: any, dsOverride?: string) {
 
   if (slot === "morning") {
     const sp = anchors(items);
-    const ws = await weatherAt(sp.length ? sp : [{ name: "", lat: pt.lat, lng: pt.lng }], target);
+    const ws = await weatherAt(sp.length ? sp : [{ name: "", lat: pt.lat, lng: pt.lng, ord: 0 }], target);
     L.push(`${pick(HI_MORNING, target)}　${trip.name}　第 ${dn}/${total} 日`);
     // 就算只有一個地點都要講係邊度 —— 「邊度嘅天氣」係重點
     for (const w of ws) {
@@ -430,7 +472,7 @@ async function build(slot: string, state: any, dsOverride?: string) {
     const jw = await jma(pt.lat, pt.lng);
     if (jw) L.push(jw);
     if (driveLine) L.push(driveLine);
-    const rm = remarks(worst(ws), rt?.totalSec ?? 0, items, target);
+    const rm = remarks(worst(ws), rt?.totalSec ?? 0, items, target, "今日", ws);
     if (rm.length) L.push("\n" + rm.join("\n"));
     if (!items.length) L.push("\n今日冇排嘢，舒舒服服咁行下都好 🌿");
     else {
@@ -451,8 +493,8 @@ async function build(slot: string, state: any, dsOverride?: string) {
     const nx = left[0];
     // 午報最想知嘅係「下一站而家乜天氣」，唔係全日中點
     const nSpot: Spot | null = (nx && nx.lat != null)
-      ? { name: String(nx.name ?? "").slice(0, 22), lat: +nx.lat, lng: +nx.lng } : null;
-    const ws = await weatherAt([nSpot ?? { name: "", lat: pt.lat, lng: pt.lng }], target, true);
+      ? { name: String(nx.name ?? "").slice(0, 22), lat: +nx.lat, lng: +nx.lng, ord: 0 } : null;
+    const ws = await weatherAt([nSpot ?? { name: "", lat: pt.lat, lng: pt.lng, ord: 0 }], target, true);
     const w = ws[0] ?? null;
     L.push(`${pick(HI_NOON, target)}　第 ${dn}/${total} 日`);
     if (w) {
@@ -500,7 +542,7 @@ async function build(slot: string, state: any, dsOverride?: string) {
     }
   } else {   // evening → 講聽日
     const sp = anchors(items);
-    const ws = await weatherAt(sp.length ? sp : [{ name: "", lat: pt.lat, lng: pt.lng }], target);
+    const ws = await weatherAt(sp.length ? sp : [{ name: "", lat: pt.lat, lng: pt.lng, ord: 0 }], target);
     L.push(`${pick(HI_EVE, target)}`);
     L.push(`\n聽日　第 ${dn}/${total} 日　${target.slice(5).replace("-", "/")}`);
     for (const w of ws) {
@@ -510,7 +552,7 @@ async function build(slot: string, state: any, dsOverride?: string) {
     const lastE = ws[ws.length - 1];
     if (lastE?.set) L.push(`🌇 ${lastE.set} 天黑${ws.length > 1 && lastE.name ? `（${lastE.name}）` : ""}`);
     if (driveLine) L.push(driveLine);
-    const rm = remarks(worst(ws), rt?.totalSec ?? 0, items, target, "聽日");
+    const rm = remarks(worst(ws), rt?.totalSec ?? 0, items, target, "聽日", ws);
     if (rm.length) L.push("\n" + rm.join("\n"));
     if (!items.length) L.push("\n聽日未排嘢 —— 想去邊今晚諗定都好 🌿");
     else {
