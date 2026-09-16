@@ -711,12 +711,12 @@
 <div class="gate" id="gate">
   <div class="box">
     <h2>旅程記錄</h2>
-    <p>行程規劃＋旅程日誌。入暗號同步雲端；唔想同步可以淨係喺呢部機用。</p>
-    <button class="btn acc hide" id="gateReuse">用返飲食記錄嘅暗號</button>
+    <p>行程規劃＋旅程日誌。輸輸入暗號即可同步雲端；不想同步，也可以只在這部裝置使用。</p>
+    <button class="btn acc hide" id="gateReuse">使用飲食記錄的暗號</button>
     <div class="hint hide" id="gateOr" style="text-align:center; margin:9px 0 10px">或者自己打</div>
     <input class="inp" id="gateKey" type="password" autocomplete="off" placeholder="暗號">
     <button class="btn" id="gateGo">進入</button>
-    <button class="btn ghost" id="gateLocal" style="margin-top:8px">淨係喺呢部機用</button>
+    <button class="btn ghost" id="gateLocal" style="margin-top:8px">只在這部裝置使用</button>
     <div class="hint" id="gateMsg"></div>
   </div>
 </div>
@@ -740,13 +740,13 @@
     <div class="top">
       <span class="sync" id="sync">載緊…</span>
       <button class="tbtn mapbtn" data-act="menu-side" id="hamb" title="目錄"></button>
-      <button class="tbtn now" data-act="now" title="而家">而家</button>
+      <button class="tbtn now" data-act="now" title="而家">現在</button>
       <button class="tbtn" id="bUndo" data-act="undo" title="復原"></button>
       <button class="tbtn" id="bRedo" data-act="redo" title="重做"></button>
       <button class="tbtn mapbtn" data-act="openmap"><span id="mapIc"></span> 地圖</button>
       <button class="tbtn solid" data-act="export">匯出</button>
     </div>
-    <div class="netbar" id="netbar">📴 離線中 — 睇得改得，接返網就自動同步</div>
+    <div class="netbar" id="netbar">📴 離線中 — 可以查看和修改，重新連線後會自動同步</div>
     <div id="main"></div>
   </main>
 
@@ -761,7 +761,7 @@
         <button data-act="aiclose">收起</button></div>
       <div class="aimsgs" id="aiMsgs"></div>
       <div class="aichips" id="aiChips"></div>
-      <div class="aiin"><textarea id="aiText" rows="1" placeholder="問我行程嘅嘢，或者叫我改…"></textarea>
+      <div class="aiin"><textarea id="aiText" rows="1" placeholder="問我行程的事，或請我修改…"></textarea>
         <button data-act="aisend" id="aiSend">↑</button></div>
     </section>
   </section>
@@ -778,7 +778,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260916-v30-1';
+  var APP_VER='20260916-v31-0';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -947,7 +947,7 @@
     var first=H.spans[0], last=H.spans[H.spans.length-1];
     if(t<first[0]) return x.time+' 到，但 '+minHM(first[0])+' 才開';
     if(t>last[1]) return x.time+' 到，但 '+minHM(last[1])+' 關門';
-    return x.time+' 唔喺營業時間內（'+H.spans.map(function(sp){ return minHM(sp[0])+'–'+minHM(sp[1]); }).join('、')+'）';
+    return x.time+' 不在營業時間內（'+H.spans.map(function(sp){ return minHM(sp[0])+'–'+minHM(sp[1]); }).join('、')+'）';
   }
   function hm2m(hm){ var p=String(hm||'0:00').split(':'); return (+p[0]||0)*60+(+p[1]||0); }
   function minHM(m){ m=((m%1440)+1440)%1440; return pad(Math.floor(m/60))+':'+pad(m%60); }
@@ -986,7 +986,7 @@
   }
   function wxKey(d){ var t=curTrip(); return t? t.id+'|'+d : ''; }
   function wxGet(d){ return (state.wx||{})[wxKey(d)]||null; }
-  // 出發日仲遠過 16 日就攞唔到預報。但「12 月北海道凍到幾多、落唔落雪」呢個
+  // 出發日仲遠過 16 日就無法取得預報。但「12 月北海道凍到幾多、落唔落雪」呢個
   // 問題，往年同期嘅實際數字已經答得到 —— 而且係免 key 嘅歷史 API。
   // 三個 request（過去三年），一次過攞晒所有地點（archive API 同 forecast 一樣
   // 支援多座標）。歷史數據唔會變，所以 cache 一個月。
@@ -1050,7 +1050,7 @@
     if(!pts.length) return;                                          // 一個地點都未定位，冇得計
 
     // 往年同期：自己有 30 日 cache，唔應該被預報嘅三個鐘節流封死。
-    // 有任何一日攞唔到預報（即係超出 16 日窗）就補往年。
+    // 有任何一日無法取得預報（即係超出 16 日窗）就補往年。
     var needHist = ds.some(function(dd){ return !(state.wx[t.id+'|'+dd]||{}).mx; });
     if(needHist) wxHist(pts, dayIdx, ds, t.id);
 
@@ -1070,7 +1070,7 @@
       '&longitude='+pts.map(function(q){ return q.lng.toFixed(3); }).join(',')+
       '&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,weather_code,sunrise,sunset'+
       '&timezone=auto';
-    // 出發日仲遠過 16 日就攞唔到預報，但照打一次攞當地時區（日落要用）
+    // 出發日仲遠過 16 日就無法取得預報，但照打一次攞當地時區（日落要用）
     url += inRange? ('&start_date='+a+'&end_date='+b) : '&forecast_days=1';
 
     wxBusy=true;
@@ -1228,7 +1228,7 @@
   function save(quiet){
     dirty=true; state.settings.updatedAt=new Date().toISOString(); cacheSave();
     if(!quiet) render();
-    if(MODE==='local'){ dirty=false; setSync('ok','已存喺本機 '+nowT()); return; }
+    if(MODE==='local'){ dirty=false; setSync('ok','已儲存在本機 '+nowT()); return; }
     setSync('','儲緊…');
     if(pTimer) clearTimeout(pTimer);
     pTimer=setTimeout(persist,600);
@@ -1316,8 +1316,8 @@
   function persistFail(e){
     lastErr=(e&&e.message)||'unknown';
     if(!navigator.onLine){ setSync('err','離線，資料未同步'); }
-    else if(e&&e.status){ setSync('err','存唔到（'+e.status+'）撳一下重試'); }
-    else { setSync('err','存唔到，網絡唔通　'+lastErr.slice(0,40)); }
+    else if(e&&e.status){ setSync('err','無法儲存（'+e.status+'）按一下重試'); }
+    else { setSync('err','無法儲存，網絡不通　'+lastErr.slice(0,40)); }
     setTimeout(persist,8000);
   }
   function persist(){
@@ -1341,7 +1341,7 @@
     .then(function(rows){
       if(rows && rows[0]){ dirty=false; pRetry=0; lastUpdated=rows[0].updated_at; setBase(); cacheSave(); setSync('ok','已儲低 '+nowT()); return; }
       // 0 row ＝ 其他裝置喺我讀完之後寫過 → 合併，唔可以覆蓋
-      if(pRetry>=4){ setSync('err','同步衝突，撳一下狀態重試'); return; }
+      if(pRetry>=4){ setSync('err','同步衝突，按一下狀態列重試'); return; }
       pRetry++;
       setSync('','其他裝置有改動，合併緊…');
       fetchRow(function(row){
@@ -1371,7 +1371,7 @@
   function boot(){
     if(!MODE){ showGate(''); return; }
     if(MODE==='local'){ var c=cacheLoad(); applyState(c&&c.state?c:{state:defState()}); setSync('ok','本機模式'); render(); return; }
-    if(!state){ var c2=cacheLoad(); if(c2&&c2.state){ applyState(c2); render(); setSync('','上次嘅資料·更新緊…'); } else setSync('','載緊資料…'); }
+    if(!state){ var c2=cacheLoad(); if(c2&&c2.state){ applyState(c2); render(); setSync('','上次的資料 · 更新中…'); } else setSync('','載緊資料…'); }
     fetchRow(function(row,reached){
       if(!row){
         if(!reached){ if(!state){ applyState({state:defState()}); render(); } setSync('err','離線，資料未同步');
@@ -1382,7 +1382,7 @@
           body:JSON.stringify([{id:'main',state:defState(),updated_at:new Date().toISOString()}])})
         .then(function(r){ if(!r.ok) throw 0; return r.json(); })
         .then(function(rows){ if(!rows||!rows[0]) throw 0; applyState(rows[0]); cacheSave(); setSync('ok','已同步'); render(); })
-        .catch(function(){ try{localStorage.removeItem('tripKey');}catch(e){} KEY=''; MODE=''; showGate('暗號唔啱，再入一次'); });
+        .catch(function(){ try{localStorage.removeItem('tripKey');}catch(e){} KEY=''; MODE=''; showGate('暗號不正確，請再輸入一次'); });
         return;
       }
       applyState(row); cacheSave(); setSync('ok','已同步'); render();
@@ -1437,7 +1437,7 @@
 
   // 自動匯率。Frankfurter 免 key、免登記、無 quota，資料來自 98 間央行（ECB 為底）。
   // 🔴 唔會蓋走你自己入嘅：ratesSrc[ccy]==='man' 就跳過。
-  // ⚠️ ECB 嗰套冇台幣（TWD）等，攞唔到就留返手動。
+  // ⚠️ ECB 嗰套冇台幣（TWD）等，無法取得就留返手動。
   var fxBusy=false, fxMiss={};                 // fxMiss：問過但央行冇嘅幣種（例：TWD），唔好每次都問
   function fxFetch(force, extra, cb){
     var t=curTrip(); if(!t){ if(cb) cb(false); return; }
@@ -1504,7 +1504,7 @@
     var km=hav([a.lat,a.lng],[b.lat,b.lng])*1.3;
     if(km<0.06) return null;
     // 2026-09-15 修：舊版 ≥15km 畫火車 icon ＋ 用 65km/h 計。呢個係自駕 app，
-    // 而呢個 fallback 正正喺山路冇訊號攞唔到 Routes 嗰陣出現 —— 即係最需要嗰刻講大話。
+    // 而呢個 fallback 正正喺山路冇訊號無法取得 Routes 嗰陣出現 —— 即係最需要嗰刻講大話。
     // 一律當開車。速度分級，長途當上高速；寧可估慢，唔好令你以為趕得切。
     var mode=ic('car',15), kmh;
     if(km<2){ mode=ic('walk',15); kmh=4.5; }      // 兩公里內真係行路
@@ -1525,8 +1525,8 @@
     openSheet('<h3>'+ic('book',19,'inline')+' '+longD(d)+'</h3>'+
       '<div class="moods" style="display:flex;gap:6px;margin-bottom:10px">'+
       MOODS.map(function(m){ return '<button class="tbtn jm'+(lg.mood===m?' solid':'')+'" data-m="'+m+'" style="width:38px;height:38px;justify-content:center;font-size:17px">'+m+'</button>'; }).join('')+'</div>'+
-      '<textarea class="inp" id="jText" style="min-height:150px" placeholder="今日去咗邊、食咗乜、有咩感覺…">'+esc(lg.text)+'</textarea>'+
-      (done.length?'<div class="hint">今日打咗勾：'+done.map(function(x){return esc(x.name);}).join('、')+'</div>':'')+
+      '<textarea class="inp" id="jText" style="min-height:150px" placeholder="今日去了哪裏、吃了什麼、有什麼感受…">'+esc(lg.text)+'</textarea>'+
+      (done.length?'<div class="hint">今日已打勾：'+done.map(function(x){return esc(x.name);}).join('、')+'</div>':'')+
       '<div class="btnrow"><button class="btn ghost" data-act="ailog" data-d="'+d+'">'+ic('spark',15,'inline')+' AI 幫我寫</button>'+
       '<button class="btn acc" data-act="savejournal" data-d="'+d+'">儲存</button></div>');
   }
@@ -1591,7 +1591,7 @@
               name:String(name||'').slice(0,120), lat:null,lng:null,addr:'', note:'',
               cost:0, done:false, checks:[] };
       Object.keys(extra||{}).forEach(function(kk){ if(extra[kk]) x[kk]=extra[kk]; });
-      if(date && !inTrip) x.note=(x.note?x.note+' · ':'')+'原定 '+date+'（唔喺旅程日期範圍內）';
+      if(date && !inTrip) x.note=(x.note?x.note+' · ':'')+'原定 '+date+'（不在旅程日期範圍內）';
       state.items.push(x); ids.push(x.id); n++;
       return x;
     }
@@ -1620,26 +1620,26 @@
   function aiSheet(){
     var t=curTrip();
     openSheet('<h3>'+ic('spark',19,'inline')+' AI 助手</h3>'+
-      '<div class="hint" style="margin-bottom:12px">常駐對話助手喺第二浪。而家可以做呢兩樣：</div>'+
-      '<div class="fld"><label>排行程 — 想點玩？</label><textarea class="inp" id="aiPref" placeholder="例：主打街頭嘢食同古蹟，唔想行太多，中等預算"></textarea></div>'+
-      '<button class="btn acc" data-act="aiplan">排落' + (days().length||0) + '日行程（加喺現有嘢後面）</button>'+
+      '<div class="hint" style="margin-bottom:12px">常駐對話助手屬第二階段。現在可以做這兩件事：</div>'+
+      '<div class="fld"><label>排行程 — 想怎樣玩？</label><textarea class="inp" id="aiPref" placeholder="例：以街頭小吃和古蹟為主，不想走太多路，中等預算"></textarea></div>'+
+      '<button class="btn acc" data-act="aiplan">排落' + (days().length||0) + '日行程（加在現有項目之後）</button>'+
       '<div class="fld" style="margin-top:16px"><label>貼文字抽地點</label><textarea class="inp" id="aiSrc" placeholder="貼 blog、IG caption、朋友清單…"></textarea></div>'+
-      '<button class="btn ghost" data-act="aiextract">抽出嚟入清單</button>'+
+      '<button class="btn ghost" data-act="aiextract">抽出並加入清單</button>'+
       '<div class="fld" style="margin-top:18px"><label>貼確認信 → 自動入行程</label>'+
       '<textarea class="inp" id="aiBook" placeholder="貼整封機票／酒店／新幹線確認信（可以幾封一次貼）"></textarea></div>'+
       '<button class="btn ghost" data-act="aibook">抽航班／酒店入行程</button>'+
-      '<div class="hint">會連航班號、確認編號、座位、航廈一齊入。日期對得上就自動排落嗰日。</div>'+
+      '<div class="hint">航班號、確認編號、座位、航廈會一併輸入。日期對得上的會自動排入該日。</div>'+
       '<div class="hint" id="aiMsg"></div>');
   }
   function aiRun(intent,prompt,onText){
-    var m=$('aiMsg'); if(m) m.innerHTML='<span class="spin"></span>諗緊…';
+    var m=$('aiMsg'); if(m) m.innerHTML='<span class="spin"></span>思考中…';
     aiCall(intent,prompt,function(txt,err){
       if(err||!txt){ manualSheet(prompt,onText,err); return; }
       onText(txt);
     });
   }
   function manualSheet(prompt,onText,err){
-    openSheet('<h3>AI 駁唔到</h3><div class="hint">'+esc(err||'')+'。複製下面段字貼落 Claude／ChatGPT，再貼返個回覆。</div>'+
+    openSheet('<h3>AI 無法連接</h3><div class="hint">'+esc(err||'')+'。複製下面段字貼落 Claude／ChatGPT，再貼返個回覆。</div>'+
       '<div class="fld" style="margin-top:10px"><textarea class="inp" id="mPrompt" readonly style="min-height:120px">'+esc(prompt)+'</textarea></div>'+
       '<button class="btn ghost" data-act="copyprompt">'+ic('copy',15,'inline')+' 複製</button>'+
       '<div class="fld" style="margin-top:12px"><textarea class="inp" id="mPaste" placeholder="貼返回覆…"></textarea></div>'+
@@ -1666,7 +1666,7 @@
       L.push('【第'+(i+1)+'日 '+d+' 星期'+dow(d)+'】'+(a.length?'':'（空）'));
       a.forEach(function(x){
         L.push('  '+x.id+' '+(x.time||'--:--')+' '+kd(x.kind).n+' '+x.name+
-          (x.cost?' '+cur()+x.cost:'')+(x.lat?'':' [冇座標]')+(x.done?' [去咗]':'')+(x.note?' ／'+String(x.note).slice(0,60):''));
+          (x.cost?' '+cur()+x.cost:'')+(x.lat?'':' [沒有座標]')+(x.done?' [已去]':'')+(x.note?' ／'+String(x.note).slice(0,60):''));
       });
       var lg=getLog(d); if(lg&&lg.text) L.push('  〔日誌〕'+String(lg.text).slice(0,150));
     });
@@ -1690,7 +1690,7 @@
       '=== 行程 ===\n'+tripCtx();
   }
   function aiOpen(){
-    if(!curTrip()){ alert('開咗旅程先'); return; }
+    if(!curTrip()){ alert('請先開啟一個旅程'); return; }
     $('aiPanel').classList.add('open');
     $('mapwrap').classList.add('open');
     renderChat();
@@ -1699,17 +1699,17 @@
   function renderChat(){
     var log=chatLog(), h='';
     if(!log.length){
-      h='<div class="aiwelcome">我睇得到你成個行程。<br>可以問我嘢，亦可以叫我直接改。<br><br>改完會即刻反映喺左邊，撳頂部 ↶ 就復原到。</div>';
+      h='<div class="aiwelcome">我看得到你整個行程。<br>可以向我提問，也可以請我直接修改。<br><br>修改後會即時反映在左邊，按頂部 ↶ 即可復原。</div>';
     } else {
       log.forEach(function(m){
         if(m.r==='sys'){ h+='<div class="msg sys">'+esc(m.t)+'</div>'; return; }
         h+='<div class="msg '+(m.r==='u'?'u':'a')+'">'+esc(m.t)+(m.did?'<span class="did">'+esc(m.did)+'</span>':'')+'</div>';
       });
     }
-    if(aiBusy) h+='<div class="msg a"><span class="spin"></span>諗緊…</div>';
+    if(aiBusy) h+='<div class="msg a"><span class="spin"></span>思考中…</div>';
     $('aiMsgs').innerHTML=h;
     $('aiMsgs').scrollTop=$('aiMsgs').scrollHeight;
-    var chips=['第幾日排得太密？','幫我填晒未有時間嘅項目','我總共使緊幾多錢？','想去清單有咩可以塞入行程？'];
+    var chips=['第幾日排得太密？','幫我填好所有未有時間的項目','我總共花了多少錢？','「想去」清單中有什麼可以排入行程？'];
     $('aiChips').innerHTML=chips.map(function(c){ return '<button data-act="aichip">'+esc(c)+'</button>'; }).join('');
     $('aiSend').disabled=aiBusy;
   }
@@ -1774,7 +1774,7 @@
     if(log.length>40) log.splice(0,log.length-40);
     aiBusy=true; renderChat();
     if(MODE!=='cloud'){
-      log.push({r:'sys',t:'本機模式冇得駁 AI。入返暗號用雲端模式先。'});
+      log.push({r:'sys',t:'本機模式無法連接 AI。請先輸輸入暗號改用雲端模式。'});
       aiBusy=false; renderChat(); return;
     }
     var msgs=[{role:'system',content:sysPrompt()}];
@@ -1787,12 +1787,12 @@
         var txt=(j&&j.text)||'';
         var ops=grabOps(txt), n=ops?applyOps(ops):0;
         var lg=chatLog();
-        lg.push({r:'a', t:stripOps(txt)||'（冇嘢答）', did:n? '已經改咗 '+n+' 樣，唔啱撳 ↶ 復原':''});
+        lg.push({r:'a', t:stripOps(txt)||'（沒有回覆）', did:n? '已修改 '+n+' 項，不合適可按 ↶ 復原':''});
         aiBusy=false; save();
         if($('aiPanel').classList.contains('open')) renderChat();
       })
       .catch(function(e){
-        chatLog().push({r:'sys',t:'駁唔到 AI（'+(e.message||e)+'）'});
+        chatLog().push({r:'sys',t:'無法連接 AI（'+(e.message||e)+'）'});
         aiBusy=false; renderChat();
       });
   }
@@ -1840,27 +1840,27 @@
   }
   function optimizeSheet(d){
     var r=optimizeDay(d);
-    if(!r){ alert('呢日要至少 3 個有座標嘅地點先排到'); return; }
+    if(!r){ alert('這一天至少要有 3 個有座標的地點才能排序'); return; }
     // 🔴 呢幾個數係「直線距離」，唔係車程。實測北海道路里程／直線係 1.12×（石狩平原）
     // 到 2.08×（繞洞爺湖），所以舊版寫「行程總長 88 km」可能實際係 170 km。
     // 唔改個演算法（實測排錯序嘅代價細），但一定要標明呢個係直線數，
     // 同時把手上嘅真實車程一齊擺出嚟對照。
     var dr0=dayDrive(d);
-    var realLine = dr0? ('<div class="hint" style="margin:8px 0 0">而家呢個次序嘅<b>實際車程</b>：'+
+    var realLine = dr0? ('<div class="hint" style="margin:8px 0 0">目前次序的<b>實際車程</b>：'+
         minsTxt(dr0.sec)+' · '+(dr0.m/1000).toFixed(dr0.m<10000?1:0)+'km'+
         (dr0.real?'（Google 真路線）':'（估算）')+'</div>') : '';
-    if(r.same){ openSheet('<h3>'+ic('route',19,'inline')+' 路線最優化</h3><div class="empty">而家嘅次序已經係最順<br>直線總長 '+r.before.toFixed(1)+' km，唔使改。</div>'+realLine); return; }
+    if(r.same){ openSheet('<h3>'+ic('route',19,'inline')+' 路線最優化</h3><div class="empty">目前的次序已經最順<br>直線總長 '+r.before.toFixed(1)+' km，不必更改。</div>'+realLine); return; }
     var saved=r.before-r.after, pct=Math.round(saved/r.before*100);
     openSheet('<h3>'+ic('route',19,'inline')+' 路線最優化 · '+longD(d)+'</h3>'+
-      '<div class="optbox"><div class="optrow"><span>而家（直線）</span><b class="num">'+r.before.toFixed(1)+' km</b></div>'+
+      '<div class="optbox"><div class="optrow"><span>目前（直線）</span><b class="num">'+r.before.toFixed(1)+' km</b></div>'+
       '<div class="optrow ok"><span>重排之後（直線）</span><b class="num">'+r.after.toFixed(1)+' km</b></div>'+
-      '<div class="optsave">直線慳 '+saved.toFixed(1)+' km（'+pct+'%）</div></div>'+
-      '<div class="hint" style="margin:8px 0 0">⚠ 呢三個數係<b>直線距離</b>，唔係車程。'+
-      '北海道實際路里程係直線嘅 1.1–2.1 倍，繞湖／過山峠嗰段差得最遠。</div>'+realLine+
+      '<div class="optsave">直線節省 '+saved.toFixed(1)+' km（'+pct+'%）</div></div>'+
+      '<div class="hint" style="margin:8px 0 0">⚠ 這三個數字是<b>直線距離</b>，不是車程。'+
+      '北海道實際路程是直線的 1.1–2.1 倍，繞湖、翻山的路段相差最遠。</div>'+realLine+
       '<div class="fld" style="margin-top:14px"><label>新次序</label><div class="optseq">'+
       r.seq.map(function(x,i){ return '<div><b>'+(i+1)+'</b> '+esc(x.name)+'</div>'; }).join('')+'</div></div>'+
-      '<div class="hint">第一個地點固定做起點。冇座標嘅項目（航班、筆記）位置唔會郁。<b>時間會留喺原本嘅時段</b>（唔會跟住地點走）。</div>'+
-      '<div class="btnrow"><button class="btn ghost" data-act="closesheet">唔要</button>'+
+      '<div class="hint">第一個地點固定為起點。沒有座標的項目（航班、筆記）位置不會移動。<b>時間會保留在原本的時段</b>（不會跟隨地點移動）。</div>'+
+      '<div class="btnrow"><button class="btn ghost" data-act="closesheet">取消</button>'+
       '<button class="btn acc" data-act="applyopt" data-d="'+d+'">套用</button></div>');
   }
   function applyOpt(d){
@@ -1874,7 +1874,7 @@
     var out=r.all.slice();
     slots.forEach(function(pos,k){ out[pos]=r.seq[k]; });
     out.forEach(function(x,i){ x.ord=(i+1)*10; x.time=times[i]; });
-    save(); closeSheet(); setSync('ok','路線重排咗，慳 '+(r.before-r.after).toFixed(1)+' km');
+    save(); closeSheet(); setSync('ok','路線已重排，節省 '+(r.before-r.after).toFixed(1)+' km');
   }
 
   // ---------- 離線 ----------
@@ -2052,7 +2052,7 @@
     }
     if(t.start<=td) return {txt:'進行中', cls:'now'};
     var left=diffD(td,t.start);
-    return {txt: left<=1? '聽日出發' : (left<=60? '仲有 '+left+' 日' : '仲有 '+Math.round(left/30)+' 個月'), cls:'soon'};
+    return {txt: left<=1? '聽日出發' : (left<=60? '還有 '+left+' 日' : '還有 '+Math.round(left/30)+' 個月'), cls:'soon'};
   }
   function tripSort(a,b){
     var wa=tripWhen(a).cls, wb=tripWhen(b).cls;
@@ -2065,9 +2065,9 @@
   function homeView(){
     var ts=state.trips.slice().sort(tripSort);
     var h='<div class="page home">';
-    h+='<div class="homeh"><h1>我嘅旅程</h1><span class="n">'+ts.length+'</span></div>';
+    h+='<div class="homeh"><h1>我的旅程</h1><span class="n">'+ts.length+'</span></div>';
     if(!ts.length){
-      h+='<div class="panel pad"><div class="empty">仲未有旅程<br>開一個先</div>'+
+      h+='<div class="panel pad"><div class="empty">還未有旅程<br>先建立一個</div>'+
          '<button class="btn acc" data-act="newtrip">＋ 開新旅程</button></div></div>';
       return h;
     }
@@ -2082,14 +2082,14 @@
             ' style="background:linear-gradient(135deg,'+dayColor(i)+','+dayColor(i+3)+')"')+'>'+
           (ph?'':'<em>'+ic('compass',30)+'</em>')+
           '<span class="twhen '+w.cls+'">'+esc(w.txt)+'</span>'+
-          (cur?'<span class="tnow">正在睇</span>':'')+
+          (cur?'<span class="tnow">正在查看</span>':'')+
         '</div>'+
         '<div class="tinfo">'+
           '<div class="tnm">'+esc(t.name||'未命名')+'</div>'+
           '<div class="tsub">'+esc(t.dest||'')+(t.dest&&t.start?' · ':'')+
             (t.start? md(t.start)+'–'+md(t.end)+' · '+nd+'日' : '')+'</div>'+
           '<div class="tbar"><i style="width:'+pct+'%;background:'+dayColor(i)+'"></i></div>'+
-          '<div class="tmeta">'+its.length+' 項'+(done?' · 去咗 '+done:'')+
+          '<div class="tmeta">'+its.length+' 項'+(done?' · 已去 '+done:'')+
             (itemsCost(its)? ' · '+esc((t.cur||'HKD')+' '+Math.round(itemsCost(its)).toLocaleString()) : '')+
             '<button class="kebab" data-act="tripmenu" data-id="'+t.id+'">⋯</button></div>'+
         '</div></div>';
@@ -2127,7 +2127,7 @@
       '<div><b class="num">'+done+'</b><span>已完成</span></div>'+
       '<div><b class="num">'+it.filter(function(x){return !x.date;}).length+'</b><span>未排期</span></div>'+
       '<div><b class="num">'+Math.round(homeTotal()).toLocaleString()+'</b><span>'+esc(cur())+'</span></div>'+
-      '<button class="hfx" data-act="fxsheet" title="工具：而家／今日／換算">'+ic('spark',16,'inline')+'<span>工具</span></button>'+
+      '<button class="hfx" data-act="fxsheet" title="工具：現在位置／今日行程／換算">'+ic('spark',16,'inline')+'<span>工具</span></button>'+
       '</div></div>';
   }
   function twoUp(){
@@ -2200,7 +2200,7 @@
       fetch(stUrl(f.p), {headers:stHdr()})
         .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); })
         .then(done)
-        .catch(function(e){ cb(null, (e.message||'攞唔到')+(navigator.onLine? '' : '（離線，而且冇預載）')); });
+        .catch(function(e){ cb(null, (e.message||'無法取得')+(navigator.onLine? '' : '（離線，而且未預載）')); });
     };
     if(window.caches){
       caches.match(stUrl(f.p)).then(function(m){
@@ -2218,16 +2218,16 @@
     var kind=fileKind(f.t, f.n);
     var head='<h3>'+ic(fileIcon(f.t),18,'inline')+' '+esc(f.n)+'</h3>'+
              '<div class="hint" style="margin:-6px 0 12px">'+fmtSize(f.s)+' · '+esc(x.name)+'</div>';
-    openSheet(head+'<div id="fv" class="fview"><span class="spin"></span>攞緊檔案…</div>');
+    openSheet(head+'<div id="fv" class="fview"><span class="spin"></span>正在取得檔案…</div>');
     $('pan').__reopen=function(){ viewFile(itemById(x.id), i); };
     getFileBlob(f, function(u, err){
       var box=$('fv'); if(!box) return;
-      if(err){ box.innerHTML='<div class="empty">開唔到：'+esc(err)+'</div>'; return; }
+      if(err){ box.innerHTML='<div class="empty">無法開啟：'+esc(err)+'</div>'; return; }
       var h='';
       if(kind==='img') h='<img src="'+esc(u)+'" alt="'+esc(f.n)+'">';
       else if(kind==='pdf') h='<iframe src="'+esc(u)+'" title="'+esc(f.n)+'"></iframe>';
       else if(kind==='text') h='<iframe src="'+esc(u)+'" class="txt" title="'+esc(f.n)+'"></iframe>';
-      else h='<div class="empty">呢個格式睇唔到，下面下載</div>';
+      else h='<div class="empty">這種格式無法預覽，請在下方下載</div>';
       h+='<div class="fvbtn">'+
          '<a class="btn ghost sm" href="'+esc(u)+'" download="'+esc(f.n)+'">下載</a>'+
          '<a class="btn ghost sm" href="'+esc(u)+'" target="_blank" rel="noopener">新 tab 開</a>'+
@@ -2252,14 +2252,14 @@
          '<span class="fic">'+ic(fileIcon(f.t),16)+'</span>'+
          '<span class="fn">'+esc(f.n)+'</span>'+
          '<span class="fsz">'+fmtSize(f.s)+'</span>'+
-         (editable?'<button class="kebab" data-act="delfile" data-id="'+x.id+'" data-i="'+i+'" style="opacity:1" title="刪咗">'+ic('x',14)+'</button>':'')+
+         (editable?'<button class="kebab" data-act="delfile" data-id="'+x.id+'" data-i="'+i+'" style="opacity:1" title="刪除">'+ic('x',14)+'</button>':'')+
          '</div>';
     });
     if(editable){
       // 揀完之後**唔會即刻上載** —— 先列出你揀咗咩，再撳「加落去」。
       // 舊版係即時上載，冇確認、揀錯都退唔到，而且失敗你未必見到。
       if(staged && staged.id===x.id && staged.files.length){
-        h+='<div class="stag"><div class="stagh">揀咗 '+staged.files.length+' 個，仲未加：</div>';
+        h+='<div class="stag"><div class="stagh">已選 '+staged.files.length+' 個，尚未加入：</div>';
         staged.files.forEach(function(f,i){
           var big=f.size>MAXMB*1048576;
           h+='<div class="fitem'+(big?' bad':'')+'"><span class="fic">'+ic(fileIcon(f.type),16)+'</span>'+
@@ -2270,9 +2270,9 @@
         var okN=staged.files.filter(function(f){ return f.size<=MAXMB*1048576; }).length;
         h+='<div class="btnrow2">'+
            (okN? '<button class="btn acc sm" data-act="doupload" data-id="'+x.id+'">加落去（'+okN+' 個）</button>' : '')+
-           '<button class="btn ghost sm" data-act="unstageall">唔要</button></div></div>';
+           '<button class="btn ghost sm" data-act="unstageall">取消</button></div></div>';
       }
-      h+='<label class="fadd"><span class="fadd-t">'+ic('plus',15)+' 揀檔案（機票、單據、相…最大 '+MAXMB+'MB）</span>'+
+      h+='<label class="fadd"><span class="fadd-t">'+ic('plus',15)+' 選擇檔案（機票、單據、相片…最大 '+MAXMB+'MB）</span>'+
          '<input type="file" multiple class="fadd-in" data-act="pickfile" data-id="'+x.id+'" '+
          'accept="image/*,application/pdf,text/*,.pdf,.jpg,.jpeg,.png,.heic,.txt,.csv"></label>';
     }
@@ -2288,10 +2288,10 @@
     var h='<div class="sec" id="s-explore"><div class="sech">'+ic('chev',13,'chev')+'<h2>探索</h2>'+
       (ex&&ex.items?'<span class="n">'+ex.items.length+'</span>':'')+'<span class="sp"></span>'+
       '<button class="pill acc" data-act="explore"'+(busy?' disabled':'')+'>'+ic('spark',15,'inline')+' '+
-      (busy?'搵緊…':(ex?'換一批':'搵下有咩好去'))+'</button></div>';
+      (busy?'搜尋中…':(ex?'換一批':'看看有什麼好去處'))+'</button></div>';
     if(!ex || !ex.items || !ex.items.length){
       h+='<div class="panel pad"><div class="empty">'+
-         (busy?'<span class="spin"></span>AI 揀地方，再去 Google 攞相同評分…'
+         (busy?'<span class="spin"></span>AI 正在挑選地點，再向 Google 取得相片和評分…'
               :'叫 AI 照住「'+esc(t.dest||t.name)+'」推介，再由 Google 補相同評分')+'</div></div>';
       return h+'</div>';
     }
@@ -2314,7 +2314,7 @@
     if(MODE!=='cloud'){ alert('要雲端模式先用得 AI'); return; }
     exBusy=true; render();
     var have=tItems().map(function(x){ return x.name; }).join('、');
-    var pr='你係旅程顧問。幫我推介「'+(t.dest||t.name)+'」值得去嘅地方。\n'+
+    var pr='你係旅程顧問。幫我推介「'+(t.dest||t.name)+'」值得去的地方。\n'+
       (have?'我已經有：'+have+'（唔好重複）\n':'')+
       (t.note?'我嘅筆記：'+String(t.note).slice(0,300)+'\n':'')+
       '要 10 個，混合景點、餐廳、住宿都可以。\n'+
@@ -2323,17 +2323,17 @@
       '{"stops":[{"name":"地點名（連城市）","cat":"place|eat|stay|buy","note":"一句：點解值得去"}]}';
     aiCall('plan', pr, function(txt, err){
       var arr=err?null:parseStops(txt);
-      if(!arr || !arr.length){ exBusy=false; setSync('err','AI 推介唔到，再試一次'); render(); return; }
+      if(!arr || !arr.length){ exBusy=false; setSync('err','AI 無法推介，請再試一次'); render(); return; }
       if(!state.explore) state.explore={};
       state.explore[t.id]={ at:Date.now(), items:arr.slice(0,10).map(function(r){
         return { name:String(r.name||'').slice(0,80), why:String(r.note||'').slice(0,90),
                  kind:(KINDS[r.cat]?r.cat:'place') };
       })};
-      save(); setSync('','去 Google 攞相…');
+      save(); setSync('','正在向 Google 取得相片…');
       // 逐個補 Google 相／評分，一秒一個，唔會轟人
       var list=state.explore[t.id].items;
       (function go(i){
-        if(i>=list.length){ exBusy=false; setSync('ok','推介好咗'); render(); return; }
+        if(i>=list.length){ exBusy=false; setSync('ok','推介完成'); render(); return; }
         var r=list[i];
         var c=tripCentre(), body={op:'autocomplete', q:r.name};
         if(c){ body.lat=c.lat; body.lng=c.lng; }
@@ -2359,7 +2359,7 @@
   }
   function notesSec(t){
     return '<div class="sec" id="s-note"><div class="sech">'+ic('chev',13,'chev')+'<h2>筆記</h2></div>'+
-      '<div class="panel pad"><textarea class="inp" id="tripNote" style="box-shadow:none;background:var(--soft)" placeholder="簽證、匯率、想食嘅嘢、朋友介紹…">'+esc(t.note||'')+'</textarea></div></div>';
+      '<div class="panel pad"><textarea class="inp" id="tripNote" style="box-shadow:none;background:var(--soft)" placeholder="簽證、匯率、想吃的東西、朋友介紹…">'+esc(t.note||'')+'</textarea></div></div>';
   }
   function listSec(l){
     var arr=listItems(l.id);
@@ -2367,12 +2367,12 @@
       '<button class="kebab" data-act="listmenu" data-id="'+l.id+'">⋯</button></div>'+
       '<div class="panel" data-drop="list:'+l.id+'">'+
       (arr.length? '<div class="rows">'+arr.map(function(x,i){return rowHTML(x,null);}).join('')+'</div>'
-                 : '<div class="empty">仲未有嘢。打個名，或者由行程拖過嚟。</div>')+
+                 : '<div class="empty">還沒有內容。輸入名稱，或從行程拖過來。</div>')+
       addHTML('list:'+l.id)+'</div></div>';
   }
   function itinSec(){
     var ds=days();
-    if(!ds.length) return '<div class="sec" id="s-itin"><div class="sech">'+ic('chev',13,'chev')+'<h2>行程</h2></div><div class="panel pad"><div class="empty">未定日期<br>撳 hero 右上角「改」入返出發／返程日</div></div></div>';
+    if(!ds.length) return '<div class="sec" id="s-itin"><div class="sech">'+ic('chev',13,'chev')+'<h2>行程</h2></div><div class="panel pad"><div class="empty">未定日期<br>按右上角 ⋯ 輸入出發／返程日</div></div></div>';
     var h='<div class="sec" id="s-itin"><div class="sech big">'+ic('chev',13,'chev')+'<h2>行程</h2><span class="n">'+ds.length+' 日</span></div>';
     ds.forEach(function(d,i){
       var arr=dayItems(d), c=dayColor(i), tot=sumHome(arr);
@@ -2408,7 +2408,7 @@
           if(isGeo) prev=x;
         });
         h+='</div>';
-      } else h+='<div class="empty">今日仲未有安排</div>';
+      } else h+='<div class="empty">今日還未有安排</div>';
       h+=addHTML('day:'+d)+'</div>';
       var lg=getLog(d);
       if(lg && lg.text) h+='<div class="jr" data-act="journal" data-d="'+d+'">'+(lg.mood?'<span class="mo">'+esc(lg.mood)+'</span>':'')+esc(lg.text)+'</div>';
@@ -2442,7 +2442,7 @@
     if(+x.cost) chips.push('<span class="chip cost">'+esc(fmtCcy(itemCcy(x), x.cost))+'</span>');
     if((x.files||[]).length) chips.push('<button class="chip file tap" data-act="chipfile" data-id="'+x.id+'" title="開附件">'+
       ic('note',11,'inline')+' '+x.files.length+'</button>');
-    if(x.unverified) chips.push('<span class="chip warn" title="地圖搵唔到呢個名，AI 可能作嘅">⚠ 查唔到</span>');
+    if(x.unverified) chips.push('<span class="chip warn" title="地圖找不到這個名稱，可能是 AI 虛構的">⚠ 查不到</span>');
     var chk='';
     if(x.kind==='check' && x.checks && x.checks.length){
       chk='<div class="checks">'+x.checks.map(function(c,i){
@@ -2455,7 +2455,7 @@
     var hw=hoursWarn(x);
     if(hw) chips.push('<span class="chip shut" title="Google 營業時間">'+ic('clock',11,'inline')+' '+esc(hw)+'</span>');
     if(x.fno) chips.push('<span class="chip">'+esc(x.fno)+'</span>');
-    if(x.conf) chips.push('<button class="chip tap" data-act="copyconf" data-id="'+x.id+'" title="撳一下複製">'+
+    if(x.conf) chips.push('<button class="chip tap" data-act="copyconf" data-id="'+x.id+'" title="按一下複製">'+
       ic('check',11,'inline')+' '+esc(x.conf)+'</button>');
     var badge = idx
       ? '<div class="idx" style="background:'+idx.c+'">'+idx.n+'</div>'
@@ -2476,7 +2476,7 @@
           '<span data-act="focus" data-id="'+x.id+'" style="cursor:pointer">'+esc(x.name)+'</span></div>'+
         (x.addr?'<div class="ad">'+esc(tidyAddr(x.addr))+'</div>':'')+
         (x.note?'<div class="nt">'+noteHtml(x)+'</div>':'')+chk+
-        (x.memo?'<div class="memo"><em>'+ic('note',12)+'我嘅標註</em>'+memoHtml(x.memo)+'</div>':'')+
+        (x.memo?'<div class="memo"><em>'+ic('note',12)+'我的標註</em>'+memoHtml(x.memo)+'</div>':'')+
         (chips.length?'<div class="chips">'+chips.join('')+'</div>':'')+
         // 兩粒掣直接擺喺格上面。之前我放喺「撳地點名彈出嗰張卡」，
         // 等於仲要多兩步 —— 呢兩樣係到咗現場最常做嘅動作，要一揿就到。
@@ -2494,7 +2494,7 @@
   }
   function addHTML(scope){
     return '<div class="add" data-scope="'+scope+'"><div class="addbar">'+
-      '<div class="fi"><span id="ak-'+scope+'" class="akic">'+ic('search',17)+'</span><input type="text" placeholder="加地點、酒店、航班…打個名即刻搵" data-act="addin" data-scope="'+scope+'"></div>'+
+      '<div class="fi"><span id="ak-'+scope+'" class="akic">'+ic('search',17)+'</span><input type="text" placeholder="加地點、酒店、航班…輸入名稱即時搜尋" data-act="addin" data-scope="'+scope+'"></div>'+
       '<div class="kinds">'+KORDER.map(function(k){
         return '<button data-act="kind" data-scope="'+scope+'" data-k="'+k+'" title="'+KINDS[k].n+'">'+ic(KINDS[k].i,17)+'</button>'; }).join('')+
       '</div></div></div>';
@@ -2509,8 +2509,8 @@
        '<button class="pill acc" data-act="fxsheet">換算</button>'+
        '<button class="pill" data-act="rateset">匯率設定</button></div>';
     var miss=unknownCcys();
-    if(miss.length) h+='<div class="hint err">'+esc(miss.join('、'))+' 未設匯率，總數當 1:1 計。撳「匯率設定」填返。</div>';
-    if(!it.length){ h+='<div class="empty">未有使費<br>喺項目度填個價錢，或者撳「＋ 加開支」</div></div>'; return h; }
+    if(miss.length) h+='<div class="hint err">'+esc(miss.join('、'))+' 未設定匯率，總數以 1:1 計算。請按「匯率設定」填寫。</div>';
+    if(!it.length){ h+='<div class="empty">還沒有開支<br>在項目中填寫價錢，或按「＋ 加開支」</div></div>'; return h; }
 
     // 按分類分佈
     var by={}; it.forEach(function(x){ by[x.kind]=(by[x.kind]||0)+toHome(x.cost,itemCcy(x)); });
@@ -2539,7 +2539,7 @@
     return h+'</div></div>';
   }
   function toc(){
-    var head='<button class="tochome" data-act="home">'+ic('chev',14,'rot90')+' 我嘅旅程</button>';
+    var head='<button class="tochome" data-act="home">'+ic('chev',14,'rot90')+' 我的旅程</button>';
     if(view==='home') return head;
     return head+tocBody();
   }
@@ -2614,7 +2614,7 @@
         // 放棄 Google 底圖，自動退返 OSM —— 寧願底圖冇咁靚，都唔可以畀你睇住一塊白
         gState='fail'; gmap=null; gmarks=[]; gInfo=null;
         var e2=$('map'); if(e2) e2.innerHTML='';
-        setSync('err','Google 底圖畫唔出，已改用 OpenStreetMap');
+        setSync('err','Google 底圖無法顯示，已改用 OpenStreetMap');
         drawMap();
         return;
       }
@@ -2747,9 +2747,9 @@
         if(gmap){ gmap=null; gmarks=[]; }
         if(map){ try{ map.remove(); }catch(e){} map=null; markers=[]; }
         el0.innerHTML='<div class="mapoff">'+ic('map',30)+
-          '<b>離線：地圖睇唔到</b>'+
-          '<span>行程、地址、電話、筆記、預載咗嘅附件全部照樣睇得到。<br>'+
-          '要導航就用 Google Maps 自己嘅離線地圖（出門前喺 wifi 下載個區）。</span></div>';
+          '<b>離線：地圖無法顯示</b>'+
+          '<span>行程、地址、電話、筆記、已預載的附件全部照常可以查看。<br>'+
+          '導航請使用 Google Maps 本身的離線地圖（出門前在 wifi 環境下載該區域）。</span></div>';
         mapBar(); return;
       }
     }
@@ -2951,8 +2951,8 @@
     var wrap=document.querySelector('.add[data-scope="'+scope+'"]'); if(!wrap) return;
     sugData=arr||[];
     var h='<div class="sug">';
-    h+='<button class="on" data-act="pick" data-i="-1"><span class="sic">'+KINDS[scopeKind(scope)].i+'</span><span><b>'+esc(q)+'</b><small>直接加，唔搵座標</small></span></button>';
-    if(arr===null) h+='<div class="hd">搵唔到（可能離線）</div>';
+    h+='<button class="on" data-act="pick" data-i="-1"><span class="sic">'+KINDS[scopeKind(scope)].i+'</span><span><b>'+esc(q)+'</b><small>直接加入，不搜尋座標</small></span></button>';
+    if(arr===null) h+='<div class="hd">找不到（可能已離線）</div>';
     else if(arr.length){
       h+='<div class="hd">'+(arr[0]&&arr[0].g?'Google 地點':'OpenStreetMap')+'</div>';
       arr.forEach(function(r,i){
@@ -2980,7 +2980,7 @@
     var inp=document.querySelector('.add[data-scope="'+scope+'"] input');
     if(inp){ inp.value=''; inp.focus(); }
     if(r && r.g){
-      setSync('','攞地點資料…');
+      setSync('','正在取得地點資料…');
       gCall({op:'details',placeId:r.placeId},function(d,err){
         if(!err && d){ fillFromDetails(x,d); save(); if(x.lat) flyTo(x); setSync('ok','已加 '+x.name);
           if(x.photoName) photoUrl(x,function(){ render(); });
@@ -3260,7 +3260,7 @@
   function mdBar(forId){
     return '<div class="mdbar">'+MDBTN.map(function(b){
       return '<button type="button" class="mdb" data-act="md" data-k="'+b.k+'" data-for="'+forId+'" title="'+b.tip+'">'+b.t+'</button>';
-    }).join('')+'<span class="mdhint">選咗字再撳</span></div>';
+    }).join('')+'<span class="mdhint">先選取文字再按</span></div>';
   }
   function mdApply(ta, k){
     var def=null; MDBTN.forEach(function(b){ if(b.k===k) def=b; });
@@ -3299,14 +3299,14 @@
     if(!x) return;
     openSheet('<h3>'+kico(x.kind,18,'inline')+' '+esc(x.name)+'</h3>'+
       // 地點本身嘅描述（匯入／AI／Google）只做參考，唔喺呢度改 —— 改喺「改」入面
-      (x.note? '<div class="fld"><label>地點資料（唔喺呢度改）</label>'+
+      (x.note? '<div class="fld"><label>地點資料（不在此處修改）</label>'+
                '<div class="noteref">'+noteHtml(x)+'</div></div>' : '')+
-      '<div class="fld"><label>我嘅標註</label>'+ rteBar('qN')+
+      '<div class="fld"><label>我的標註</label>'+ rteBar('qN')+
       '<div class="inp rte" id="qN" contenteditable="true" role="textbox" aria-multiline="true" '+
-      'data-ph="寫落自己要記住嘅：呢間係酒店、泊車免費、門鎖密碼、幾點要走…">'+
+      'data-ph="寫下自己要記住的：這間是酒店、泊車免費、門鎖密碼、幾點要離開…">'+
       memoHtml(x.memo)+'</div>'+
-      '<div class="hint">揀咗字再撳粗體／斜體；⌘B ⌘I ⌘U 都用得</div></div>'+
-      '<div class="btnrow"><button class="btn ghost" data-act="closesheet">唔改</button>'+
+      '<div class="hint">先選取文字再按粗體／斜體；⌘B ⌘I ⌘U 亦可使用</div></div>'+
+      '<div class="btnrow"><button class="btn ghost" data-act="closesheet">取消</button>'+
       '<button class="btn acc" data-act="qnotesave" data-id="'+x.id+'">儲存</button></div>');
     $('pan').__reopen=function(){ noteSheet(itemById(x.id)); };
     setTimeout(function(){
@@ -3323,7 +3323,7 @@
     openSheet('<h3>'+kico(x.kind,18,'inline')+' '+esc(x.name)+'</h3>'+
       '<div class="fld"><label>檔案'+(n? '（'+n+' 個）':'')+'</label>'+filesHTML(x,true)+'</div>'+
       '<div class="hint">單據、門票、確認信、酒店圖都擺得。每個檔上限 '+MAXMB+'MB。<br>'+
-      '出門前記得去「匯出 → 離線準備」預載，咁冇訊號都開得到。</div>');
+      '出門前記得到「匯出 → 離線準備」預載，沒有訊號時也能開啟。</div>');
     $('pan').__reopen=function(){ fileSheet(itemById(x.id)); };
   }
   function itemSheet(x){
@@ -3337,15 +3337,15 @@
       '<div class="fld"><label>使費</label><div style="display:flex;gap:7px">'+
         '<input class="inp" id="eCcy" value="'+esc(itemCcy(x))+'" style="width:78px;text-transform:uppercase">'+
         '<input class="inp" id="eCost" type="number" inputmode="decimal" value="'+(x.cost||'')+'" placeholder="0"></div></div></div>'+
-      '<div class="fld"><label>擺喺邊</label><select class="inp" id="eScope">'+scopeOpts(x)+'</select></div>'+
+      '<div class="fld"><label>放在哪裏</label><select class="inp" id="eScope">'+scopeOpts(x)+'</select></div>'+
       bkHTML(x)+
       '<div class="fld"><label>備註（地點資料）</label><textarea class="inp" id="eNote">'+esc(x.note||'')+'</textarea></div>'+
-      '<div class="fld"><label>我嘅標註</label>'+rteBar('eMemo')+
+      '<div class="fld"><label>我的標註</label>'+rteBar('eMemo')+
       '<div class="inp rte" id="eMemo" contenteditable="true" role="textbox" aria-multiline="true" '+
-      'data-ph="自己要記住嘅嘢">'+memoHtml(x.memo)+'</div></div>'+
+      'data-ph="自己要記住的事">'+memoHtml(x.memo)+'</div></div>'+
       '<div class="fld"><label>附件</label>'+filesHTML(x,true)+'</div>'+
       (x.kind==='check'? '<div class="fld"><label>清單（一行一項）</label><textarea class="inp" id="eChecks">'+esc((x.checks||[]).map(function(c){return c.t;}).join('\n'))+'</textarea></div>':'')+
-      '<div class="hint" id="eGeo">'+(x.lat? ic('pin',14,'inline')+' '+(+x.lat).toFixed(4)+', '+(+x.lng).toFixed(4)+(x.addr?' · '+esc(x.addr):'') : '冇座標，地圖上唔會出現')+'</div>'+
+      '<div class="hint" id="eGeo">'+(x.lat? ic('pin',14,'inline')+' '+(+x.lat).toFixed(4)+', '+(+x.lng).toFixed(4)+(x.addr?' · '+esc(x.addr):'') : '沒有座標，不會在地圖上顯示')+'</div>'+
       '<div class="btnrow"><button class="btn ghost" data-act="relookup" data-id="'+x.id+'">🔍 重新定位</button>'+
       '<button class="btn acc" data-act="saveitem" data-id="'+x.id+'">儲存</button></div>');
     setTimeout(function(){ rteInit($('eMemo')); },60);
@@ -3396,7 +3396,7 @@
     // 2026-09-15 修：舊版呢格叫「筆記／標註」但其實改緊 note（地點資料），
     // 同行程格嗰粒「加標註」改嘅 memo 唔係同一樣嘢 —— 你喺呢度寫完，行程格睇唔到。
     // 而家統一：呢度改嘅就係 memo（我嘅標註），地點資料喺上面只顯示，要改入「改」。
-    h+='<div class="fld pnote"><label>'+ic('note',13,'inline')+' 我嘅標註</label>'+rteBar('pMemo')+
+    h+='<div class="fld pnote"><label>'+ic('note',13,'inline')+' 我的標註</label>'+rteBar('pMemo')+
        '<div class="inp rte" id="pMemo" contenteditable="true" role="textbox" aria-multiline="true" '+
        'data-ph="泊車、門票、要預約、朋友話邊樣好食、密碼…">'+memoHtml(x.memo)+'</div>'+
        '<div class="btnrow2"><button class="btn ghost sm" data-act="savepmemo" data-id="'+x.id+'">儲存標註</button>'+
@@ -3482,7 +3482,7 @@
       '<div class="fld"><label>返程</label><input class="inp" id="tEnd" type="date" value="'+esc(t.end||'')+'"></div></div>'+
       '<div class="fld"><label>貨幣</label><input class="inp" id="tCur" value="'+esc(t.cur||'HKD')+'"></div>'+
       '<button class="btn acc" data-act="savetrip" data-id="'+(t.id||'')+'">儲存</button>'+
-      (isNew?'':'<button class="btn warn" data-act="deltrip" data-id="'+t.id+'" style="margin-top:8px">刪咗成個旅程</button>'));
+      (isNew?'':'<button class="btn warn" data-act="deltrip" data-id="'+t.id+'" style="margin-top:8px">刪除整個旅程</button>'));
   }
   // ==================== GPS ＋「而家」卡（乘客版）====================
   // 設計前提：車上有第二個人。呢一版係俾乘客睇同讀出嚟嘅 —— 大字、少撳、
@@ -3491,7 +3491,7 @@
 
   function gpsOn(){ return gpsWatch!==null; }
   function gpsStart(cb){
-    if(!navigator.geolocation){ gpsErr='呢部機唔支援定位'; if(cb) cb(false); return; }
+    if(!navigator.geolocation){ gpsErr='這部裝置不支援定位'; if(cb) cb(false); return; }
     if(gpsWatch!==null){ if(cb) cb(true); return; }
     gpsErr='';
     gpsWatch=navigator.geolocation.watchPosition(function(pos){
@@ -3502,8 +3502,8 @@
       if(gmap) meMarker();
       if(cb){ var f=cb; cb=null; f(true); }
     }, function(e){
-      gpsErr = e.code===1? '你拒絕咗定位權限（Safari 設定 → 位置）'
-             : (e.code===3? '攞唔到位置（訊號弱）' : '定位出錯');
+      gpsErr = e.code===1? '你拒絕了定位權限（Safari 設定 → 位置）'
+             : (e.code===3? '無法取得位置（訊號弱）' : '定位出錯');
       if($('pan').__now) nowRender();
       if(cb){ var f2=cb; cb=null; f2(false); }
     }, {enableHighAccuracy:true, maximumAge:15000, timeout:20000});
@@ -3518,7 +3518,7 @@
     var p={lat:myPos.lat,lng:myPos.lng};
     if(gMe){ gMe.setPosition(p); return; }
     try{
-      gMe=new google.maps.Marker({map:gmap, position:p, zIndex:9999, title:'我而家',
+      gMe=new google.maps.Marker({map:gmap, position:p, zIndex:9999, title:'我的位置',
         icon:{ path:google.maps.SymbolPath.CIRCLE, scale:7,
                fillColor:'#1A73E8', fillOpacity:1, strokeColor:'#fff', strokeWeight:3 }});
     }catch(e){}
@@ -3528,7 +3528,7 @@
   var liveWxData=null, liveWxAt=0, liveWxBusy=false;
   var liveWxNA='';
   function liveWx(cb){
-    if(!myPos){ liveWxNA='冇位置'; later(cb,null); return; }
+    if(!myPos){ liveWxNA='沒有位置'; later(cb,null); return; }
     if(liveWxData && (Date.now()-liveWxAt)<10*60*1000){ later(cb,liveWxData); return; }
     if(liveWxBusy) return;                                            // 打緊，等佢返
     liveWxBusy=true;
@@ -3538,9 +3538,9 @@
     fetch(u).then(function(r){ return r.ok? r.json():null; }).then(function(j){
       liveWxBusy=false;
       if(j&&j.current){ liveWxData=j.current; liveWxAt=Date.now(); liveWxNA=''; }
-      else liveWxNA='攞唔到現場天氣';
+      else liveWxNA='無法取得現場天氣';
       later(cb,liveWxData);
-    }).catch(function(){ liveWxBusy=false; liveWxNA='攞唔到現場天氣（冇網？）'; later(cb,null); });
+    }).catch(function(){ liveWxBusy=false; liveWxNA='無法取得現場天氣（沒有網絡？）'; later(cb,null); });
   }
   // 一句人話。視界同陣風先講 —— 嗰兩樣係決定「行唔行得」嘅嘢，唔係氣溫。
   function liveWxLine(){
@@ -3577,12 +3577,12 @@
   function later(cb,v){ if(cb) setTimeout(function(){ cb(v); },0); }   // 一定要 async，
                                                                       // 唔係 nowRender 會自己叫自己
   function fetchEta(x, cb){
-    if(!myPos || !x || x.lat==null){ nowEtaNA='冇位置，計唔到車程'; later(cb,null); return; }
+    if(!myPos || !x || x.lat==null){ nowEtaNA='沒有位置，無法計算車程'; later(cb,null); return; }
     var key=x.id+'|'+myPos.lat.toFixed(3)+','+myPos.lng.toFixed(3);
     if(nowEta && nowEtaFor===key && (Date.now()-nowEta.at)<60*1000){ later(cb,nowEta); return; }
     if(nowEtaBusy) return;                                            // 已經打緊，等佢返
-    if(MODE!=='cloud'){ nowEtaNA='本機模式計唔到車程（要雲端同步）'; later(cb,null); return; }
-    if(GOOG===false){ nowEtaNA='Google 未接通，計唔到車程'; later(cb,null); return; }
+    if(MODE!=='cloud'){ nowEtaNA='本機模式無法計算車程（需要雲端同步）'; later(cb,null); return; }
+    if(GOOG===false){ nowEtaNA='Google 未連接，無法計算車程'; later(cb,null); return; }
     nowEtaNA='';
     nowEtaBusy=true;
     gCall({op:'route', mode:'DRIVE', traffic:true,
@@ -3590,7 +3590,7 @@
       function(j,err){
         nowEtaBusy=false;
         if(err||!j||!j.totalSec){
-          nowEtaFor=''; nowEtaNA='攞唔到車程'+(err?'（'+String(err).slice(0,40)+'）':'');
+          nowEtaFor=''; nowEtaNA='無法取得車程'+(err?'（'+String(err).slice(0,40)+'）':'');
           later(cb,null); return;
         }
         nowEta={ sec:j.totalSec, m:j.totalM, traffic:!!j.traffic, at:Date.now() };
@@ -3658,9 +3658,9 @@
   }
   var tdDay=null;                               // 今日一頁而家睇邊日
   function todayHTML(){
-    var t=curTrip(); if(!t) return '<div class="empty">仲未有旅程</div>';
+    var t=curTrip(); if(!t) return '<div class="empty">還未有旅程</div>';
     var ds=days(), td=today();
-    if(!ds.length) return '<div class="empty">未定日期<br>撳 hero 右上角「改」入返出發／返程日</div>';
+    if(!ds.length) return '<div class="empty">未定日期<br>按右上角 ⋯ 輸入出發／返程日</div>';
     var d = (tdDay && ds.indexOf(tdDay)>=0)? tdDay
           : (ds.indexOf(td)>=0? td : (ds.filter(function(z){ return z>=td; })[0] || ds[0]));
     tdDay=d;
@@ -3678,9 +3678,9 @@
     if(lp) h+='<div class="tdfrom">'+ic('car',14,'inline')+' 由 '+esc(lp.name)+' 出發 · '+
               esc(lp.t)+(lp.real?'':'（估）')+'</div>';
     var tot=sumHome(arr);
-    h+='<div class="tdmeta">'+arr.length+' 項'+(done? ' · 去咗 '+done+'/'+arr.length:'')+
+    h+='<div class="tdmeta">'+arr.length+' 項'+(done? ' · 已去 '+done+'/'+arr.length:'')+
        (tot? ' · '+esc(money(tot)) : '')+'</div>';
-    if(!arr.length) return h+'<div class="empty">今日仲未有安排</div>';
+    if(!arr.length) return h+'<div class="empty">今日還未有安排</div>';
     h+='<div class="tdlist">';
     dayPlan(d).forEach(function(r){
       var x=r.x, warn=hoursWarn(x), bits=[];
@@ -3701,8 +3701,8 @@
            x.lat+','+x.lng+'" target="_blank" rel="noopener" title="導航">'+ic('route',16)+'</a>' : '')+
         '</div>';
     });
-    return h+'</div><div class="hint">冇打時間嗰啲係推算（標「約」）：上一站＋車程＋'+
-           '停留假設（景點 45 分、食飯 60 分）。想準就自己入時間。</div>';
+    return h+'</div><div class="hint">沒有填時間的項目是推算（標「約」）：上一站＋車程＋'+
+           '停留假設（景點 45 分、用餐 60 分）。想更準確請自行輸入時間。</div>';
   }
 
   // ── 換算器：入 JPY 出 HKD，入 HKD 出 JPY，用自動匯率 ──
@@ -3731,7 +3731,7 @@
       return '<option value="'+k+'"'+(k===val?' selected':'')+'>'+k+'</option>'; }).join('')+'</select>';
   }
   function fxHTML(){
-    var t=curTrip(); if(!t) return '<div class="empty">仲未有旅程</div>';
+    var t=curTrip(); if(!t) return '<div class="empty">還未有旅程</div>';
     var a=cvCcy(), b=cvCcy2(), r=cvRate();
     var h='<div class="cvpair">'+cvSel('cvC',a)+'<button class="cvswap" data-act="cvswap" title="調轉">⇄</button>'+cvSel('cvD',b)+'</div>';
     var miss=[a,b].filter(function(c){ return !cvUnit(c); });
@@ -3744,18 +3744,18 @@
          '<div class="cvquick">'+((cvUnit(a)>=0.5? [10,50,100,500,1000] : [1000,3000,5000,10000,30000])).map(function(q){
             return '<button class="cvq" data-act="cvq" data-v="'+q+'">'+esc(a)+' '+q.toLocaleString()+'</button>'; }).join('')+'</div>'+
          '<div class="cvrate">1 '+esc(a)+' = '+esc((+r).toFixed(r<0.1? 5 : (r<10? 4 : 2)))+' '+esc(b)+
-           (man? ' <span class="rsrc man">自己入</span>'
+           (man? ' <span class="rsrc man">自行輸入</span>'
                : ' <span class="rsrc auto">自動</span>'+(t.fxDate? ' <span class="cvdate">歐洲央行 '+esc(t.fxDate)+'</span>':''))+
          '</div>'+
          '<div class="cvbtns"><button class="btn ghost sm" data-act="cvfx">更新匯率</button>'+
          '<button class="btn ghost sm" data-act="rateset">匯率設定</button></div>';
     } else if(miss.some(function(c){ return fxMiss[c]; })){
       var mc=miss.filter(function(c){ return fxMiss[c]; }).join('、');
-      h+='<div class="empty">歐洲央行冇 '+esc(mc)+' 嘅牌價（台幣、澳門幣都冇）。<br>'+
-         '去「匯率設定」自己入一個，之後喺呢度照用得。</div>'+
+      h+='<div class="empty">歐洲央行沒有 '+esc(mc)+' 的牌價（台幣、澳門幣也沒有）。<br>'+
+         '請到「匯率設定」自行輸入，之後在這裏照樣可用。</div>'+
          '<div class="cvbtns"><button class="btn ghost sm" data-act="rateset">匯率設定</button></div>';
     } else {
-      h+='<div class="empty"><span class="spin"></span>攞緊 '+esc(miss.join('、'))+' 匯率…</div>';
+      h+='<div class="empty"><span class="spin"></span>正在取得 '+esc(miss.join('、'))+' 匯率…</div>';
       fxFetch(true,miss,function(){ if($('pan').__now && nowTab==='fx') nowRender(); });
     }
     return h;
@@ -3771,8 +3771,8 @@
   function nowSheet(tab){
     if(tab) nowTab=tab;
     openSheet('<div class="ntabs">'+
-      '<button class="ntab'+(nowTab==='now'?' on':'')+'" data-act="nowtab" data-t="now">而家喺邊</button>'+
-      '<button class="ntab'+(nowTab==='today'?' on':'')+'" data-act="nowtab" data-t="today">今日去邊</button>'+
+      '<button class="ntab'+(nowTab==='now'?' on':'')+'" data-act="nowtab" data-t="now">現在位置</button>'+
+      '<button class="ntab'+(nowTab==='today'?' on':'')+'" data-act="nowtab" data-t="today">今日行程</button>'+
       '<button class="ntab'+(nowTab==='fx'?' on':'')+'" data-act="nowtab" data-t="fx">換算</button>'+
       '</div><div id="nowBox" class="nowwrap"></div>');
     $('pan').__now=1;
@@ -3795,7 +3795,7 @@
     }
     var t=curTrip();
     var h='';
-    if(!t){ box.innerHTML='<div class="empty">仲未有旅程</div>'; return; }
+    if(!t){ box.innerHTML='<div class="empty">還未有旅程</div>'; return; }
 
     var ns=nextStop();
     var td=today(), inTrip=days().indexOf(td)>=0;
@@ -3815,20 +3815,20 @@
     h+='<div class="nowtime">'+hhmm(lnow)+'<span>當地時間</span></div>';
 
     if(!inTrip){
-      h+='<div class="empty" style="margin:16px 0">今日唔喺行程日期範圍內<br>'+
+      h+='<div class="empty" style="margin:16px 0">今日不在行程日期範圍內<br>'+
          (t.start? md(t.start)+'–'+md(t.end) : '未定日期')+'</div>';
     } else if(!ns){
-      h+='<div class="nowbig">今日冇未完成嘅安排</div>'+
+      h+='<div class="nowbig">今日沒有未完成的安排</div>'+
          '<div class="nowsub">'+longD(d)+(setTxt? ' · '+setTxt+' 天黑':'')+'</div>';
     } else {
       var x=ns.x;
-      h+='<div class="nowlbl">下一站'+(ns.left>1? '（今日仲有 '+ns.left+' 個）':'')+'</div>';
+      h+='<div class="nowlbl">下一站'+(ns.left>1? '（今日還有 '+ns.left+' 個）':'')+'</div>';
       h+='<div class="nowbig">'+kico(x.kind,24,'inline')+' '+esc(x.name)+'</div>';
       if(x.addr) h+='<div class="nowsub">'+esc(x.addr)+'</div>';
 
       var e=(nowEta && nowEtaFor.indexOf(x.id+'|')===0)? nowEta : null;
       if(!myPos){
-        h+='<div class="nowrow warn">'+(gpsErr||'<span class="spin"></span>攞緊你嘅位置…')+'</div>';
+        h+='<div class="nowrow warn">'+(gpsErr||'<span class="spin"></span>正在取得你的位置…')+'</div>';
       } else if(!e){
         if(nowEtaNA){
           h+='<div class="nowrow warn">'+esc(nowEtaNA)+
@@ -3856,7 +3856,7 @@
           else if(H.spans){
             var openAt=H.spans.some(function(sp){ return etaMin>=sp[0] && etaMin<=sp[1]; });
             var last=H.spans[H.spans.length-1];
-            if(openAt) h+='<div class="nowrow ok">'+ic('clock',18,'inline')+' 到嗰陣開門 · '+minHM(last[1])+' 關</div>';
+            if(openAt) h+='<div class="nowrow ok">'+ic('clock',18,'inline')+' 到達時仍在營業 · '+minHM(last[1])+' 關</div>';
             else h+='<div class="nowrow warn">'+ic('clock',18,'inline')+' ⚠ '+hhmm(eta)+' 到，但當日營業 '+
                     esc(H.spans.map(function(sp){ return minHM(sp[0])+'–'+minHM(sp[1]); }).join('、'))+'</div>';
           }
@@ -3872,19 +3872,19 @@
       var lw=liveWxLine();
       if(lw) h+='<div class="nowwx">'+esc(lw)+'</div>';
       else if(liveWxNA) h+='<div class="nowwx" style="color:var(--muted)">'+esc(liveWxNA)+'</div>';
-      else { h+='<div class="nowwx"><span class="spin"></span>攞現場天氣…</div>'; liveWx(function(){ nowRender(); }); }
+      else { h+='<div class="nowwx"><span class="spin"></span>正在取得現場天氣…</div>'; liveWx(function(){ nowRender(); }); }
     }
 
     h+='<div class="nowbtns">';
-    if(ns) h+='<button class="btn acc" data-act="nav" data-id="'+ns.x.id+'">'+ic('route',16,'inline')+' 導航去呢站</button>';
-    if(ns) h+='<button class="btn ghost" data-act="tick" data-id="'+ns.x.id+'">到咗 ✓</button>';
+    if(ns) h+='<button class="btn acc" data-act="nav" data-id="'+ns.x.id+'">'+ic('route',16,'inline')+' 導航到這一站</button>';
+    if(ns) h+='<button class="btn ghost" data-act="tick" data-id="'+ns.x.id+'">已到達 ✓</button>';
     h+='<a class="btn ghost" href="https://northern-road.ceri.go.jp/navi/touge/sp/location.htm" target="_blank" rel="noopener">'+
        ic('map',16,'inline')+' 官方吹雪視界（北の道ナビ）</a>';
     h+='<a class="btn ghost" href="https://northern-road.ceri.go.jp/navi/touge/sp/stop.htm" target="_blank" rel="noopener">'+
        ic('x',16,'inline')+' 官方通行止め情報</a>';
     h+='</div>';
-    h+='<div class="hint">吹雪同封路係開去政府官方頁。App 唔會自己 cache 或者代你判斷 —— '+
-       '一個靜咗嘅 feed 顯示「通行可」會害死人。</div>';
+    h+='<div class="hint">吹雪和封路資訊會開啟政府官方頁面。App 不會自行快取或代你判斷 —— '+
+       '一個停止更新的資料來源顯示「通行可」會害死人。</div>';
     if(myPos){
       var upd=localNow(d, myPos.lng);                    // 同上面個鐘同一個時區，唔好兩個並排
       upd=new Date(upd.getTime() - (Date.now()-myPos.at));
@@ -3922,10 +3922,10 @@
     if(x.term) b.push(lab('term',x.term));
     if(x.phone) b.push('電話：'+x.phone);
     if(x.rating) b.push('★ '+(+x.rating).toFixed(1)+(x.ratingCount? ' ('+(+x.ratingCount).toLocaleString()+')':''));
-    var m=memoPlain(x.memo); if(m) b.push('【我嘅標註】\n'+m);
+    var m=memoPlain(x.memo); if(m) b.push('【我的標註】\n'+m);
     if(x.note) b.push(x.note);
     if(x.site) b.push(x.site);
-    if((x.files||[]).length) b.push('附件 '+x.files.length+' 個（喺 app 裡面睇）');
+    if((x.files||[]).length) b.push('附件 '+x.files.length+' 個（在 app 內查看）');
     return b.join('\n\n');
   }
   function kmlOut(){
@@ -4004,11 +4004,11 @@
     h+='<div class="fld"><label>整個行程（推薦）</label>'+
        '<button class="btn acc" data-act="exKml">'+ic('map',15,'inline')+' 下載 KML（'+
        (function(){ kmlOut(); return kmlOut.n||0; })()+' 個點）</button>'+
-       '<div class="hint">同 Wanderlog Pro 嗰個「導出到 Google 地圖」做嘅係同一件事：<br>'+
-       '① 下載呢個檔 → ② 開 <b>google.com/mymaps</b> → 建立新地圖 → 匯入 → 揀個檔<br>'+
-       '之後喺 Google Maps app「已儲存 → 地圖」就開得到，逐日分開一層、有顏色、'+
-       '每個點都帶住地址／時間／確認號／你嘅標註。<br>'+
-       '上限每層 2,000 點，你呢個行程差好遠。</div></div>';
+       '<div class="hint">與 Wanderlog Pro 的「導出到 Google 地圖」是同一件事：<br>'+
+       '① 下載這個檔案 → ② 開啟 <b>google.com/mymaps</b> → 建立新地圖 → 匯入 → 選擇檔案<br>'+
+       '之後在 Google Maps app「已儲存 → 地圖」即可開啟，每日獨立一層、有顏色、'+
+       '每個地點都附有地址／時間／確認編號／你的標註。<br>'+
+       '上限每層 2,000 點，你這個行程遠未達到。</div></div>';
     h+='<div class="fld" style="margin-top:18px"><label>逐日導航路線</label>';
     var any=false;
     days().forEach(function(d,i){
@@ -4023,8 +4023,8 @@
            esc(g.from.slice(0,12))+' → '+esc(g.to.slice(0,12))+'</span></a>';
       });
     });
-    if(!any) h+='<div class="empty">仲未有排咗日子而又有座標嘅地點</div>';
-    h+='<div class="hint">Google 嘅連結最多 10 站，超過就自動分段。'+
+    if(!any) h+='<div class="empty">還沒有已排日期而且有座標的地點</div>';
+    h+='<div class="hint">Google 連結最多 10 站，超過會自動分段。'+
        '手機瀏覽器只支援 3 個中途點，但交去 Google Maps app 之後 app 自己頂到 10 站。</div></div>';
     openSheet(h);
   }
@@ -4032,15 +4032,15 @@
   function exportSheet(){
     openSheet('<h3>匯出</h3>'+
       '<button class="btn acc" data-act="print">'+ic('print',16,'inline')+' 列印 / 存做 PDF</button>'+
-      '<div class="hint" style="margin:6px 0 12px">喺列印對話框揀「Save as PDF」就出到 PDF。</div>'+
+      '<div class="hint" style="margin:6px 0 12px">在列印對話框選擇「Save as PDF」即可輸出 PDF。</div>'+
       '<button class="btn ghost" data-act="exJson">JSON 全份備份</button>'+
       '<button class="btn ghost" data-act="exCsv" style="margin-top:8px">CSV（Excel 開得）</button>'+
       '<button class="btn ghost" data-act="exShare" style="margin-top:8px">分享頁 data.json</button>'+
       '<button class="btn ghost" data-act="exGmapSheet" style="margin-top:8px">'+ic('map',15,'inline')+' 匯出去 Google 地圖（KML ／ 導航路線）</button>'+
       '<button class="btn ghost" data-act="exIcs" style="margin-top:8px">'+ic('clock',15,'inline')+' 行事曆 .ics（入 iPhone 日曆）</button>'+
-      '<div class="hint">.ics 用當地牆上時間，唔會換算成香港時間。</div>'+
+      '<div class="hint">.ics 使用當地時間，不會換算成香港時間。</div>'+
       '<button class="btn ghost" data-act="offline" style="margin-top:12px">'+ic('note',15,'inline')+' 離線準備（預載附件）</button>'+
-      '<div class="hint">路線最優化喺每一日個 ⋯ 選單度。</div>');
+      '<div class="hint">路線最優化在每一日的 ⋯ 選單內。</div>');
   }
 
   // ---------- .ics：入 iPhone 行事曆 ----------
@@ -4109,10 +4109,10 @@
   // ---------- 整日推移／複製 ----------
   function moveDay(d, n){
     var ds=days(), i=ds.indexOf(d), j=i+n;
-    if(i<0) return '搵唔到呢日';
-    if(j<0||j>=ds.length) return '出咗旅程範圍，先改返出發／返程日';
+    if(i<0) return '找不到這一天';
+    if(j<0||j>=ds.length) return '超出旅程日期範圍，請先修改出發／返程日';
     var from=dayItems(d), to=ds[j];
-    if(!from.length) return '呢日本來冇嘢';
+    if(!from.length) return '這一天本來沒有項目';
     var there=dayItems(to).length;
     // 推去一個已經有安排嘅日子 = 兩日合併，唔好靜靜雞做
     if(there && !confirm('第'+(j+1)+'日（'+md(to)+'）本來已經有 '+there+' 個項目。\n'+
@@ -4125,7 +4125,7 @@
   }
   function dupDay(d, to){
     var from=dayItems(d);
-    if(!from.length) return '呢日本來冇嘢';
+    if(!from.length) return '這一天本來沒有項目';
     snap();
     var base=nextOrd(dayItems(to)), ids=[];
     from.forEach(function(x,k){
@@ -4139,12 +4139,12 @@
   }
   function dupDaySheet(d){
     var ds=days();
-    openSheet('<h3>複製 '+md(d)+'（星期'+dow(d)+'）去邊日</h3>'+
-      '<div class="hint" style="margin-bottom:12px">會複製 '+dayItems(d).length+' 個項目（附件唔會跟去）。</div>'+
+    openSheet('<h3>複製 '+md(d)+'（星期'+dow(d)+'）到哪一天</h3>'+
+      '<div class="hint" style="margin-bottom:12px">會複製 '+dayItems(d).length+' 個項目（附件不會一併複製）。</div>'+
       ds.filter(function(x){ return x!==d; }).map(function(x,i){
         return '<button class="btn ghost" data-act="dupday2" data-d="'+d+'" data-t="'+x+'" style="text-align:left;margin-bottom:7px">第'+
           (ds.indexOf(x)+1)+'日 · '+longD(x)+'<span style="color:var(--muted);font-weight:500"> · 現有 '+dayItems(x).length+' 個</span></button>';
-      }).join('') || '<div class="empty">冇第二日可以揀</div>');
+      }).join('') || '<div class="empty">沒有其他日子可選</div>');
   }
   function dupTrip(t){
     if(!t) return;
@@ -4178,9 +4178,9 @@
     return out;
   }
   function precacheFiles(){
-    if(!window.caches){ alert('呢個瀏覽器唔支援離線儲存'); return; }
+    if(!window.caches){ alert('這個瀏覽器不支援離線儲存'); return; }
     var all=tripFiles();
-    if(!all.length){ alert('呢個旅程冇附件'); return; }
+    if(!all.length){ alert('這個旅程沒有附件'); return; }
     var ok=0, fail=0;
     setSync('','預載附件…0/'+all.length);
     caches.open(ATTC).then(function(c){
@@ -4209,28 +4209,28 @@
   function offlineSheet(){
     var all=tripFiles();
     var h='<h3>離線準備</h3>'+
-      '<div class="hint" style="margin-bottom:14px">出門前喺 wifi 做一次。之後冇訊號都開得到登機證同確認信。</div>';
+      '<div class="hint" style="margin-bottom:14px">出門前在 wifi 環境做一次。之後沒有訊號也能開啟登機證和確認信。</div>';
     if(!window.caches){
-      h+='<div class="empty">呢個瀏覽器唔支援離線儲存</div>';
+      h+='<div class="empty">這個瀏覽器不支援離線儲存</div>';
     } else if(!all.length){
-      h+='<div class="empty">呢個旅程仲未有附件<br>去項目度加機票／酒店確認信先</div>';
+      h+='<div class="empty">這個旅程還沒有附件<br>請先在項目中加入機票／酒店確認信</div>';
     } else {
-      h+='<div class="fld"><label>呢個旅程嘅附件</label><div class="inp" style="background:var(--soft2)" id="offN">'+all.length+' 個 · 查緊已存幾多…</div></div>'+
+      h+='<div class="fld"><label>這個旅程的附件</label><div class="inp" style="background:var(--soft2)" id="offN">'+all.length+' 個 · 正在檢查已儲存數量…</div></div>'+
          '<button class="btn acc" data-act="precache">預載全部（'+all.length+' 個）</button>'+
          '<button class="btn ghost" data-act="clrprecache" style="margin-top:8px">清走離線附件</button>'+
-         '<div class="hint">離線檔案係未加密咁擺喺瀏覽器度，同任何離線 app 一樣。唔想留喺部機就清走佢。</div>';
+         '<div class="hint">離線檔案以未加密方式存放在瀏覽器內，與任何離線 app 一樣。不想留在裝置上可以清除。</div>';
     }
     h+='<div class="fld" style="margin-top:18px"><label>'+ic('map',13,'inline')+' 地圖離線</label>'+
        '<div class="inp" style="background:var(--soft2)">手上有 '+tileCacheN+' 塊地圖磚</div>'+
        '<div class="hint">'+
        (mapKey()
-         ? '你而家用 <b>Google 底圖</b>。Google 嘅地圖磚<b>離線用唔到</b>（佢哋唔准 cache），'+
-           '所以離線時地圖會係空白 —— 呢個改唔到。<br>'+
-           '想離線都有粗略地圖：設定 → 清走 Google key 用返 OSM，然後出門前喺 wifi 碌一次個地圖。'
-         : '你而家用 <b>OSM 底圖</b>。出門前喺 wifi 慢慢碌一次個地圖（包括放大／縮細），'+
-           '睇過嘅範圍就會存低。<br>唔會自動大批下載 —— OSM 使用條款唔准。')+
-       '<br><br><b>真正導航請用 Google Maps 自己嘅離線地圖</b>：Google Maps app → 你個頭像 → '+
-       '「離線地圖」→ 揀範圍下載。呢個 app 負責行程、文件、時間判斷，唔負責導航。'+
+         ? '你目前使用 <b>Google 底圖</b>。Google 的地圖圖磚<b>離線時無法使用</b>（Google 不允許快取），'+
+           '所以離線時地圖會是空白 —— 這一點無法改變。<br>'+
+           '想離線時也有粗略地圖：設定 → 清除 Google key 改用 OSM，然後出門前在 wifi 環境瀏覽一次地圖。'
+         : '你目前使用 <b>OSM 底圖</b>。出門前在 wifi 環境慢慢瀏覽一次地圖（包括放大／縮小），'+
+           '瀏覽過的範圍會儲存下來。<br>不會自動大量下載 —— OSM 使用條款不允許。')+
+       '<br><br><b>真正導航請使用 Google Maps 本身的離線地圖</b>：Google Maps app → 你的頭像 → '+
+       '「離線地圖」→ 選擇範圍下載。這個 app 負責行程、文件、時間判斷，不負責導航。'+
        '</div></div>';
     openSheet(h);
     if(window.caches && all.length) caches.open(ATTC).then(function(c){
@@ -4363,8 +4363,8 @@
       // 一定要攞 id 唔好攞 object —— 見 enrich() 上面嘅註解
       var todo=tItems().filter(function(z){ return kd(z.kind).geo && (all || !z.placeId); })
                        .map(function(z){ return z.id; });
-      if(!todo.length){ alert(all?'冇地點可以攝':'全部都已經有 Google 資料'); return; }
-      if(!confirm('去 Google '+(all?'重新攝':'補')+' '+todo.length+' 個地點嘅資料？一秒一個，會慢慢行。')) return;
+      if(!todo.length){ alert(all?'沒有地點可以補充資料':'全部都已經有 Google 資料'); return; }
+      if(!confirm('去 Google '+(all?'重新取得':'補')+' '+todo.length+' 個地點的資料？每秒一個，需要一點時間。')) return;
       closeSheet();
       var okN=0, failN=0;
       (function go(i){
@@ -4387,17 +4387,17 @@
     else if(act==='cvq'){ cv.a=el.getAttribute('data-v'); var A0=$('cvA'); if(A0){ A0.value=cv.a; cvCalc('A'); } }
     else if(act==='cvfx'){
       var tf0=curTrip(); if(tf0) tf0.fxAt=0;
-      setSync('','攞匯率…');
-      fxFetch(true,[cvCcy(),cvCcy2()],function(ok){ setSync(ok?'ok':'err', ok?'匯率更新咗':'攞唔到匯率'); if($('pan').__now && nowTab==='fx') nowRender(); });
+      setSync('','正在取得匯率…');
+      fxFetch(true,[cvCcy(),cvCcy2()],function(ok){ setSync(ok?'ok':'err', ok?'匯率已更新':'無法取得匯率'); if($('pan').__now && nowTab==='fx') nowRender(); });
     }
     else if(act==='tdday'){ var nd=el.getAttribute('data-d'); if(nd){ tdDay=nd; nowRender(); } }
     else if(act==='rowmenu'){
       var x3=itemById(id); if(!x3) return;
       openMenu(ev,'<button data-act="edititem" data-id="'+id+'">改</button>'+
         (x3.lat?'<button data-act="nav" data-id="'+id+'">Google 導航</button>':'<button data-act="geo1" data-id="'+id+'">定位</button>')+
-        (x3.photoUrl? '<button data-act="setcover" data-id="'+id+'">用呢張相做封面</button>':'')+
+        (x3.photoUrl? '<button data-act="setcover" data-id="'+id+'">用這張相片做封面</button>':'')+
         '<button data-act="dup" data-id="'+id+'">複製一份</button><hr>'+
-        '<button class="dz" data-act="del" data-id="'+id+'">刪咗佢</button>');
+        '<button class="dz" data-act="del" data-id="'+id+'">刪除</button>');
     }
     else if(act==='daymenu'){
       var d=el.getAttribute('data-d');
@@ -4406,8 +4406,8 @@
         '<button data-act="sortday" data-d="'+d+'">按時間排</button><hr>'+
         '<button data-act="shiftday" data-d="'+d+'" data-n="1">整日推後一日</button>'+
         '<button data-act="shiftday" data-d="'+d+'" data-n="-1">整日推前一日</button>'+
-        '<button data-act="dupday" data-d="'+d+'">'+ic('copy',15,'inline')+' 複製呢日去…</button><hr>'+
-        '<button class="dz" data-act="clearday" data-d="'+d+'">清空呢日</button>');
+        '<button data-act="dupday" data-d="'+d+'">'+ic('copy',15,'inline')+' 複製這一天到…</button><hr>'+
+        '<button class="dz" data-act="clearday" data-d="'+d+'">清空這一天</button>');
     }
     else if(act==='listmenu'){
       openMenu(ev,'<button data-act="renlist" data-id="'+id+'">改名</button><hr><button class="dz" data-act="dellist" data-id="'+id+'">刪清單</button>');
@@ -4447,15 +4447,15 @@
     else if(act==='sortday'){ var d2=el.getAttribute('data-d'); snap();
       dayItems(d2).slice().sort(function(a,b){ return (a.time||'99:99')<(b.time||'99:99')?-1:1; }).forEach(function(x,k){ x.ord=(k+1)*10; }); save(); }
     else if(act==='clearday'){ var d3=el.getAttribute('data-d');
-      if(!confirm('清空呢日所有項目？')) return; snap();
+      if(!confirm('清空這一天的所有項目？')) return; snap();
       rmv(state.items.filter(function(i){ return i.tripId===curTrip().id && i.date===d3; }).map(function(i){ return i.id; }));
       state.items=state.items.filter(function(i){ return !(i.tripId===curTrip().id && i.date===d3); }); save(); }
-    else if(act==='newlist'){ var nm=prompt('清單叫咩名？','餐廳'); if(!nm) return; snap();
+    else if(act==='newlist'){ var nm=prompt('清單名稱？','餐廳'); if(!nm) return; snap();
       state.lists.push({id:uid(),tripId:curTrip().id,name:nm.trim(),ord:tLists().length+1}); save(); }
     else if(act==='renlist'){ var l=state.lists.filter(function(z){return z.id===id;})[0]; if(!l) return;
       var nm2=prompt('改做…',l.name); if(!nm2) return; snap(); l.name=nm2.trim(); save(); }
     else if(act==='dellist'){
-      if(!confirm('刪咗呢個清單？入面啲項目都會冇。')) return; snap();
+      if(!confirm('刪除這個清單？裏面的項目也會一併刪除。')) return; snap();
       rmv([id].concat(state.items.filter(function(z){return z.listId===id;}).map(function(z){return z.id;})));
       state.lists=state.lists.filter(function(z){return z.id!==id;});
       state.items=state.items.filter(function(z){return z.listId!==id;}); save(); }
@@ -4473,7 +4473,7 @@
       save(); closeSheet();
     }
     else if(act==='deltrip'){
-      if(!confirm('刪咗成個旅程？')) return; snap();
+      if(!confirm('刪除整個旅程？')) return; snap();
       rmv([id].concat(state.items.filter(function(z){return z.tripId===id;}).map(function(z){return z.id;}))
               .concat(state.lists.filter(function(z){return z.tripId===id;}).map(function(z){return z.id;})));
       state.trips=state.trips.filter(function(z){return z.id!==id;});
@@ -4482,7 +4482,7 @@
       state.settings.curTrip=state.trips.length?state.trips[0].id:null; save(); closeSheet();
     }
     else if(act==='trips'){
-      var h='<h3>我嘅旅程</h3>';
+      var h='<h3>我的旅程</h3>';
       state.trips.forEach(function(t3){
         h+='<button class="btn ghost" data-act="picktrip" data-id="'+t3.id+'" style="text-align:left;margin-bottom:7px">'+
            (t3.id===state.settings.curTrip?'● ':'')+esc(t3.name)+' <span style="color:var(--muted);font-weight:500">'+(t3.start?md(t3.start)+'–'+md(t3.end):'')+'</span></button>';
@@ -4490,7 +4490,7 @@
       var ct=curTrip();
       openSheet(h+'<button class="btn acc" data-act="newtrip">＋ 開新旅程</button>'+
         (ct?'<button class="btn ghost" data-act="duptrip" data-id="'+ct.id+'" style="margin-top:8px">'+
-            ic('copy',15,'inline')+' 複製「'+esc(ct.name)+'」做下次嘅底稿</button>':''));
+            ic('copy',15,'inline')+' 複製「'+esc(ct.name)+'」作為下次的底稿</button>':''));
     }
     else if(act==='picktrip'){ state.settings.curTrip=id; view='trip'; mapDay='all'; if(map) map.__fit=0; save(); closeSheet(); }
     else if(act==='home'){ view='home'; closeSheet(); sideOpen(false); render(); var dc=document.querySelector('.doc'); if(dc) dc.scrollTop=0; window.scrollTo(0,0); }
@@ -4499,7 +4499,7 @@
       openMenu(ev,'<button data-act="picktrip" data-id="'+id+'">打開</button>'+
         '<button data-act="edittripid" data-id="'+id+'">改名／改日期</button>'+
         '<button data-act="duptrip" data-id="'+id+'">'+ic('copy',15,'inline')+' 複製做底稿</button><hr>'+
-        '<button class="dz" data-act="deltrip" data-id="'+id+'">刪咗成個旅程</button>');
+        '<button class="dz" data-act="deltrip" data-id="'+id+'">刪除整個旅程</button>');
     }
     else if(act==='edittripid'){ tripSheet(tripById(id)); }
     else if(act==='doupload'){
@@ -4509,7 +4509,7 @@
       var okN=0, failN=0;
       (function go(i){
         if(i>=list.length){
-          setSync(failN?'err':'ok', '加咗 '+okN+' 個'+(failN? '，'+failN+' 個失敗':''));
+          setSync(failN?'err':'ok', '已加入 '+okN+' 個'+(failN? '，'+failN+' 個失敗':''));
           reopenSheet(id); render(); return;
         }
         setSync('','上載 '+(i+1)+'/'+list.length+'…');
@@ -4538,16 +4538,16 @@
     else if(act==='copyconf'){
       var xcc=itemById(id); if(!xcc||!xcc.conf) return;
       var txt=String(xcc.conf);
-      var done=function(){ setSync('ok','複製咗 '+txt); };
-      if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, function(){ setSync('err','複製唔到'); });
-      else { try{ var ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); done(); }catch(e){ setSync('err','複製唔到'); } }
+      var done=function(){ setSync('ok','已複製 '+txt); };
+      if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, function(){ setSync('err','無法複製'); });
+      else { try{ var ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); done(); }catch(e){ setSync('err','無法複製'); } }
     }
     else if(act==='qnotesave'){
       var xq=itemById(id), tq=$('qN'); if(!xq||!tq) return;
       var html=sanitizeMemo(tq.innerHTML);
       if(!(tq.textContent||'').trim()) html='';            // 得格式冇字就當清空
       snap(); xq.memo=html; save(); closeSheet();
-      setSync('ok', xq.memo? '標註存咗' : '標註清咗');
+      setSync('ok', xq.memo? '標註已儲存' : '標註已清除');
     }
     else if(act==='savepmemo'){
       var xn=itemById(id), tq2=$('pMemo'); if(!xn||!tq2) return;
@@ -4559,8 +4559,8 @@
     }
     else if(act==='setcover'){
       var xc=itemById(id), tc=curTrip();
-      if(xc&&xc.photoUrl&&tc){ snap(); tc.cover=xc.photoUrl; save(); setSync('ok','封面換咗'); }
-      else setSync('err','呢個項目冇相');
+      if(xc&&xc.photoUrl&&tc){ snap(); tc.cover=xc.photoUrl; save(); setSync('ok','封面已更換'); }
+      else setSync('err','這個項目沒有相片');
     }
     else if(act==='duptrip'){ dupTrip(tripById(id)); }
     else if(act==='shiftday'){
@@ -4574,10 +4574,10 @@
     }
     else if(act==='exIcs'){
       var txt=icsOut();
-      if(!icsOut.n){ setSync('err','行程度仲未有排落日子嘅項目'); return; }
+      if(!icsOut.n){ setSync('err','行程中還沒有已排日期的項目'); return; }
       var tn=(curTrip()||{}).name||'trip';
       dl(tn.replace(/[^\w\u4e00-\u9fa5-]+/g,'_')+'.ics', txt, 'text/calendar;charset=utf-8');
-      setSync('ok','出咗 '+icsOut.n+' 個行事曆項目');
+      setSync('ok','已輸出 '+icsOut.n+' 個行事曆項目');
     }
     else if(act==='now'){ nowSheet(); }
     else if(act==='gpsoff'){ gpsStop(); setSync('ok','定位已熄'); closeSheet(); }
@@ -4627,7 +4627,7 @@
               addr:r.addr||'', note:r.why||'', cost:0, ccy:'', done:false, checks:[],
               placeId:r.placeId||'', rating:r.rating, ratingCount:r.ratingCount,
               photoName:r.photoName||'', photoUrl:r.photoUrl||'' };
-      state.items.push(x); save(); setSync('ok','加咗 '+x.name+' 落想去');
+      state.items.push(x); save(); setSync('ok','已加入 '+x.name+' 落想去');
       if(!x.lat){ geoQ.push(x.id); pumpGeo(); }
     }
     else if(act==='jumpkind'){
@@ -4648,7 +4648,7 @@
     }
     else if(act==='fxnow'){
       var tf=curTrip(); if(tf) tf.fxAt=0;
-      setSync('','攞匯率…'); fxFetch(true);
+      setSync('','正在取得匯率…'); fxFetch(true);
       setTimeout(function(){ if($('sheet').className.indexOf('show')>=0){
         var b=document.createElement('button'); b.setAttribute('data-act','rateset');
         document.body.appendChild(b); b.click(); b.remove(); } }, 1800);
@@ -4659,19 +4659,19 @@
       Object.keys(rr).forEach(function(c){ all[c]=1; });
       var list=Object.keys(all);
       var src9=rateSrc();
-      var h9='<h3>匯率設定</h3><div class="hint" style="margin-bottom:12px">1 單位外幣 ＝ 幾多 '+esc(cur())+
+      var h9='<h3>匯率設定</h3><div class="hint" style="margin-bottom:12px">1 單位外幣 ＝ 多少 '+esc(cur())+
         '。<b>會自動更新</b>（Frankfurter · 98 間央行 · 免 key）'+
         (t9&&t9.fxDate? '，最後更新 '+esc(t9.fxDate) : '')+'。<br>'+
-        '你自己入過嘅會標住「自己入」，自動更新<b>唔會蓋走</b>。攞唔到嘅幣種（例如台幣）留返手動。</div>'+
-        '<button class="btn ghost sm" data-act="fxnow" style="margin-bottom:14px">即刻更新匯率</button>';
-      if(!list.length) h9+='<div class="empty">而家所有使費都係 '+esc(cur())+'<br>喺項目度改幣種就會出現喺呢度</div>';
+        '你自行輸入的會標示「自行輸入」，自動更新<b>不會覆蓋</b>。無法取得的幣種（例如台幣）請手動填寫。</div>'+
+        '<button class="btn ghost sm" data-act="fxnow" style="margin-bottom:14px">立即更新匯率</button>';
+      if(!list.length) h9+='<div class="empty">目前所有開支都是 '+esc(cur())+'<br>在項目中更改幣種後便會顯示在這裏</div>';
       list.forEach(function(c){
-        var tagc = src9[c]==='man'? '<span class="rsrc man">自己入</span>'
+        var tagc = src9[c]==='man'? '<span class="rsrc man">自行輸入</span>'
                  : (src9[c]==='auto'? '<span class="rsrc auto">自動</span>' : '');
         h9+='<div class="fld"><label>1 '+esc(c)+' = ? '+esc(cur())+' '+tagc+'</label>'+
             '<input class="inp rate" data-c="'+esc(c)+'" type="number" step="0.000001" inputmode="decimal" value="'+
             (rr[c]!=null? (+rr[c]).toFixed(6).replace(/0+$/,'').replace(/\.$/,'') : '')+'" placeholder="例：0.0507">'+
-            (src9[c]==='auto'? '<div class="hint">改咗就會變「自己入」，之後唔會再自動更新</div>':'')+'</div>';
+            (src9[c]==='auto'? '<div class="hint">修改後會變成「自行輸入」，之後不會再自動更新</div>':'')+'</div>';
       });
       h9+='<div class="fld"><label>加一個幣種</label><div style="display:flex;gap:7px">'+
           '<input class="inp" id="nrC" placeholder="JPY" style="width:88px;text-transform:uppercase">'+
@@ -4728,15 +4728,15 @@
     else if(act==='exGmapSheet'){ gmapSheet(); }
     else if(act==='exKml'){
       var txt=kmlOut();
-      if(!kmlOut.n){ setSync('err','冇有座標嘅地點'); return; }
+      if(!kmlOut.n){ setSync('err','沒有含座標的地點'); return; }
       var tn=(curTrip()||{}).name||'trip';
       dl(tn.replace(/[^\w\u4e00-\u9fa5-]+/g,'_')+'.kml', txt, 'application/vnd.google-earth.kml+xml');
-      setSync('ok','出咗 '+kmlOut.n+' 個點嘅 KML');
+      setSync('ok','已輸出 '+kmlOut.n+' 個地點的 KML');
     }
     else if(act==='exGmap'){
       var d4=mapDay==='all'? days()[0] : mapDay;
       var pts=dayItems(d4).filter(function(x){return x.lat;});
-      if(pts.length<1){ alert('嗰日冇座標'); return; }
+      if(pts.length<1){ alert('該日沒有座標'); return; }
       var u='https://www.google.com/maps/dir/'+pts.map(function(x){return x.lat+','+x.lng;}).join('/');
       window.open(u,'_blank','noopener');
     }
@@ -4769,30 +4769,30 @@
     }
     else if(act==='aiplan'){
       var t6=curTrip(), n6=days().length;
-      if(!n6){ alert('先入返出發／返程日期'); return; }
-      var pr2='你係旅程規劃助手。幫我排「'+(t6.dest||t6.name)+'」'+n6+'日行程。\n出發日：'+t6.start+'\n偏好：'+(($('aiPref').value||'').trim()||'冇特別')+'\n'+
+      if(!n6){ alert('請先輸入出發／返程日期'); return; }
+      var pr2='你係旅程規劃助手。幫我排「'+(t6.dest||t6.name)+'」'+n6+'日行程。\n出發日：'+t6.start+'\n偏好：'+(($('aiPref').value||'').trim()||'沒有特別')+'\n'+
         '每日 3–6 個地點，順路排。只可以回覆 JSON：\n'+
         '{"stops":[{"day":1,"time":"09:30","name":"地點名（連城市）","cat":"place|eat|stay|car|buy","note":"一句","cost":0}]}\n'+
-        'cost 用 '+cur()+' 每人大約，唔知就 0。';
-      aiRun('plan',pr2,function onPlan(txt){ var a=parseStops(txt); if(!a){ manualSheet(pr2,onPlan,'回覆唔係 JSON'); return; }
-        var n=importStops(a,false); setSync('ok','AI 加咗 '+n+' 項'); });
+        'cost 用 '+cur()+' 每人大約，不清楚可填 0。';
+      aiRun('plan',pr2,function onPlan(txt){ var a=parseStops(txt); if(!a){ manualSheet(pr2,onPlan,'回覆不是 JSON'); return; }
+        var n=importStops(a,false); setSync('ok','AI 已加入 '+n+' 項'); });
     }
     else if(act==='aiextract'){
-      var src=($('aiSrc').value||'').trim(); if(!src){ alert('未貼嘢'); return; }
+      var src=($('aiSrc').value||'').trim(); if(!src){ alert('尚未貼上內容'); return; }
       var pr3='從下面段文字抽出所有值得去嘅地點，只可以回覆 JSON：\n{"stops":[{"name":"地點名（連城市）","cat":"place|eat|stay|car|buy","note":"一句","cost":0}]}\n\n文字：\n<<<\n'+src.slice(0,6000)+'\n>>>';
-      aiRun('extract',pr3,function onEx(txt){ var a=parseStops(txt); if(!a){ manualSheet(pr3,onEx,'回覆唔係 JSON'); return; }
-        var n=importStops(a,true); setSync('ok','AI 加咗 '+n+' 項落清單'); });
+      aiRun('extract',pr3,function onEx(txt){ var a=parseStops(txt); if(!a){ manualSheet(pr3,onEx,'回覆不是 JSON'); return; }
+        var n=importStops(a,true); setSync('ok','AI 已加入 '+n+' 項落清單'); });
     }
     else if(act==='aibook'){
       var bsrc=($('aiBook').value||'').trim(); if(!bsrc){ alert('未貼確認信'); return; }
-      if(!days().length){ alert('先入返出發／返程日期'); return; }
+      if(!days().length){ alert('請先輸入出發／返程日期'); return; }
       var pr4=bookPrompt(bsrc.slice(0,9000));
       aiRun('extract',pr4,function onBk(txt){
         var a=parseKey(txt,'bookings');
-        if(!a){ manualSheet(pr4,onBk,'回覆唔係 JSON'); return; }
+        if(!a){ manualSheet(pr4,onBk,'回覆不是 JSON'); return; }
         var n=importBookings(a);
-        if(!n){ setSync('err','抽唔到訂單，試下貼多啲內容'); return; }
-        setSync('ok','入咗 '+n+' 項訂單'); closeSheet();
+        if(!n){ setSync('err','抽不到訂單資料，請嘗試貼上更多內容'); return; }
+        setSync('ok','已輸入 '+n+' 項訂單'); closeSheet();
       });
     }
     else if(act==='copyprompt'){ var ta2=$('mPrompt'); ta2.select();
@@ -4800,7 +4800,7 @@
       var mm=$('aiMsg'); if(mm) mm.textContent='已複製 ✓'; }
     else if(act==='applypaste'){
       var fn=$('pan').__onText, v=($('mPaste').value||'').trim();
-      if(!fn||!v){ var m2=$('aiMsg'); if(m2) m2.textContent='未貼嘢'; return; }
+      if(!fn||!v){ var m2=$('aiMsg'); if(m2) m2.textContent='尚未貼上內容'; return; }
       fn(v);
     }
     else if(act==='settings'){
@@ -4811,33 +4811,33 @@
 
         '<div class="fld"><label>Google 地點資料（相／評分／真路線）</label>'+
         '<div class="inp" style="background:var(--soft2)">'+gp+'</div>'+
-        '<div class="hint">呢個唔使喺呢度填。Key 要放喺 Supabase secret <code>GOOGLE_MAPS_KEY</code>，'+
-        '咁佢就完全唔會經過瀏覽器。</div></div>'+
+        '<div class="hint">這裏不需要填寫。Key 應放在 Supabase secret <code>GOOGLE_MAPS_KEY</code>，'+
+        '這樣它便完全不會經過瀏覽器。</div></div>'+
 
         '<div class="fld" style="margin-top:16px"><label>Google 底圖 key（browser key）</label>'+
-        '<input class="inp" id="gmk" type="password" autocomplete="off" placeholder="'+(mapKey()?'已設定 · 要換就貼新嘅':'貼 eva-trip browser (maps only) 條 key')+'">'+
+        '<input class="inp" id="gmk" type="password" autocomplete="off" placeholder="'+(mapKey()?'已設定 · 要更換請貼上新的':'貼 eva-trip browser (maps only) 條 key')+'">'+
         '<div class="hint">狀態：'+gm+'<br>'+
-        '存喺你嘅 Supabase row（暗號閘後面），<b>唔會入 GitHub</b>。'+
-        'Google 規定底圖 key 一定要喺頁面度，所以呢條避唔開；已鎖 referrer 做 ngfranki.github.io。</div></div>'+
+        '儲存在你的 Supabase 資料列（暗號閘之後），<b>不會進入 GitHub</b>。'+
+        'Google 規定底圖 key 必須放在頁面內，所以這一條無法避免；已鎖定 referrer 為 ngfranki.github.io。</div></div>'+
         '<div class="btnrow"><button class="btn acc" data-act="savegmk">儲存 key</button>'+
         (mapKey()?'<button class="btn ghost" data-act="clrgmk">清走，用返 OSM</button>':'')+'</div>'+
 
         '<div class="fld" style="margin-top:16px"><label>定位（GPS）</label>'+
-        '<div class="inp" style="background:var(--soft2)">'+(gpsOn()? '✅ 開住 · 精度 ±'+(myPos?Math.round(myPos.acc)+'m':'攞緊') : (gpsErr? '⚠️ '+esc(gpsErr) : '－ 未開'))+'</div>'+
-        '<div class="hint">「而家」卡會自動開。位置<b>只留喺你部機</b>，唔會存入雲端、唔會傳去第三方；'+
-        '淨係用嚟計「由你而家去下一站幾遠」同「現場天氣」。</div></div>'+
-        '<div class="btnrow"><button class="btn ghost" data-act="gpsoff">熄咗定位</button></div>'+
+        '<div class="inp" style="background:var(--soft2)">'+(gpsOn()? '✅ 開住 · 精度 ±'+(myPos?Math.round(myPos.acc)+'m':'取得中') : (gpsErr? '⚠️ '+esc(gpsErr) : '－ 未開'))+'</div>'+
+        '<div class="hint">「現在位置」卡會自動開啟。位置<b>只保留在你的裝置</b>，不會儲存到雲端、不會傳送給第三方；'+
+        '只用來計算「由你目前位置到下一站有多遠」和「現場天氣」。</div></div>'+
+        '<div class="btnrow"><button class="btn ghost" data-act="gpsoff">關閉定位</button></div>'+
         '<button class="btn ghost" data-act="offline" style="margin-top:18px">'+ic('note',15,'inline')+' 離線準備（預載附件）</button>'+
-        '<button class="btn ghost" data-act="enrichall" style="margin-top:8px">'+ic('spark',15,'inline')+' 補齊未有 Google 資料嘅地點</button>'+
-        '<button class="btn ghost" data-act="enrichall" data-all="1" style="margin-top:8px">'+ic('spark',15,'inline')+' 全部重新攝一次（'+tItems().filter(function(z){return kd(z.kind).geo;}).length+' 個）</button>'+
-        '<div class="hint">加咗新欄位（例如當地時區）之後，舊項目要重攝一次才有。每個地點大約兩個 Google call。</div>'+
+        '<button class="btn ghost" data-act="enrichall" style="margin-top:8px">'+ic('spark',15,'inline')+' 補齊未有 Google 資料的地點</button>'+
+        '<button class="btn ghost" data-act="enrichall" data-all="1" style="margin-top:8px">'+ic('spark',15,'inline')+' 全部重新取得一次（'+tItems().filter(function(z){return kd(z.kind).geo;}).length+' 個）</button>'+
+        '<div class="hint">新增欄位（例如當地時區）之後，舊項目要重新取得一次才會有。每個地點大約兩個 Google call。</div>'+
         '<button class="btn ghost" data-act="exJson" style="margin-top:8px">匯出備份</button>'+
         (MODE==='cloud'?'<button class="btn warn" data-act="logout" style="margin-top:8px">登出</button>':''));
     }
     else if(act==='savegmk'){
       var v=($('gmk').value||'').trim();
-      if(!v){ alert('冇貼嘢'); return; }
-      if(v.length<20){ alert('唔似係一條 key'); return; }
+      if(!v){ alert('尚未貼上內容'); return; }
+      if(v.length<20){ alert('看來不像是一條 key'); return; }
       snap(); state.settings.gmapKey=v; save(); closeSheet();
       gState='off'; if(map){ try{ map.remove(); }catch(e){} map=null; markers=[]; }
       setSync('','載 Google 地圖…'); drawMap();
