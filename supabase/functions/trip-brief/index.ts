@@ -162,6 +162,53 @@ function wxLine(w: Wx | null) {
   return b.join("　");
 }
 
+// ── 小恩把口 ────────────────────────────────────────────────
+// 跟 eva-telegram-private/bridge.js 嘅人設：廣東話、暖色、🌿💛🐭。
+// 🔴 但一條鐵律：開車要睇嘅數字（天黑／關門／車程）唔可以埋喺句子裏面，
+//    要一眼掃到。所以「暖」只加喺頭尾同註解，中間嘅清單照舊硬淨。
+function pick(arr: string[], seed: string) {
+  let h = 0;
+  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return arr[h % arr.length];
+}
+const HI_MORNING = [
+  "早晨呀 🌿", "早晨！小恩報到 💛", "早晨～今日又出發喇 🌿", "早晨呀，睡得好嗎 🐭",
+];
+const HI_NOON = ["午安 🌿", "食晏未呀？🐭", "中途check下 🌿"];
+const HI_EVE = ["夜啦 🌿", "今日辛苦喇 💛", "收工啦～聽日嘅嘢講定 🌿"];
+
+const DOWZH: Record<string, string> = {
+  Monday: "星期一", Tuesday: "星期二", Wednesday: "星期三", Thursday: "星期四",
+  Friday: "星期五", Saturday: "星期六", Sunday: "星期日",
+};
+// Google 存嘅營業時間係英文（"Wednesday: Closed"）—— 唔好原封照抄出去
+function hoursZh(line: string) {
+  let t = String(line || "");
+  for (const [en, zh] of Object.entries(DOWZH)) t = t.replace(en, zh);
+  return t.replace(/:\s*Closed/i, " 休息")
+    .replace(/Open 24 hours/i, "24 小時營業")
+    .replace(/\u2013|\u2014/g, "–")
+    .trim();
+}
+// 睇完數字之後，加一句人話。唔會亂加 —— 只喺真係要留意嗰陣出聲。
+function remarks(w: Wx | null, rtSec: number, items: any[], ds: string, when = "今日") {
+  const out: string[] = [];
+  if (w) {
+    if (w.sn >= 5) out.push("落大雪，路面會滑，車程預鬆啲、慢慢開 🐭");
+    else if (w.sn > 0) out.push("有雪，路面可能滑。");
+    if (w.mx != null && w.mx < 0) out.push(`${when}全日零度以下，出門記得著夠。`);
+    if (w.wind >= 50) out.push("風好大，高橋同開闊路段會擺車。");
+    if (w.set && hm2m(w.set) < 16 * 60 + 30) out.push(`天黑得好早（${w.set}），想拍嘅景要早啲去。`);
+  }
+  if (rtSec >= 3 * 3600) out.push(`${when}開車幾多，中途搵個道の駅停一停。`);
+  const shut = items.filter((x: any) => {
+    const hw = hoursWarn(x, ds, x.time ? hm2m(x.time) : null);
+    return hw && /休息/.test(hw);
+  });
+  if (shut.length) out.push(`⚠️ ${shut.map((x: any) => x.name).join("、")} ${when}休息，要改過。`);
+  return out;
+}
+
 // ── 行程資料 ────────────────────────────────────────────────
 async function loadState() {
   const url = env("SUPABASE_URL") + "/rest/v1/trip_log?id=eq.main&select=state";
@@ -205,7 +252,7 @@ function hoursWarn(x: any, ds: string, atMin: number | null) {
   if (!hrs.length) return null;
   const dow = new Date(ds + "T00:00:00Z").getUTCDay();          // 0=日
   const line = hrs[dow === 0 ? 6 : dow - 1] ?? "";
-  if (/closed|休|定休/i.test(line) && !/24/.test(line)) return `${line}`;
+  if (/closed|休|定休/i.test(line) && !/24/.test(line)) return hoursZh(line) || "當日休息";
   if (atMin == null) return null;
   // 抽最後一個時間（收工）
   const ms = [...line.matchAll(/(\d{1,2})[:：](\d{2})\s*(am|pm|AM|PM)?/g)];
@@ -302,66 +349,84 @@ async function build(slot: string, state: any, dsOverride?: string) {
   const L: string[] = [];
 
   if (slot === "morning") {
-    L.push(`☀️ 早晨。${trip.name}　第 ${dn}/${total} 日`);
-    const w = wxLine(await weather(pt.lat, pt.lng, target));
+    const wx = await weather(pt.lat, pt.lng, target);
+    L.push(`${pick(HI_MORNING, target)}　${trip.name}　第 ${dn}/${total} 日`);
+    const w = wxLine(wx);
     if (w) L.push(w);
     const jw = await jma(pt.lat, pt.lng);
     if (jw) L.push(jw);
     if (driveLine) L.push(driveLine);
-    if (!items.length) L.push("\n今日冇安排。");
+    const rm = remarks(wx, rt?.totalSec ?? 0, items, target);
+    if (rm.length) L.push("\n" + rm.join("\n"));
+    if (!items.length) L.push("\n今日冇排嘢，舒舒服服咁行下都好 🌿");
     else {
-      L.push("");
+      L.push(`\n今日 ${items.length} 個安排：`);
       for (const x of items) {
         L.push(`${x.done ? "✅" : "·"} ${x.time ? x.time + "　" : ""}${x.name}`.slice(0, 70));
         const hint: string[] = [];
         if (x.conf) hint.push(`編號 ${x.conf}`);
-        if ((x.files ?? []).length) hint.push(`附件 ${x.files.length}`);
+        if ((x.files ?? []).length) hint.push(`附件 ${x.files.length} 個喺 app`);
         const hw = hoursWarn(x, target, x.time ? hm2m(x.time) : null);
         if (hw) hint.push(hw);
         if (hint.length) L.push("　　" + hint.join(" · "));
       }
+      L.push("\n路上小心，有咩需要隨時嗌我 💛");
     }
   } else if (slot === "noon") {
     const left = items.filter((x: any) => !x.done);
     const nx = left[0];
-    L.push(`🕛 ${trip.name}　第 ${dn}/${total} 日`);
     const w = await weather(pt.lat, pt.lng, target, true);
+    L.push(`${pick(HI_NOON, target)}　第 ${dn}/${total} 日`);
     const wl = wxLine(w);
     if (wl) L.push(wl);
     const jw = await jma(pt.lat, pt.lng);
     if (jw) L.push(jw);
-    if (!nx) L.push("\n今日嘅安排全部打咗勾 👍");
+    if (!items.length) L.push("\n今日本來冇排嘢 🌿");
+    else if (!nx) L.push("\n成日嘅安排都打咗勾，好快手 👏");
     else {
-      L.push(`\n下一站：${nx.name}`);
+      L.push(`\n下一站　${nx.name}`);
       if (nx.time) L.push(`　排咗 ${nx.time}`);
-      if (nx.addr) L.push(`　${String(nx.addr).slice(0, 48)}`);
+      if (nx.addr) {
+        const a = String(nx.addr);
+        L.push("　" + (a.length > 46 ? a.slice(0, 44) + "…" : a));
+      }
       const hw = hoursWarn(nx, target, nx.time ? hm2m(nx.time) : null);
-      if (hw) L.push("　" + hw);
+      if (hw) L.push("　⚠️ " + hw);
       if (nx.conf) L.push(`　編號 ${nx.conf}`);
-      if (left.length > 1) L.push(`\n今日仲有 ${left.length} 個（共 ${items.length}）`);
+      if ((nx.files ?? []).length) L.push(`　附件 ${nx.files.length} 個喺 app`);
+      L.push(left.length > 1
+        ? `\n今日仲有 ${left.length} 個（共 ${items.length}），慢慢行都夠時間。`
+        : "\n今日最後一個喇 🌿");
       if (w?.set) {
         const nowMin = (now.getUTCHours() * 60 + now.getUTCMinutes());
         const setMin = hm2m(w.set);
-        if (setMin > nowMin) L.push(`🌇 ${w.set} 天黑，仲有 ${minsTxt((setMin - nowMin) * 60)}`);
+        if (setMin > nowMin) {
+          const leftMin = setMin - nowMin;
+          L.push(`🌇 ${w.set} 天黑，仲有 ${minsTxt(leftMin * 60)}`
+            + (leftMin < 120 ? "　—— 要趕就趁而家。" : ""));
+        } else L.push(`🌇 已經天黑（${w.set}）　夜間山路小心。`);
       }
     }
   } else {   // evening → 講聽日
-    L.push(`🌙 聽日：${trip.name}　第 ${dn}/${total} 日　${target.slice(5).replace("-", "/")}`);
-    const w = wxLine(await weather(pt.lat, pt.lng, target));
+    const wx = await weather(pt.lat, pt.lng, target);
+    L.push(`${pick(HI_EVE, target)}`);
+    L.push(`\n聽日　第 ${dn}/${total} 日　${target.slice(5).replace("-", "/")}`);
+    const w = wxLine(wx);
     if (w) L.push(w);
     if (driveLine) L.push(driveLine);
-    if (!items.length) L.push("\n聽日冇安排。");
+    const rm = remarks(wx, rt?.totalSec ?? 0, items, target, "聽日");
+    if (rm.length) L.push("\n" + rm.join("\n"));
+    if (!items.length) L.push("\n聽日未排嘢 —— 想去邊今晚諗定都好 🌿");
     else {
       const first = items.find((x: any) => x.time) ?? items[0];
-      L.push(`\n第一站：${first.time ? first.time + "　" : ""}${first.name}`);
-      const early = first.time && hm2m(first.time) <= 8 * 60 + 30;
-      if (early) L.push("　⏰ 要早起");
+      L.push(`\n第一站　${first.time ? first.time + "　" : ""}${first.name}`);
+      if (first.time && hm2m(first.time) <= 8 * 60 + 30) L.push("　⏰ 要早起，今晚早啲休息 🌿");
       const needs = items.filter((x: any) => /預約|reserve|booking|要訂/i.test(x.note ?? "") || x.conf);
       if (needs.length) {
-        L.push("\n有訂單／要預約：");
+        L.push("\n有訂單／要預約嘅：");
         for (const x of needs.slice(0, 5)) L.push(`　· ${x.name}${x.conf ? `（${x.conf}）` : ""}`);
       }
-      L.push(`\n共 ${items.length} 個安排`);
+      L.push(`\n聽日一共 ${items.length} 個安排。今晚好好休息 💛`);
     }
   }
 
