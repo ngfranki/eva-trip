@@ -185,12 +185,17 @@ Deno.serve(async (req) => {
     const lat = +body.near.lat, lng = +body.near.lng;
     if (!isFinite(lat) || !isFinite(lng)) return json({ error: "bad latlng" }, 400);
     const r = Math.min(20000, Math.max(300, +body.near.radius || 5000));
-    const KIND: Record<string, { g: string[]; osm: string[] }> = {
+    // osmFirst：2026-09-16 實測 Google 對呢三類答得好差 ——
+    //   廁所 → 出酒店同 spa（Google 冇「公共廁所」type）
+    //   温泉 → 出 Dormy Inn 之類嘅酒店大浴場
+    //   道の駅 → 旭川 5km 內只搵到 2 個
+    // OSM 喺日本呢三類嘅標記反而齊，所以先行 OSM，唔得才跌落 Google。
+    const KIND: Record<string, { g: string[]; osm: string[]; osmFirst?: boolean }> = {
       fuel:     { g: ["gas_station"],                   osm: ['["amenity"="fuel"]'] },
       conv:     { g: ["convenience_store"],             osm: ['["shop"="convenience"]'] },
-      toilet:   { g: ["public_bath", "rest_stop"],      osm: ['["amenity"="toilets"]'] },
-      rest:     { g: ["rest_stop"],                     osm: ['["amenity"="rest_area"]', '["highway"="rest_area"]', '["highway"="services"]'] },
-      onsen:    { g: ["spa", "public_bath"],            osm: ['["amenity"="public_bath"]', '["leisure"="spa"]'] },
+      toilet:   { g: ["rest_stop"],                     osm: ['["amenity"="toilets"]'], osmFirst: true },
+      rest:     { g: ["rest_stop"],                     osm: ['["amenity"="rest_area"]', '["highway"="rest_area"]', '["highway"="services"]'], osmFirst: true },
+      onsen:    { g: ["spa", "public_bath"],            osm: ['["amenity"="public_bath"]', '["leisure"="spa"]'], osmFirst: true },
       parking:  { g: ["parking"],                       osm: ['["amenity"="parking"]'] },
       super:    { g: ["supermarket"],                   osm: ['["shop"="supermarket"]'] },
       pharmacy: { g: ["pharmacy", "drugstore"],         osm: ['["amenity"="pharmacy"]', '["shop"="chemist"]'] },
@@ -200,8 +205,8 @@ Deno.serve(async (req) => {
     if (!k) return json({ error: "bad kind" }, 400);
     let gErr: { status: number; detail: string } | null = null;
 
-    // ① Google Places searchNearby
-    if (GKEY()) {
+    const tryGoogle = async () => {
+      if (!GKEY()) return null;
       const rr = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
         method: "POST",
         headers: {
@@ -227,31 +232,39 @@ Deno.serve(async (req) => {
           lat: x.location?.latitude ?? null,
           lng: x.location?.longitude ?? null,
         })).filter((x: any) => x.lat != null);
-        return json({ kind: body.near.kind, radius: r, src: "google", places });
+        return places.length ? { src: "google", places } : null;
       }
-      // Google 唔得（例如 type 名唔認）就跌落 Overpass，同時帶返錯誤方便診斷
       gErr = { status: rr.status, detail: txt.slice(0, 200) };
-    }
+      return null;
+    };
 
-    // ② Overpass 後備
     const q = `[out:json][timeout:25];(${k.osm.map((x) => `nwr${x}(around:${r},${lat},${lng});`).join("")});out center 40;`;
-    for (const host of ["https://overpass-api.de/api/interpreter",
-                        "https://overpass.kumi.systems/api/interpreter",
-                        "https://overpass.private.coffee/api/interpreter"]) {
-      try {
-        const rr2 = await fetch(host + "?data=" + encodeURIComponent(q), {
-          headers: { "User-Agent": "eva-trip/1.0 (personal trip planner; +https://ngfranki.github.io/eva-trip/)" },
-        });
-        if (!rr2.ok) continue;
-        const d2 = JSON.parse(await rr2.text());
-        const places = (d2.elements ?? []).map((e: any) => {
-          const t = e.tags ?? {};
-          const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
-          if (la == null || lo == null) return null;
-          return { name: t["name:zh"] ?? t.name ?? t.brand ?? t.operator ?? "", brand: t.brand ?? "", hours: t.opening_hours ?? "", lat: la, lng: lo };
-        }).filter(Boolean);
-        return json({ kind: body.near.kind, radius: r, src: "osm", places });
-      } catch { /* 試下一個 */ }
+    const tryOsm = async () => {
+      for (const host of ["https://overpass-api.de/api/interpreter",
+                          "https://overpass.kumi.systems/api/interpreter",
+                          "https://overpass.private.coffee/api/interpreter"]) {
+        try {
+          const rr2 = await fetch(host + "?data=" + encodeURIComponent(q), {
+            headers: { "User-Agent": "eva-trip/1.0 (personal trip planner; +https://ngfranki.github.io/eva-trip/)" },
+          });
+          if (!rr2.ok) continue;
+          const d2 = JSON.parse(await rr2.text());
+          const places = (d2.elements ?? []).map((e: any) => {
+            const t = e.tags ?? {};
+            const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
+            if (la == null || lo == null) return null;
+            return { name: t["name:zh"] ?? t.name ?? t.brand ?? t.operator ?? "", brand: t.brand ?? "", hours: t.opening_hours ?? "", lat: la, lng: lo };
+          }).filter(Boolean);
+          if (places.length) return { src: "osm", places };
+        } catch { /* 試下一個 */ }
+      }
+      return null;
+    };
+
+    const order = k.osmFirst ? [tryOsm, tryGoogle] : [tryGoogle, tryOsm];
+    for (const f of order) {
+      const got = await f();
+      if (got) return json({ kind: body.near.kind, radius: r, ...got });
     }
     return json({ error: "near-failed", google: gErr }, 502);
   }

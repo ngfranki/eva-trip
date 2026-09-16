@@ -811,7 +811,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260916-v32-1';
+  var APP_VER='20260916-v32-2';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -3950,7 +3950,7 @@
         nearState.list=j.places.map(function(x){
           x.d=hav([p.lat,p.lng],[x.lat,x.lng]); return x;
         }).sort(function(a,b){ return a.d-b.d; });
-        nearState.at=Date.now();
+        nearState.at=Date.now(); nearState.src=j.src||'';
       }
       if($('pan').__now && nowTab==='near') nowRender();
     });
@@ -3983,8 +3983,10 @@
          x.lat+','+x.lng+'" target="_blank" rel="noopener" title="導航">'+ic('route',16)+'</a>'+
          '</div>';
     });
-    h+='</div><div class="hint">資料來自 OpenStreetMap（免費、由志願者維護）。'+
-       '營業時間未必齊全或最新，去之前最好打個電話。</div>';
+    var srcTxt = nearState.src==='google' ? 'Google 地圖'
+               : (nearState.src==='osm' ? 'OpenStreetMap（由志願者維護，未必齊全）' : '');
+    h+='</div><div class="hint">'+(srcTxt? '資料來自 '+esc(srcTxt)+'。':'')+
+       '營業時間未必最新，去之前最好打個電話或者撳導航睇 Google 地圖。</div>';
     return h;
   }
 
