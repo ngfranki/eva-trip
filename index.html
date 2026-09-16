@@ -245,7 +245,7 @@
   .row{position:relative; display:flex; gap:9px; align-items:flex-start; padding-left:14px}
   .row.drag{opacity:.3}
   .row.over .rcard{box-shadow:inset 0 2px 0 var(--acc)}
-  .idx{position:absolute; left:0; top:11px; z-index:3; width:25px; height:25px; border-radius:50%;
+  .idx{position:absolute; left:0; top:11px; z-index:3; width:25px; height:25px; border-radius:50%; padding:0;
        font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center;
        color:#fff; border:2px solid var(--surf)}
   .grip{position:absolute; left:-14px; top:16px; width:14px; color:transparent; font-size:12px; cursor:grab}
@@ -811,7 +811,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260916-v33-0';
+  var APP_VER='20260916-v33-1';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2491,7 +2491,7 @@
     if(x.conf) chips.push('<button class="chip tap" data-act="copyconf" data-id="'+x.id+'" title="按一下複製">'+
       ic('check',11,'inline')+' '+esc(x.conf)+'</button>');
     var badge = idx
-      ? '<div class="idx" style="background:'+idx.c+'">'+idx.n+'</div>'
+      ? '<button class="idx tap" data-act="pinjump" data-id="'+x.id+'" title="在地圖上查看" style="background:'+idx.c+'">'+idx.n+'</button>'
       : '<div class="idx kico" style="background:var(--muted2)">'+kico(x.kind,14)+'</div>';
     // Google 嘅相 URL（lh3.googleusercontent.com）帶 token、唔係永久，
     // 而舊版判斷條件只係「有冇 photoUrl」—— 死 URL 都係 truthy，所以會渲染一個
@@ -2708,6 +2708,7 @@
       });
       m.__id=p.x.id; m.__n=p.n||'·'; m.__c=p.c;
       m.addListener('click',function(){
+        lastPinAt=Date.now();
         hlId=p.x.id;
         gInfo.setContent(mapPop(p.x));
         gInfo.open({anchor:m, map:gmap});
@@ -2739,6 +2740,7 @@
     }
     syncTraffic();
     if(myPos) meMarker();
+    bindMapFallback();
   }
 
   // ---------- map ----------
@@ -2771,6 +2773,68 @@
   // 地圖氣泡內容。兩個底圖（Google InfoWindow ／ Leaflet popup）共用。
   // 「詳情」入口好緊要 —— 標註、附件、營業時間全部喺地點卡裏面，
   // 喺地圖上面睇唔到。
+  // 🔴 2026-09-16：Franki 報 v33-0 之後撳 pin 仍然冇反應（我喺 desktop 驗到通，
+  //    但佢部機唔通）。marker 嘅 click 靠底圖庫，唔同環境行為唔一樣 ——
+  //    所以加一層唔靠佢哋嘅後備：喺地圖容器聽 click，自己將每個點投影返
+  //    螢幕座標，揀最近嗰個（30px 內）。底圖自己嗰個事件有行嘅話，
+  //    400ms 內就唔會重複觸發。
+  var lastPinAt = 0;
+  function mercY(l){ return Math.log(Math.tan(Math.PI/4 + (l*Math.PI/180)/2)); }
+  function mapHit(cx, cy){
+    var el=$('map'); if(!el) return null;
+    var r=el.getBoundingClientRect();
+    if(r.width<40 || r.height<40) return null;
+    var x=cx-r.left, y=cy-r.top;
+    var n, s2, e2, w2;
+    if(gmap && gmap.getBounds){
+      var b=gmap.getBounds(); if(!b) return null;
+      n=b.getNorthEast().lat(); e2=b.getNorthEast().lng();
+      s2=b.getSouthWest().lat(); w2=b.getSouthWest().lng();
+    } else if(map && map.getBounds){
+      var b2=map.getBounds();
+      n=b2.getNorth(); s2=b2.getSouth(); e2=b2.getEast(); w2=b2.getWest();
+    } else return null;
+    if(e2===w2 || n===s2) return null;
+    var my=mercY(n), ms=mercY(s2);
+    var best=null, bd=1e9;
+    mapPts().forEach(function(p){
+      var px=(p.x.lng - w2)/(e2 - w2)*r.width;
+      var py=(my - mercY(p.x.lat))/(my - ms)*r.height;
+      var d=Math.sqrt((px-x)*(px-x)+(py-y)*(py-y));
+      if(d<bd){ bd=d; best=p; }
+    });
+    return (best && bd<=30)? best.x : null;
+  }
+  // 開氣泡（兩個底圖都用，pinjump 同後備都叫呢個）
+  function openPin(x){
+    if(!x) return;
+    hlId=x.id;
+    if(gmap && gInfo){
+      var mk=null;
+      gmarks.forEach(function(mm){ if(mm.__id===x.id) mk=mm; });
+      gInfo.setContent(mapPop(x));
+      if(mk) gInfo.open({anchor:mk, map:gmap});
+      else { gInfo.setPosition({lat:x.lat, lng:x.lng}); gInfo.open({map:gmap}); }
+      gmarks.forEach(function(mm){
+        if(mm.__id && mm.setIcon) mm.setIcon(pinIcon(mm.__n, mm.__c, mm.__id===hlId));
+        if(mm.__id && mm.setZIndex) mm.setZIndex(mm.__id===hlId? 999 : 1);
+      });
+    } else if(map){
+      var lm=null;
+      markers.forEach(function(mm){ if(mm.__id===x.id) lm=mm; });
+      if(lm && lm.openPopup) lm.openPopup();
+    }
+  }
+  function bindMapFallback(){
+    var el=$('map'); if(!el || el.__hit) return;
+    el.__hit=1;
+    el.addEventListener('click', function(ev){
+      if(Date.now()-lastPinAt < 400) return;      // 底圖自己嗰個事件已經處理過
+      var x=mapHit(ev.clientX, ev.clientY);
+      if(!x) return;
+      openPin(x); scrollTo(x.id);
+    }, true);
+  }
   function mapPop(x){
     return '<div style="font:14px -apple-system,PingFang HK,sans-serif;min-width:160px">'+
       '<b style="display:block;margin-bottom:3px">'+esc(x.name)+'</b>'+
@@ -2784,6 +2848,19 @@
       '<a href="https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+x.lat+','+x.lng+
         '" target="_blank" rel="noopener" style="color:#3F52E3;font-weight:700;font-size:12.5px;text-decoration:none">導航 →</a>'+
       '</div></div>';
+  }
+  // 而家地圖上面有邊啲點。drawMap 同 mapHit 共用同一套，唔會對唔上。
+  function mapPts(){
+    var out=[], t=curTrip(); if(!t) return out;
+    days().forEach(function(d,i){
+      if(mapDay!=='all' && mapDay!==d) return;
+      var c=dayColor(i), n=0;
+      dayItems(d).forEach(function(x){
+        if(!(kd(x.kind).geo && x.lat!=null && x.lng!=null)) return;
+        n++; out.push({x:x, n:n, c:c, d:d});
+      });
+    });
+    return out;
   }
   function drawMap(){
     // 線上就清走離線提示。一定要喺呢度做：Leaflet 路徑係 append 唔係換 innerHTML，
@@ -2836,7 +2913,8 @@
         iconSize:[25,25], iconAnchor:[12,25]}), zIndexOffset: big?1000:0});
       // 同 Google 路徑一樣：render() 會清走 marker，popup 即開即消失
       m.bindPopup(mapPop(p.x), {maxWidth:260});
-      m.on('click',function(){ hlId=p.x.id; scrollTo(p.x.id); });
+      m.__id=p.x.id;
+      m.on('click',function(){ lastPinAt=Date.now(); hlId=p.x.id; scrollTo(p.x.id); });
       m.bindTooltip(p.x.name,{direction:'top',offset:[0,-22]});
       m.addTo(map); markers.push(m); ll.push([p.x.lat,p.x.lng]);
       if(p.d){ (lines[p.d]=lines[p.d]||{c:p.c,a:[]}).a.push([p.x.lat,p.x.lng]); }
@@ -4720,6 +4798,17 @@
       var wrap=el.closest('.add'), sc=wrap.getAttribute('data-scope'), i=+el.getAttribute('data-i');
       var inp2=wrap.querySelector('input'), q=inp2.value.trim();
       addItem(sc, i>=0? (sugData[i].name||sugData[i].display_name||'').split(',')[0] : q, i>=0? sugData[i] : null);
+    }
+    else if(act==='pinjump'){
+      var xj=itemById(id); if(!xj) return;
+      if(xj.lat==null){ setSync('err','這個項目沒有座標，地圖上看不到'); return; }
+      hlId=xj.id;
+      $('mapwrap').classList.add('open');           // 手機要先開地圖（desktop 本來就開）
+      setTimeout(function(){
+        if(map) map.invalidateSize(); gKick();
+        flyTo(xj);
+        setTimeout(function(){ openPin(xj); }, 450);
+      }, 90);
     }
     else if(act==='mapdetail'){ ev.preventDefault(); var xm=itemById(id); if(xm) placeSheet(xm); }
     else if(act==='focus'){ var x=itemById(id); if(x){ hlId=x.id; render(); if(x.lat) flyTo(x); placeSheet(x); } }
