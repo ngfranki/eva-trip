@@ -744,7 +744,7 @@
 <div class="gate" id="gate">
   <div class="box">
     <h2>旅程記錄</h2>
-    <p>行程規劃＋旅程日誌。輸輸入暗號即可同步雲端；不想同步，也可以只在這部裝置使用。</p>
+    <p>行程規劃＋旅程日誌。輸入暗號即可同步雲端；不想同步，也可以只在這部裝置使用。</p>
     <button class="btn acc hide" id="gateReuse">使用飲食記錄的暗號</button>
     <div class="hint hide" id="gateOr" style="text-align:center; margin:9px 0 10px">或者自己打</div>
     <input class="inp" id="gateKey" type="password" autocomplete="off" placeholder="暗號">
@@ -811,7 +811,7 @@
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260916-v33-3';
+  var APP_VER='20260917-v33-4';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1807,7 +1807,7 @@
     if(log.length>40) log.splice(0,log.length-40);
     aiBusy=true; renderChat();
     if(MODE!=='cloud'){
-      log.push({r:'sys',t:'本機模式無法連接 AI。請先輸輸入暗號改用雲端模式。'});
+      log.push({r:'sys',t:'本機模式無法連接 AI。請先輸入暗號改用雲端模式。'});
       aiBusy=false; renderChat(); return;
     }
     var msgs=[{role:'system',content:sysPrompt()}];
