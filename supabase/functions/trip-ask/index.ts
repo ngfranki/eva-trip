@@ -282,7 +282,10 @@ Deno.serve(async (req) => {
 
   const q = String(body.q ?? "").slice(0, 400).trim();
   if (!q) return json({ error: "empty q" }, 400);
-  const voice = body.fmt === "voice" || body.voice === true;
+  // fmt=mp3：直接回 mp3 檔（唔包 JSON）—— iPhone 捷徑只要「聽寫 → 取得 URL 內容 → 播放聲音」三步，
+  // 唔使取辭典值、唔使 Base64 解碼，少啲步驟出錯。
+  const mp3 = body.fmt === "mp3";
+  const voice = mp3 || body.fmt === "voice" || body.voice === true;
   const hud = body.fmt !== "full" && !voice;
 
   try {
@@ -320,6 +323,14 @@ Deno.serve(async (req) => {
     if (voice) {
       text = text.replace(/[*_#`~／/()（）「」°]/g, " ").replace(/\s+/g, " ").trim();
       const audio_b64 = await speak(text);
+      if (mp3) {
+        if (!audio_b64) return json({ error: "tts failed", text }, 502);
+        const bin = atob(audio_b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return new Response(bytes, { headers: { ...cors, "Content-Type": "audio/mpeg",
+          "Content-Disposition": 'inline; filename="xiaoen.mp3"' } });
+      }
       return json({ text, audio_b64, audio: audio_b64 ? "mp3" : null, ms: Date.now() - t0 });
     }
     return json({ text, ms: Date.now() - t0 });
