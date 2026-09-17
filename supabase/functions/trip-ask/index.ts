@@ -14,6 +14,7 @@
 //     key  = ASK_KEY（同 BRIEF_KEY 分開，眼鏡上面嗰個洩漏都唔會影響推播）
 //     q    = 問題
 //     fmt  = 'hud'（預設，≤2 行、≤90 字、冇 emoji）｜'full'（長少少）
+//            ｜'voice'（小恩把聲讀出：回 text ＋ audio_b64（mp3），iPhone 捷徑 Base64 解碼後播放）
 //     lat/lng = 有就當你而家喺嗰度（眼鏡傳唔傳得到要實測）
 //   → { text, ms }
 
@@ -229,9 +230,47 @@ const SYS_HUD = `你係 Franki 嘅旅程助手，答案會顯示喺 Rokid 眼鏡
 4. 用廣東話，簡短直接，唔使客套。
 5. 唔知就直接講唔知。`;
 
+// 開聲模式：答案會由小恩把聲（MiniMax CuteGirl）讀出，所以要寫成「講得出口」嘅廣東話。
+// 符號、「°」「／」「~」、英文縮寫會讀得好怪；時間同溫度要寫成字。
+const SYS_VOICE = `你係小恩，Franki 嘅私人旅程助手，把聲可愛、開朗。答案會用語音讀俾佢聽（佢戴住耳機）。
+鐵律：
+1. 最多三句短句，全部加起嚟唔好超過 70 個字。
+2. 用香港廣東話口語（喎、㗎、啦、呀、就得），好似朋友喺耳邊講，唔好用書面語。
+3. 唔准有任何符號、emoji、括號、斜線、「°」。數字時間要寫成講得出口：「三點四十分」「零下八度」「一個半鐘」。
+4. 最重要嘅資訊放第一句。
+5. 只可以用「行程資料」入面真有嘅嘢；冇寫就講「行程冇寫呀」，唔准估、唔准作。`;
+
 const SYS_FULL = `你係 Franki 嘅旅程助手。用廣東話、書面中文（香港用詞），簡短直接。
 只可以用下面「行程資料」入面真有嘅嘢答；冇寫嘅就講「行程冇寫」，唔准估、唔准作店名。
 最多五行。`;
+
+// 小恩把聲：2026-09-17 Franki 盲聽揀定（試盡 Apple／Gemini／Microsoft／ElevenLabs 都唔收貨）
+async function speak(text: string): Promise<string | null> {
+  const k = env("MINIMAX_API_KEY");
+  if (!k || !text) return null;
+  try {
+    const r = await fetch("https://api.minimax.io/v1/t2a_v2", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + k, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "speech-2.6-hd", text, stream: false,
+        language_boost: "Chinese,Yue",                       // "Cantonese" 係 invalid
+        voice_setting: { voice_id: "Cantonese_CuteGirl", speed: 1.0, vol: 1.0, pitch: 0, emotion: "happy" },
+        audio_setting: { sample_rate: 32000, bitrate: 128000, format: "mp3", channel: 1 },
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    const d = await r.json();
+    if (d?.base_resp?.status_code !== 0 || !d?.data?.audio) return null;
+    // MiniMax 回 hex；轉 base64，iPhone 捷徑有「Base64 解碼」可以直接播
+    const hex: string = d.data.audio;
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  } catch { return null; }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -243,7 +282,8 @@ Deno.serve(async (req) => {
 
   const q = String(body.q ?? "").slice(0, 400).trim();
   if (!q) return json({ error: "empty q" }, 400);
-  const hud = body.fmt !== "full";
+  const voice = body.fmt === "voice" || body.voice === true;
+  const hud = body.fmt !== "full" && !voice;
 
   try {
     const state = await loadState();
@@ -264,7 +304,7 @@ Deno.serve(async (req) => {
         model: "anthropic/claude-sonnet-5",
         max_tokens: hud ? 200 : 600,
         messages: [
-          { role: "system", content: hud ? SYS_HUD : SYS_FULL },
+          { role: "system", content: voice ? SYS_VOICE : (hud ? SYS_HUD : SYS_FULL) },
           { role: "user", content: `【行程資料】\n${ctx}\n\n【問題】${q}` },
         ],
       }),
@@ -276,6 +316,11 @@ Deno.serve(async (req) => {
     if (hud) {
       text = text.replace(/[*_#`]/g, "").split("\n").filter(Boolean).slice(0, 2).join("\n");
       if (text.length > 100) text = text.slice(0, 99) + "…";
+    }
+    if (voice) {
+      text = text.replace(/[*_#`~／/()（）「」°]/g, " ").replace(/\s+/g, " ").trim();
+      const audio_b64 = await speak(text);
+      return json({ text, audio_b64, audio: audio_b64 ? "mp3" : null, ms: Date.now() - t0 });
     }
     return json({ text, ms: Date.now() - t0 });
   } catch (e) {
