@@ -80,7 +80,8 @@ def status():
     have = secrets_now()
     print('Supabase secrets：')
     for n in ('TELEGRAM_BOT_TOKEN_SIUYAN', 'TELEGRAM_CHAT_FRANKI', 'BRIEF_KEY',
-              'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'GOOGLE_MAPS_KEY'):
+              'SUPABASE_URL', 'SUPABASE_SECRET_KEYS', 'SUPABASE_SERVICE_ROLE_KEY',
+              'GOOGLE_MAPS_KEY'):
         print(f'  {"✅" if n in have else "❌"} {n}')
     ext = sql("select extname from pg_extension where extname in ('pg_cron','pg_net')")
     got = {x['extname'] for x in ext} if isinstance(ext, list) else set()

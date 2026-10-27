@@ -42,7 +42,8 @@ def kv(n):
 
 
 AT = kv('SUPABASE_ACCESS_TOKEN')
-SRV = kv('SUPABASE_SERVICE_KEY')
+# 呢個腳本唔使 service key。寫心跳嘅係 heartbeat.sh，佢自己讀
+# SUPABASE_SECRET_KEY（冇先至用舊 SUPABASE_SERVICE_KEY）。
 
 
 def sql(q):

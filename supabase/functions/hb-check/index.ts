@@ -12,6 +12,8 @@
 //
 // 去重：一次斷線只通知一次；恢復之後再發一句「返嚟喇」。
 
+import { restHeaders, serviceKey } from "../_shared/api_key.ts";
+
 const env = (k: string) => Deno.env.get(k) ?? "";
 const json = (o: unknown, status = 200) =>
   new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json" } });
@@ -19,11 +21,11 @@ const json = (o: unknown, status = 200) =>
 const STALE_MIN = 20;
 
 async function db(path: string, init: RequestInit = {}) {
-  const k = env("SUPABASE_SERVICE_ROLE_KEY");
+  const k = serviceKey();
   return fetch(env("SUPABASE_URL") + "/rest/v1/" + path, {
     ...init,
     headers: {
-      apikey: k, Authorization: "Bearer " + k, "Content-Type": "application/json",
+      ...restHeaders(k),
       ...(init.headers ?? {}),
     },
   });

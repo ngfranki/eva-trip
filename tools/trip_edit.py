@@ -42,8 +42,10 @@ def cfg():
 
 
 SB, SBK = cfg()
-H = {'apikey': SBK, 'Authorization': 'Bearer ' + SBK, 'x-client-info': KEY,
-     'Content-Type': 'application/json'}
+# Publishable key 唔係 JWT，只放 apikey。舊 anon JWT（eyJ…）先至要 Bearer。
+H = {'apikey': SBK, 'x-client-info': KEY, 'Content-Type': 'application/json'}
+if SBK.startswith('eyJ'):
+    H['Authorization'] = 'Bearer ' + SBK
 
 
 def req(url, data=None, method='GET', extra=None):

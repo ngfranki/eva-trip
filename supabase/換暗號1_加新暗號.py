@@ -46,7 +46,10 @@ def sql(q):
 
 def probe(path, key):
     """回傳收到幾多 bytes。2 = 空陣列 = 被擋住。"""
-    h = {'apikey': SBK, 'Authorization': 'Bearer ' + SBK}
+    # Publishable key 唔係 JWT，只放 apikey。舊 anon JWT 先至要 Bearer。
+    h = {'apikey': SBK}
+    if SBK.startswith('eyJ'):
+        h['Authorization'] = 'Bearer ' + SBK
     if key: h['x-client-info'] = key
     try:
         with urllib.request.urlopen(urllib.request.Request(SB + path, headers=h), timeout=20) as f:

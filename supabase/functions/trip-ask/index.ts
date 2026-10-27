@@ -18,6 +18,8 @@
 //     lat/lng = 有就當你而家喺嗰度（眼鏡傳唔傳得到要實測）
 //   → { text, ms }
 
+import { restHeaders, serviceKey } from "../_shared/api_key.ts";
+
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, apikey, x-client-info, content-type",
@@ -41,9 +43,9 @@ function hav(a: [number, number], b: [number, number]) {
 const DOWZH = ["日", "一", "二", "三", "四", "五", "六"];
 
 async function loadState() {
-  const k = env("SUPABASE_SERVICE_ROLE_KEY");
+  const k = serviceKey();
   const r = await fetch(env("SUPABASE_URL") + "/rest/v1/trip_log?id=eq.main&select=state",
-    { headers: { apikey: k, Authorization: "Bearer " + k } });
+    { headers: restHeaders(k) });
   if (!r.ok) throw new Error("trip_log " + r.status);
   return (await r.json())?.[0]?.state ?? null;
 }
