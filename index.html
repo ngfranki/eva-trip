@@ -745,8 +745,6 @@
   <div class="box">
     <h2>旅程記錄</h2>
     <p>行程規劃＋旅程日誌。輸入暗號即可同步雲端；不想同步，也可以只在這部裝置使用。</p>
-    <button class="btn acc hide" id="gateReuse">使用飲食記錄的暗號</button>
-    <div class="hint hide" id="gateOr" style="text-align:center; margin:9px 0 10px">或者自己打</div>
     <input class="inp" id="gateKey" type="password" autocomplete="off" placeholder="暗號">
     <button class="btn" id="gateGo">進入</button>
     <button class="btn ghost" id="gateLocal" style="margin-top:8px">只在這部裝置使用</button>
@@ -810,10 +808,11 @@
   'use strict';
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
   // Publishable key（取代舊 anon JWT）。呢條唔係 JWT，只放 apikey header，
-  // 唔好再當成 Authorization: Bearer。RLS 仍然係 anon 角色 + x-client-info 暗號。
+  // 唔好再當成 Authorization: Bearer。x-client-info 只放 app-auth 簽發嘅 session token，永遠唔好放暗號。
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20261027-v33-5';
+  var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
+  var APP_VER='20261027-v34';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -876,9 +875,30 @@
   function kd(k){ return KINDS[k]||KINDS.place; }
   function dayColor(i){ return getComputedStyle(document.documentElement).getPropertyValue(DCOL[i%DCOL.length]).trim()||'#8FAF86'; }
 
-  var KEY='', MODE='';
-  try{ KEY=localStorage.getItem('tripKey')||''; }catch(e){}
-  try{ if(KEY) MODE='cloud'; else if(localStorage.getItem('tripLocal')==='1') MODE='local'; }catch(e){}
+  var KEY='', MODE='', SESS=null, loginBusy=false;
+  // 舊版把暗號本身存在 tripKey。開頁同登入成功都清走；tripCache／tripLocal 留低。
+  function readSession(){
+    try{
+      var raw=localStorage.getItem(SESS_KEY);
+      if(!raw) return null;
+      var s=JSON.parse(raw);
+      var exp=s&&s.expiresAt? Date.parse(s.expiresAt) : NaN;
+      if(!s||!s.token||!s.expiresAt||isNaN(exp)||exp<=Date.now()){
+        localStorage.removeItem(SESS_KEY);
+        return null;
+      }
+      return {token:s.token, expiresAt:s.expiresAt};
+    }catch(e){
+      try{ localStorage.removeItem(SESS_KEY); }catch(e2){}
+      return null;
+    }
+  }
+  try{ localStorage.removeItem('tripKey'); }catch(e){}
+  SESS=readSession();
+  try{
+    if(SESS){ KEY=SESS.token; MODE='cloud'; }
+    else if(localStorage.getItem('tripLocal')==='1') MODE='local';
+  }catch(e){}
 
   var state=null, lastUpdated=null, dirty=false, pTimer=null, rTimer=null, offline=false;
   var map=null, markers=[], mapDay='all', hlId=null, sugSel=-1, sugData=[], sugTimer=null;
@@ -1348,7 +1368,45 @@
       e.status=r.status; throw e;
     }, function(){ var e=new Error('HTTP '+r.status); e.status=r.status; throw e; });
   }
+  function hadCloudData(){
+    if(lastUpdated) return true;
+    var c=cacheLoad();
+    return !!(c && c.updated_at);
+  }
+  function dropSession(){
+    KEY=''; SESS=null;
+    try{ localStorage.removeItem(SESS_KEY); localStorage.removeItem('tripKey'); }catch(e){}
+  }
+  function forceLogin(msg){
+    if(MODE==='local') return;
+    if(rTimer){ clearTimeout(rTimer); rTimer=null; }
+    if(pTimer){ clearTimeout(pTimer); pTimer=null; }
+    dropSession();
+    MODE='';
+    showGate(msg||'請再入一次暗號');
+  }
+  function authExpired(){
+    var e=new Error('HTTP 401');
+    e.status=401; e.auth=1;
+    forceLogin('登入已過期，請再入一次暗號');
+    return e;
+  }
+  function okJson(r){
+    if(r && r.status===401) throw authExpired();
+    if(!r.ok) return httpErr(r);
+    return r.json();
+  }
+  // 之前成功同步過，SELECT 主行卻係 0 行：RLS 會靜靜返回空陣列，當 session 失效。
+  // PATCH 撞版本嗰種 0 行唔好用呢個 —— 嗰陣再 SELECT 一次先算。
+  function rejectIfRowMissing(rows){
+    if(rows && rows.length) return false;
+    if(!hadCloudData()) return false;
+    forceLogin('登入已失效，請再入一次暗號');
+    return true;
+  }
   function persistFail(e){
+    if(e&&e.auth) return;
+    if(MODE!=='cloud') return;
     lastErr=(e&&e.message)||'unknown';
     if(!navigator.onLine){ setSync('err','離線，資料未同步'); }
     else if(e&&e.status){ setSync('err','無法儲存（'+e.status+'）按一下重試'); }
@@ -1363,8 +1421,14 @@
       fetch(SB+'/rest/v1/'+TABLE+'?on_conflict=id',{method:'POST',
         headers:Object.assign(hdr(),{Prefer:'resolution=merge-duplicates,return=representation'}),
         body:JSON.stringify([{id:'main',state:state,updated_at:ts}])})
-      .then(function(r){ return r.ok? r.json() : httpErr(r); })
-      .then(function(rows){ dirty=false; pRetry=0; if(rows&&rows[0]) lastUpdated=rows[0].updated_at; setBase(); cacheSave(); setSync('ok','已儲低 '+nowT()); })
+      .then(okJson)
+      .then(function(rows){
+        if(!rows||!rows[0]){
+          if(rejectIfRowMissing(rows)) return;
+          var e=new Error('empty'); throw e;
+        }
+        dirty=false; pRetry=0; lastUpdated=rows[0].updated_at; setBase(); cacheSave(); setSync('ok','已儲低 '+nowT());
+      })
       .catch(persistFail);
       return;
     }
@@ -1372,14 +1436,16 @@
     fetch(SB+'/rest/v1/'+TABLE+'?id=eq.main&updated_at=eq.'+encodeURIComponent(lastUpdated),
       {method:'PATCH', headers:Object.assign(hdr(),{Prefer:'return=representation'}),
        body:JSON.stringify({state:state, updated_at:ts})})
-    .then(function(r){ return r.ok? r.json() : httpErr(r); })
+    .then(okJson)
     .then(function(rows){
       if(rows && rows[0]){ dirty=false; pRetry=0; lastUpdated=rows[0].updated_at; setBase(); cacheSave(); setSync('ok','已儲低 '+nowT()); return; }
-      // 0 row ＝ 其他裝置喺我讀完之後寫過 → 合併，唔可以覆蓋
+      // 0 row ＝ 其他裝置喺我讀完之後寫過 → 合併，唔可以覆蓋。
+      // 如果其實係 session 失效，下面 fetchRow 見到 0 行會返去登入。
       if(pRetry>=4){ setSync('err','同步衝突，按一下狀態列重試'); return; }
       pRetry++;
       setSync('','其他裝置有改動，合併緊…');
       fetchRow(function(row){
+        if(MODE!=='cloud') return;
         if(!row){ setTimeout(persist,3000); return; }
         // 合併本身千萬唔可以靜靜咁 throw —— 之前 throw 咗會被 fetchRow 個
         // catch 食掉，persist 永遠唔會再試，畫面就卡死喺一個舊訊息。
@@ -1399,15 +1465,37 @@
     var done=false,ctrl=null; try{ctrl=new AbortController();}catch(e){}
     var t=setTimeout(function(){ if(done)return; done=true; try{ctrl&&ctrl.abort();}catch(e){} cb(null,false); },12000);
     fetch(SB+'/rest/v1/'+TABLE+'?id=eq.main&select=state,updated_at',{headers:hdr(),signal:ctrl?ctrl.signal:undefined})
-      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
-      .then(function(rows){ if(done)return; done=true; clearTimeout(t); cb(rows&&rows[0]?rows[0]:null,true); })
-      .catch(function(){ if(done)return; done=true; clearTimeout(t); cb(null,false); });
+      .then(function(r){
+        if(r.status===401) throw authExpired();
+        if(!r.ok) throw 0;
+        return r.json();
+      })
+      .then(function(rows){
+        if(done) return; done=true; clearTimeout(t);
+        if(rejectIfRowMissing(rows)) return;
+        cb(rows&&rows[0]?rows[0]:null, true);
+      })
+      .catch(function(e){
+        if(done) return; done=true; clearTimeout(t);
+        if(e&&e.auth) return;
+        cb(null, false);
+      });
   }
   function boot(){
     if(!MODE){ showGate(''); return; }
     if(MODE==='local'){ var c=cacheLoad(); applyState(c&&c.state?c:{state:defState()}); setSync('ok','本機模式'); render(); return; }
+    // 先出本機 cache。session 檢查同讀雲端平行做，離線唔好等網絡先見到行程。
     if(!state){ var c2=cacheLoad(); if(c2&&c2.state){ applyState(c2); render(); setSync('','上次的資料 · 更新中…'); } else setSync('','載緊資料…'); }
+    sessionCheck(function(st){
+      if(MODE!=='cloud') return;
+      if(st==='bad') forceLogin('請再入一次暗號');
+    });
+    bootCloud();
+  }
+  function bootCloud(){
+    if(MODE!=='cloud'||!KEY) return;
     fetchRow(function(row,reached){
+      if(MODE!=='cloud') return;
       if(!row){
         if(!reached){ if(!state){ applyState({state:defState()}); render(); } setSync('err','離線，資料未同步');
           if(rTimer) clearTimeout(rTimer); rTimer=setTimeout(boot,10000); return; }
@@ -1415,9 +1503,18 @@
         fetch(SB+'/rest/v1/'+TABLE+'?on_conflict=id',{method:'POST',
           headers:Object.assign(hdr(),{Prefer:'resolution=merge-duplicates,return=representation'}),
           body:JSON.stringify([{id:'main',state:defState(),updated_at:new Date().toISOString()}])})
-        .then(function(r){ if(!r.ok) throw 0; return r.json(); })
-        .then(function(rows){ if(!rows||!rows[0]) throw 0; applyState(rows[0]); cacheSave(); setSync('ok','已同步'); render(); })
-        .catch(function(){ try{localStorage.removeItem('tripKey');}catch(e){} KEY=''; MODE=''; showGate('暗號不正確，請再輸入一次'); });
+        .then(okJson)
+        .then(function(rows){
+          if(!rows||!rows[0]){ if(rejectIfRowMissing(rows)) return; throw 0; }
+          applyState(rows[0]); cacheSave(); setSync('ok','已同步'); render();
+        })
+        .catch(function(e){
+          if(e&&e.auth) return;
+          if(MODE!=='cloud') return;
+          if(!state){ applyState({state:defState()}); render(); }
+          setSync('err','無法開啟雲端資料，按一下重試');
+          if(rTimer) clearTimeout(rTimer); rTimer=setTimeout(boot,10000);
+        });
         return;
       }
       applyState(row); cacheSave(); setSync('ok','已同步'); render();
@@ -1426,25 +1523,101 @@
   function refreshIfChanged(){
     if(!state||dirty||MODE!=='cloud'||!KEY) return;
     fetch(SB+'/rest/v1/'+TABLE+'?id=eq.main&select=updated_at',{headers:hdr()})
-      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
-      .then(function(rows){ if(rows&&rows[0]&&rows[0].updated_at!==lastUpdated)
-        fetchRow(function(row){ if(row&&!dirty){ applyState(row); cacheSave(); render(); setSync('ok','已同步 '+nowT()); } }); })
-      .catch(function(){ setSync('err','離線，資料未同步'); });
+      .then(okJson)
+      .then(function(rows){
+        if(rejectIfRowMissing(rows)) return;
+        if(rows&&rows[0]&&rows[0].updated_at!==lastUpdated)
+          fetchRow(function(row){ if(row&&!dirty&&MODE==='cloud'){ applyState(row); cacheSave(); render(); setSync('ok','已同步 '+nowT()); } });
+      })
+      .catch(function(e){ if(e&&e.auth) return; if(MODE==='cloud') setSync('err','離線，資料未同步'); });
   }
 
   // ---------- gate ----------
-  function mealKey(){ try{ return localStorage.getItem('mealKey')||''; }catch(e){ return ''; } }
   function showGate(msg){
+    loginBusy=false;
+    var b=$('gateGo'); if(b) b.disabled=false;
     $('gate').className='gate show'; $('gateMsg').textContent=msg||'';
-    var has=!!mealKey();
-    $('gateReuse').className='btn acc'+(has?'':' hide');
-    $('gateOr').className='hint'+(has?'':' hide');
-    if(!has) setTimeout(function(){ try{$('gateKey').focus();}catch(e){} },50);
+    setTimeout(function(){ try{$('gateKey').focus();}catch(e){} },50);
   }
-  function enter(k){ KEY=k; MODE='cloud'; try{ localStorage.setItem('tripKey',k); localStorage.removeItem('tripLocal'); }catch(e){} $('gate').className='gate'; boot(); }
-  $('gateGo').addEventListener('click',function(){ var k=($('gateKey').value||'').trim(); if(k) enter(k); });
-  $('gateKey').addEventListener('keydown',function(e){ if(e.key==='Enter'){ var k=(e.target.value||'').trim(); if(k) enter(k); } });
-  $('gateReuse').addEventListener('click',function(){ var k=mealKey(); if(k) enter(k); });
+  function loginMsg(status, text){
+    var code='';
+    try{
+      var j=JSON.parse(text||'');
+      if(j) code=String(j.code||'');
+    }catch(e){}
+    if(status===503 || code==='not_configured') return '新暗號尚未設定，請稍後再試';
+    if(status===401) return '暗號唔啱，請再入一次';
+    if(status===429) return '試得太多，請 15 分鐘後再試';
+    if(status===403) return '呢個網址唔允許登入';
+    if(status===400) return '應用程式不正確';
+    return '登入唔到，請檢查網絡再試';
+  }
+  function sessionCheck(cb){
+    if(!KEY){ cb('bad'); return; }
+    var done=false;
+    var t=setTimeout(function(){ if(done) return; done=true; cb('offline'); },8000);
+    fetch(AUTH+'/session',{method:'POST', headers:{apikey:SBK, 'Content-Type':'application/json', 'x-client-info':KEY}})
+      .then(function(r){
+        if(done) return; done=true; clearTimeout(t);
+        cb(r.status===401 ? 'bad' : 'ok');
+      })
+      .catch(function(){
+        if(done) return; done=true; clearTimeout(t); cb('offline');
+      });
+  }
+  function submitGate(){
+    if(loginBusy) return;
+    var el=$('gateKey');
+    var pass=(el&&el.value||'').trim();
+    if(el) el.value='';
+    if(!pass){ showGate('請先輸入暗號'); return; }
+    loginBusy=true;
+    var btn=$('gateGo'); if(btn) btn.disabled=true;
+    $('gateMsg').textContent='驗證緊…';
+    var body=JSON.stringify({app:APP, passphrase:pass});
+    pass='';
+    fetch(AUTH+'/login',{
+      method:'POST',
+      headers:{apikey:SBK, 'Content-Type':'application/json'},
+      body:body
+    }).then(function(r){
+      return r.text().then(function(t){ return {ok:r.ok, status:r.status, text:t}; });
+    }).then(function(res){
+      loginBusy=false; if(btn) btn.disabled=false;
+      if(!res.ok){ showGate(loginMsg(res.status, res.text)); return; }
+      var j=null; try{ j=JSON.parse(res.text); }catch(e){}
+      if(!j||!j.token||!j.expiresAt){ showGate('登入唔到，請稍後再試'); return; }
+      try{ localStorage.removeItem('tripKey'); localStorage.removeItem('tripLocal'); }catch(e){}
+      SESS={token:j.token, expiresAt:j.expiresAt};
+      try{ localStorage.setItem(SESS_KEY, JSON.stringify(SESS)); }catch(e){}
+      KEY=j.token; MODE='cloud';
+      $('gate').className='gate';
+      boot();
+    }).catch(function(){
+      loginBusy=false; if(btn) btn.disabled=false;
+      showGate('登入唔到，請檢查網絡再試');
+    });
+  }
+  function doLogout(){
+    var tok=KEY;
+    var finish=function(){
+      try{
+        localStorage.removeItem(SESS_KEY);
+        localStorage.removeItem('tripKey');
+        localStorage.removeItem('tripCache');
+      }catch(e){}
+      KEY=''; SESS=null; MODE='';
+      location.reload();
+    };
+    if(!tok){ finish(); return; }
+    var t=setTimeout(finish,4000);
+    fetch(AUTH+'/logout',{
+      method:'POST', keepalive:true,
+      headers:{apikey:SBK, 'Content-Type':'application/json', 'x-client-info':tok}
+    }).then(function(){ clearTimeout(t); finish(); }, function(){ clearTimeout(t); finish(); });
+  }
+  $('gateGo').addEventListener('click', submitGate);
+  $('gateKey').addEventListener('keydown',function(e){ if(e.key==='Enter') submitGate(); });
   $('gateLocal').addEventListener('click',function(){ MODE='local'; try{ localStorage.setItem('tripLocal','1'); }catch(e){} $('gate').className='gate'; boot(); });
 
   // ---------- model ----------
@@ -1571,9 +1744,13 @@
     if(MODE!=='cloud'){ cb(null,'no-key'); return; }
     fetch(AI_URL,{method:'POST',headers:hdr(),
       body:JSON.stringify({intent:intent,prompt:prompt})})
-      .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(r){
+        if(r.status===401) throw authExpired();
+        if(!r.ok) throw new Error(r.status);
+        return r.json();
+      })
       .then(function(j){ cb(j&&j.text||'',null); })
-      .catch(function(e){ cb(null,String(e.message||e)); });
+      .catch(function(e){ if(e&&e.auth){ cb(null,'auth'); return; } cb(null,String(e.message||e)); });
   }
   function parseKey(t, key){ if(!t) return null; var m=String(t).match(/\{[\s\S]*\}/); if(!m) return null;
     try{ var j=JSON.parse(m[0]); return Array.isArray(j[key])?j[key]:null; }catch(e){ return null; } }
@@ -1817,7 +1994,11 @@
       else if(m.r==='a') msgs.push({role:'assistant',content:m.t}); });
     fetch(AI_URL,{method:'POST',headers:hdr(),
       body:JSON.stringify({messages:msgs})})
-      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(r){
+        if(r.status===401) throw authExpired();
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        return r.json();
+      })
       .then(function(j){
         var txt=(j&&j.text)||'';
         var ops=grabOps(txt), n=ops?applyOps(ops):0;
@@ -1827,6 +2008,7 @@
         if($('aiPanel').classList.contains('open')) renderChat();
       })
       .catch(function(e){
+        if(e&&e.auth){ aiBusy=false; return; }
         chatLog().push({r:'sys',t:'無法連接 AI（'+(e.message||e)+'）'});
         aiBusy=false; renderChat();
       });
@@ -2177,7 +2359,7 @@
        '<a data-act="go" data-s="s-bud">查看明細</a></div>';
     return h+'</div>';
   }
-  // ---------- 附件（Supabase Storage · trip-files · 同一個暗號閘）----------
+  // ---------- 附件（Supabase Storage · trip-files · 同一個 session token）----------
   var BUCKET='trip-files', MAXMB=10;
   function stUrl(path){ return SB+'/storage/v1/object/'+BUCKET+'/'+path.split('/').map(encodeURIComponent).join('/'); }
   function stHdr(extra){ return Object.assign({apikey:SBK, 'x-client-info':KEY}, extra||{}); }
@@ -2189,13 +2371,17 @@
     var safe=String(file.name||'file').replace(/[^\w.\-]+/g,'_').slice(-60);
     var path=curTrip().id+'/'+x.id+'/'+uid()+'-'+safe;
     setSync('','\u4e0a\u8f09 '+file.name+'\u2026');
-    // Cache-Control: no-store 好重要 —— 唔加嘅話檔案用啱暗號讀過一次之後，
-    // Supabase 個 CDN 會快取，期間知道路徑嘅人錯暗號都讀得到（實測過）。
-    // 加咗之後錯暗號一律 404。
+    // Cache-Control: no-store 好重要 —— 唔加嘅話檔案用啱 token 讀過一次之後，
+    // Supabase 個 CDN 會快取，期間知道路徑嘅人錯 token 都讀得到（實測過）。
+    // 加咗之後錯 token 一律 404。
     fetch(stUrl(path), {method:'POST',
       headers:stHdr({'Content-Type':file.type||'application/octet-stream', 'Cache-Control':'no-store'}),
       body:file})
-      .then(function(r){ if(!r.ok) return r.text().then(function(t){ throw new Error(r.status+' '+t.slice(0,80)); }); return r.json(); })
+      .then(function(r){
+        if(r.status===401) throw authExpired();
+        if(!r.ok) return r.text().then(function(t){ throw new Error(r.status+' '+t.slice(0,80)); });
+        return r.json();
+      })
       .then(function(){
         snap();
         var z=itemById(x.id)||x;                    // merge 可能已經換走 state
@@ -2203,7 +2389,10 @@
         z.files.push({p:path, n:file.name, s:file.size, t:file.type||'', at:Date.now()});
         save(); setSync('ok','\u4e0a\u8f09\u5b8c '+file.name); if(cb) cb(true);
       })
-      .catch(function(e){ setSync('err','\u4e0a\u8f09\u5931\u6557\uff1a'+(e.message||'')); if(cb) cb(false); });
+      .catch(function(e){
+        if(e&&e.auth){ if(cb) cb(false); return; }
+        setSync('err','\u4e0a\u8f09\u5931\u6557\uff1a'+(e.message||'')); if(cb) cb(false);
+      });
   }
   // 開附件 = 直接喺 app 裡面睇。
   //
@@ -2233,9 +2422,16 @@
     };
     var fromNet=function(){
       fetch(stUrl(f.p), {headers:stHdr()})
-        .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); })
+        .then(function(r){
+          if(r.status===401) throw authExpired();
+          if(!r.ok) throw new Error('HTTP '+r.status);
+          return r.blob();
+        })
         .then(done)
-        .catch(function(e){ cb(null, (e.message||'無法取得')+(navigator.onLine? '' : '（離線，而且未預載）')); });
+        .catch(function(e){
+          if(e&&e.auth){ cb(null, '請重新登入'); return; }
+          cb(null, (e.message||'無法取得')+(navigator.onLine? '' : '（離線，而且未預載）'));
+        });
     };
     if(window.caches){
       caches.match(stUrl(f.p)).then(function(m){
@@ -2274,7 +2470,10 @@
     var f=(x.files||[])[i]; if(!f) return;
     if(!confirm('\u522a\u5497\u300c'+f.n+'\u300d\uff1f\u96f2\u7aef\u6a94\u6848\u6703\u6c38\u4e45\u79fb\u9664\u3002')) return;
     fetch(stUrl(f.p), {method:'DELETE', headers:stHdr()})
-      .then(function(){ snap(); x.files.splice(i,1); save(); setSync('ok','\u522a\u5497 '+f.n); })
+      .then(function(r){
+        if(r.status===401){ forceLogin('登入已過期，請再入一次暗號'); return; }
+        snap(); x.files.splice(i,1); save(); setSync('ok','\u522a\u5497 '+f.n);
+      })
       .catch(function(){ setSync('err','\u522a\u5514\u5230'); });
   }
   var staged=null;                 // {id, files:[File]} —— 揀咗但仲未加落去
@@ -2967,12 +3166,13 @@
     fetch(AI_URL,{method:'POST',headers:hdr(),
       body:JSON.stringify(body)})
       .then(function(r){
+        if(r.status===401) throw authExpired();
         if(r.status===501){ GOOG=false; throw new Error('no-google-key'); }
         if(!r.ok) throw new Error('HTTP '+r.status);
         GOOG=true; return r.json();
       })
       .then(function(j){ cb(j,null); })
-      .catch(function(e){ cb(null,e.message||'err'); });
+      .catch(function(e){ if(e&&e.auth){ cb(null,'auth'); return; } cb(null,e.message||'err'); });
   }
   function tripCentre(){
     var a=tItems().filter(function(x){ return x.lat&&x.lng; });
@@ -4531,11 +4731,15 @@
         setSync('','預載附件…'+(i+1)+'/'+all.length);
         var u=stUrl(all[i].f.p);
         fetch(u,{headers:stHdr()}).then(function(r){
+          if(r.status===401) throw authExpired();
           if(!r.ok) throw 0;
           return r.blob().then(function(b){
             return c.put(u, new Response(b,{headers:{'Content-Type':all[i].f.t||'application/octet-stream'}}));
           });
-        }).then(function(){ ok++; go(i+1); }).catch(function(){ fail++; go(i+1); });
+        }).then(function(){ ok++; go(i+1); }).catch(function(e){
+          if(e&&e.auth) return;
+          fail++; go(i+1);
+        });
       })(0);
     });
   }
@@ -4686,13 +4890,18 @@
       msg('<span class="spin"></span>取得 '+(i+1)+' / '+list.length+'：'+esc(f.n||''));
       var folder = (x.date? x.date : '未排期') + '_' + zipName(x.name);
       fetch(stUrl(f.p), {headers:stHdr()})
-        .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
+        .then(function(r){
+          if(r.status===401) throw authExpired();
+          if(!r.ok) throw new Error('HTTP '+r.status);
+          return r.arrayBuffer();
+        })
         .then(function(ab){
           got.push({ name: zipName(folder)+'/'+zipName(f.n||('file'+i)),
                      data: new Uint8Array(ab) });
           i++; next();
         })
         .catch(function(e){
+          if(e&&e.auth){ zipBusy=false; return; }
           fail.push((x.name||'')+' / '+(f.n||'')+' → '+(e.message||'失敗'));
           i++; next();
         });
@@ -5314,7 +5523,7 @@
       snap(); delete state.settings.gmapKey; save(); closeSheet();
       gState='off'; gmap=null; gmarks=[]; drawMap();
     }
-    else if(act==='logout'){ try{ localStorage.removeItem('tripKey'); localStorage.removeItem('tripCache'); }catch(e){} location.reload(); }
+    else if(act==='logout'){ doLogout(); }
   });
 
   document.addEventListener('input',function(e){
