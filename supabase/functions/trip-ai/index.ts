@@ -1,5 +1,7 @@
 // trip-ai — eva-trip 後端代理 (Supabase Edge Function)
 // 所有付費 key 都留喺伺服器；瀏覽器只帶 x-client-info 暗號。
+// 唔讀 SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY。閘係下面嗰兩個暗號，
+// 唔係 client 帶嚟嘅 JWT。publishable key 只放 apikey header 就得。
 //
 // secrets：
 //   OPENROUTER_API_KEY  AI（同 meal-vision 共用）

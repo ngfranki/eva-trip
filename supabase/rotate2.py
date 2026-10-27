@@ -38,7 +38,9 @@ def sql(q):
         print('  ⚠️ ' + e.read().decode()[:300]); return None
 
 def probe(path, key):
-    h = {'apikey': SBK, 'Authorization': 'Bearer ' + SBK}
+    h = {'apikey': SBK}
+    if SBK.startswith('eyJ'):
+        h['Authorization'] = 'Bearer ' + SBK
     if key: h['x-client-info'] = key
     try:
         with urllib.request.urlopen(urllib.request.Request(SB + path, headers=h), timeout=20) as f:

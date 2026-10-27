@@ -10,7 +10,8 @@
 //   evening  聽日預覽：天氣／第一站／車程／要早起定要預約
 //
 // secrets：
-//   SUPABASE_SERVICE_ROLE_KEY   讀 trip_log（繞過暗號閘）
+//   SUPABASE_SECRET_KEYS        讀 trip_log（新 secret key，JSON，繞過暗號閘）
+//   SUPABASE_SERVICE_ROLE_KEY   舊 JWT，只係過渡；停用 legacy keys 之後會冇
 //   SUPABASE_URL                同上
 //   TELEGRAM_BOT_TOKEN_SIUYAN   小恩
 //   TELEGRAM_CHAT_FRANKI        Franki 同小恩嘅 chat id
@@ -18,6 +19,8 @@
 //   BRIEF_KEY                   觸發用嘅暗號（pg_cron 帶）
 //
 // 免 key 嘅來源：Open-Meteo（天氣／日落）、日本氣象廳（警報）
+
+import { restHeaders, serviceKey } from "../_shared/api_key.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -322,8 +325,8 @@ function remarks(w: Wx | null, rtSec: number, items: any[], ds: string, when = "
 // ── 行程資料 ────────────────────────────────────────────────
 async function loadState() {
   const url = env("SUPABASE_URL") + "/rest/v1/trip_log?id=eq.main&select=state";
-  const k = env("SUPABASE_SERVICE_ROLE_KEY");
-  const r = await fetch(url, { headers: { apikey: k, Authorization: "Bearer " + k } });
+  const k = serviceKey();
+  const r = await fetch(url, { headers: restHeaders(k) });
   if (!r.ok) throw new Error("trip_log " + r.status);
   const rows = await r.json();
   return rows?.[0]?.state ?? null;

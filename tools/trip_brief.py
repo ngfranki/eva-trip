@@ -63,11 +63,25 @@ def tg(text):
 
 
 # ── 旅程資料 ──────────────────────────────────────────────
+def kv_opt(name):
+    with open(KEYS, encoding='utf-8') as f:
+        for ln in f:
+            if ln.startswith(name + '='):
+                v = ln.rstrip('\n').split('=', 1)[1]
+                if v:
+                    return v
+    return ''
+
+
 def load_state():
     ref = kv('SUPABASE_PROJECT_REF')
-    srv = kv('SUPABASE_SERVICE_KEY')
+    # 新 secret key 優先。sb_* 只放 apikey；舊 service_role JWT 先至要 Bearer。
+    srv = kv_opt('SUPABASE_SECRET_KEY') or kv('SUPABASE_SERVICE_KEY')
     url = f'https://{ref}.supabase.co/rest/v1/trip_log?id=eq.main&select=state'
-    r = urllib.request.Request(url, headers={'apikey': srv, 'Authorization': 'Bearer ' + srv})
+    headers = {'apikey': srv}
+    if srv.startswith('eyJ'):
+        headers['Authorization'] = 'Bearer ' + srv
+    r = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(r, timeout=30) as f:
         rows = json.loads(f.read())
     if not rows:

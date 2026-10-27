@@ -809,9 +809,11 @@
 (function(){
   'use strict';
   var SB  = 'https://lvwspnjysfyomuszzjay.supabase.co';
-  var SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4';
+  // Publishable key（取代舊 anon JWT）。呢條唔係 JWT，只放 apikey header，
+  // 唔好再當成 Authorization: Bearer。RLS 仍然係 anon 角色 + x-client-info 暗號。
+  var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
-  var APP_VER='20260917-v33-4';
+  var APP_VER='20261027-v33-5';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1245,7 +1247,7 @@
       pRetry=0; setSync('','重試緊…'); persist();
     });
   });
-  function hdr(){ return {apikey:SBK, Authorization:'Bearer '+SBK, 'x-client-info':KEY, 'Content-Type':'application/json'}; }
+  function hdr(){ return {apikey:SBK, 'x-client-info':KEY, 'Content-Type':'application/json'}; }
 
   // ---------- undo ----------
   function snap(){
@@ -1567,7 +1569,7 @@
   // ---------- AI ----------
   function aiCall(intent,prompt,cb){
     if(MODE!=='cloud'){ cb(null,'no-key'); return; }
-    fetch(AI_URL,{method:'POST',headers:{apikey:SBK,Authorization:'Bearer '+SBK,'x-client-info':KEY,'Content-Type':'application/json'},
+    fetch(AI_URL,{method:'POST',headers:hdr(),
       body:JSON.stringify({intent:intent,prompt:prompt})})
       .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
       .then(function(j){ cb(j&&j.text||'',null); })
@@ -1813,7 +1815,7 @@
     var msgs=[{role:'system',content:sysPrompt()}];
     log.slice(-12).forEach(function(m){ if(m.r==='u') msgs.push({role:'user',content:m.t});
       else if(m.r==='a') msgs.push({role:'assistant',content:m.t}); });
-    fetch(AI_URL,{method:'POST',headers:{apikey:SBK,Authorization:'Bearer '+SBK,'x-client-info':KEY,'Content-Type':'application/json'},
+    fetch(AI_URL,{method:'POST',headers:hdr(),
       body:JSON.stringify({messages:msgs})})
       .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
       .then(function(j){
@@ -2178,7 +2180,7 @@
   // ---------- 附件（Supabase Storage · trip-files · 同一個暗號閘）----------
   var BUCKET='trip-files', MAXMB=10;
   function stUrl(path){ return SB+'/storage/v1/object/'+BUCKET+'/'+path.split('/').map(encodeURIComponent).join('/'); }
-  function stHdr(extra){ return Object.assign({apikey:SBK, Authorization:'Bearer '+SBK, 'x-client-info':KEY}, extra||{}); }
+  function stHdr(extra){ return Object.assign({apikey:SBK, 'x-client-info':KEY}, extra||{}); }
   function fmtSize(b){ b=+b||0; return b<1024?b+' B':(b<1048576?(b/1024).toFixed(0)+' KB':(b/1048576).toFixed(1)+' MB'); }
   function fileIcon(t){ return String(t||'').indexOf('image')>=0 ? 'pin' : 'note'; }
   function uploadFile(x, file, cb){
@@ -2962,7 +2964,7 @@
   function gCall(body,cb){
     // body.near 係 OpenStreetMap 代理，唔關 Google 事 —— 就算冇 Google key 都要行得
     if(MODE!=='cloud' || (GOOG===false && !body.near)){ cb(null,'no-google'); return; }
-    fetch(AI_URL,{method:'POST',headers:{apikey:SBK,Authorization:'Bearer '+SBK,'x-client-info':KEY,'Content-Type':'application/json'},
+    fetch(AI_URL,{method:'POST',headers:hdr(),
       body:JSON.stringify(body)})
       .then(function(r){
         if(r.status===501){ GOOG=false; throw new Error('no-google-key'); }

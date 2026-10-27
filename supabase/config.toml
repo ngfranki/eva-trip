@@ -1,0 +1,23 @@
+# Gateway JWT check only. No secrets belong in this file.
+#
+# These four functions do not use a Supabase Auth user JWT.
+# trip-ai checks the x-client-info passphrase. trip-ask, trip-brief, and
+# hb-check check a secret in the JSON body. pg_cron calls the last three
+# with Content-Type and no Authorization header (see tools/setup_*.py).
+#
+# verify_jwt stays off so the next deploy does not start requiring the
+# legacy anon JWT. This file does nothing until those functions are redeployed.
+
+project_id = "eva-trip"
+
+[functions.trip-ai]
+verify_jwt = false
+
+[functions.trip-ask]
+verify_jwt = false
+
+[functions.trip-brief]
+verify_jwt = false
+
+[functions.hb-check]
+verify_jwt = false
