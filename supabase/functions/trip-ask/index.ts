@@ -142,7 +142,45 @@ async function jma(lat: number, lng: number) {
 }
 
 // 砌 context：只放答問題真正用得着嘅嘢，唔好塞爆
-async function buildCtx(state: any, at?: { lat: number; lng: number }) {
+// 問題入面提到嘅日期（「12月4號」「12/4」「十二月四日」「聽日」以外嘅指定日）。
+// 冇呢樣嘅時候，出發前問「12 月 4 號去邊」會答「行程冇寫」—— 因為 ctx 只有今日同聽日。
+const CNUM: Record<string, number> = { 零:0, 一:1, 二:2, 三:3, 四:4, 五:5, 六:6, 七:7, 八:8, 九:9, 十:10 };
+function cn2n(t: string): number | null {
+  if (/^\d+$/.test(t)) return +t;
+  let n = 0, ten = t.indexOf("十");
+  if (ten >= 0) {
+    n = (ten === 0 ? 1 : (CNUM[t[ten - 1]] ?? 0)) * 10;
+    const rest = t.slice(ten + 1);
+    if (rest) n += CNUM[rest[0]] ?? 0;
+    return n || null;
+  }
+  for (const ch of t) { const v = CNUM[ch]; if (v == null) return null; n = n * 10 + v; }
+  return n || null;
+}
+function askedDate(q: string, trip: any): string | null {
+  if (!q || !trip?.start) return null;
+  const yr = +trip.start.slice(0, 4);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const mk = (m: number, d: number) => {
+    if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+    for (const y of [yr, yr + 1]) {
+      const ds = `${y}-${pad(m)}-${pad(d)}`;
+      if (trip.start <= ds && ds <= trip.end) return ds;
+    }
+    return null;
+  };
+  let m = q.match(/([0-9]{1,2}|[一二三四五六七八九十]{1,3})\s*月\s*([0-9]{1,2}|[一二三四五六七八九十]{1,3})\s*[號号日]?/);
+  if (m) { const mm = cn2n(m[1]), dd = cn2n(m[2]); if (mm && dd) { const r = mk(mm, dd); if (r) return r; } }
+  m = q.match(/(?:^|[^0-9])([0-9]{1,2})\s*[\/\-]\s*([0-9]{1,2})(?![0-9])/);
+  if (m) { const r = mk(+m[1], +m[2]); if (r) return r; }
+  m = q.match(/第\s*([0-9]{1,2}|[一二三四五六七八九十]{1,3})\s*[日天]/);
+  if (m) { const n = cn2n(m[1]);
+    if (n) { const ds = new Date(Date.parse(trip.start) + (n - 1) * 86400000).toISOString().slice(0, 10);
+      if (trip.start <= ds && ds <= trip.end) return ds; } }
+  return null;
+}
+
+async function buildCtx(state: any, at?: { lat: number; lng: number }, q?: string) {
   const now = new Date(Date.now() + JST_MS);
   const today = dstr(now);
   const trip = pickTrip(state, today);
@@ -199,7 +237,8 @@ async function buildCtx(state: any, at?: { lat: number; lng: number }) {
 
   const pt = at ?? centroid(todayItems) ?? centroid((state.items ?? []).filter((x: any) => x.tripId === trip.id));
   if (pt) {
-    const w = await wx(pt.lat, pt.lng, today);
+    // 天氣同氣象廳一齊攞（之前一個等完先到下一個，慢咗半秒）
+    const [w, jw] = await Promise.all([wx(pt.lat, pt.lng, today), jma(pt.lat, pt.lng)]);
     if (w) {
       L.push(`【天氣】${at ? "你而家位置" : "今日行程一帶"}` +
         (w.elev != null ? `（海拔 ${Math.round(w.elev)}m）` : "") +
@@ -209,11 +248,32 @@ async function buildCtx(state: any, at?: { lat: number; lng: number }) {
         (w.nowT != null ? `　而家 ${Math.round(w.nowT)}° ${w.nowCode}` : "") +
         (w.set ? `　天黑 ${w.set}` : ""));
     }
-    const jw = await jma(pt.lat, pt.lng);
     if (jw) L.push(`【氣象廳警報】${jw}`);
   }
 
   // 未排期嘅「想去」清單（問「有咩可以去」時用得着）
+  // 問到某一日（例如「12 月 4 號去邊」）就連埋嗰日逐項出，出發前一樣答得到
+  const want = askedDate(q ?? "", trip);
+  if (want && want !== today && want !== tmr) {
+    const wi = dayItems(state, trip.id, want);
+    if (wi.length) {
+      L.push(`【你問嘅 ${want}】共 ${wi.length} 個`);
+      wi.forEach((x: any) => L.push(line(x)));
+    } else L.push(`【你問嘅 ${want}】行程冇排嘢`);
+  }
+  // 唔喺旅程期間（例如出發前問嘢）就俾佢睇成個行程嘅逐日概要
+  if (!inTrip && !want) {
+    const days = [...new Set((state.items ?? [])
+      .filter((x: any) => x.tripId === trip.id && x.date).map((x: any) => x.date))].sort();
+    if (days.length) {
+      L.push("【逐日概要】");
+      days.forEach((ds: any) => {
+        const nm = dayItems(state, trip.id, ds).map((x: any) => x.name).slice(0, 5).join("、");
+        L.push(`　${ds}：${nm}`);
+      });
+    }
+  }
+
   const wish = (state.items ?? []).filter((x: any) => x.tripId === trip.id && !x.date).slice(0, 12);
   if (wish.length) L.push(`【想去但未排期】${wish.map((x: any) => x.name).join("、")}`);
 
@@ -240,7 +300,8 @@ const SYS_VOICE = `你係小恩，Franki 嘅私人旅程助手，把聲可愛、
 2. 用香港廣東話口語（喎、㗎、啦、呀、就得），好似朋友喺耳邊講，唔好用書面語。
 3. 唔准有任何符號、emoji、括號、斜線、「°」。數字時間要寫成講得出口：「三點四十分」「零下八度」「一個半鐘」。
 4. 最重要嘅資訊放第一句。
-5. 只可以用「行程資料」入面真有嘅嘢；冇寫就講「行程冇寫呀」，唔准估、唔准作。`;
+5. 只可以用「行程資料」入面真有嘅嘢；冇寫就講「行程冇寫呀」，唔准估、唔准作、唔准自己加建議。
+6. 唔好打招呼、唔好叫名，第一個字就入正題。`;
 
 const SYS_FULL = `你係 Franki 嘅旅程助手。用廣東話、書面中文（香港用詞），簡短直接。
 只可以用下面「行程資料」入面真有嘅嘢答；冇寫嘅就講「行程冇寫」，唔准估、唔准作店名。
@@ -295,7 +356,7 @@ Deno.serve(async (req) => {
     if (!state) return json({ error: "no state" }, 500);
     const at = (isFinite(+body.lat) && isFinite(+body.lng) && body.lat && body.lng)
       ? { lat: +body.lat, lng: +body.lng } : undefined;
-    const ctx = await buildCtx(state, at);
+    const ctx = await buildCtx(state, at, q);
 
     if (body.ctxOnly) return json({ ctx, ms: Date.now() - t0 });
 
@@ -306,6 +367,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        // 2026-09-17 試過開聲模式轉 haiku-4.5：快 3 秒但廣東話明顯差，而且 Siri 問題唔係慢 → 轉返 sonnet
         model: "anthropic/claude-sonnet-5",
         max_tokens: hud ? 200 : 600,
         messages: [

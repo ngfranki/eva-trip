@@ -25,7 +25,6 @@ import json, os, sys, re, time, datetime, urllib.request, urllib.error
 
 HTML = os.path.expanduser('~/eva-trip-pub/index.html')
 BK = os.path.expanduser('~/eva-trip-pub/backups')
-KEY = 'meal2026'
 TRIP_NAME = None          # None ＝自動揀（包住今日嘅行程，否則 app 上次開嗰個）
 
 
@@ -41,11 +40,22 @@ def cfg():
     return sb, sbk
 
 
-SB, SBK = cfg()
-# Publishable key 唔係 JWT，只放 apikey。舊 anon JWT（eyJ…）先至要 Bearer。
-H = {'apikey': SBK, 'x-client-info': KEY, 'Content-Type': 'application/json'}
-if SBK.startswith('eyJ'):
-    H['Authorization'] = 'Bearer ' + SBK
+def _service_key():
+    # 2026-10-27 srvauth: server key from keys.env (no passphrase, never hardcoded)
+    for l in open(os.path.expanduser('~/Eva_Brain/.secrets/keys.env'), encoding='utf-8'):
+        l = l.strip()
+        if l.startswith('export '):
+            l = l[7:]
+        if l.startswith('SUPABASE_SERVICE_KEY='):
+            v = l.split('=', 1)[1].strip().strip('"').strip("'")
+            if v.startswith('sb_secret_'):
+                return v
+    die('keys.env: SUPABASE_SERVICE_KEY missing')
+
+
+SB, _ = cfg()
+SBK = _service_key()
+H = {'apikey': SBK, 'Content-Type': 'application/json'}
 
 
 def req(url, data=None, method='GET', extra=None):
