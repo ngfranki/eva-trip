@@ -15,7 +15,7 @@ case "$SRV" in
 esac
 
 pgrep -f "eva-telegram-private/bridge.js" >/dev/null && BR=true || BR=false
-pgrep -f "eva-telegram-private/responder.sh" >/dev/null && RS=true || RS=false
+pgrep -f "eva-telegram-private/fastchat.py" >/dev/null && RS=true || RS=false
 UP=$(uptime | sed -E 's/.*up ([^,]+),.*/\1/' | xargs)
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
