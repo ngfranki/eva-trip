@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK">
+<html lang="zh-HK" data-build="20261107-v40">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -837,7 +837,7 @@
     <div class="sfoot">
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
-      <div id="ver" style="padding-top:6px"></div>
+      <div id="ver" data-build="20261107-v40" style="padding-top:6px">v40</div>
     </div>
   </aside>
 
@@ -888,7 +888,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261107-v39';
+  var APP_VER='20261107-v40';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -6332,9 +6332,37 @@
   });
   addEventListener('offline',setNet);
   setNet();
-  if('serviceWorker' in navigator) addEventListener('load',function(){
-    navigator.serviceWorker.register('sw.js').catch(function(){});
-  });
+  if('serviceWorker' in navigator){
+    // 新 SW 接手就 reload 一次。15 秒內唔准再 reload，避免同 activate navigate 打轉。
+    var swReloadLock=false;
+    function reloadForSW(){
+      if(swReloadLock) return;
+      var now=Date.now(), prev=0;
+      try{ prev=+sessionStorage.getItem('swReloadAt')||0; }catch(e){}
+      if(now-prev<15000) return;
+      swReloadLock=true;
+      try{ sessionStorage.setItem('swReloadAt', String(now)); }catch(e){}
+      location.reload();
+    }
+    navigator.serviceWorker.addEventListener('controllerchange', reloadForSW);
+    navigator.serviceWorker.addEventListener('message', function(e){
+      var t=e.data && e.data.type;
+      if(t==='reload' || t==='shell') reloadForSW();
+    });
+    function swUpdate(){
+      navigator.serviceWorker.getRegistration().then(function(reg){
+        if(reg) reg.update().catch(function(){});
+      }).catch(function(){});
+    }
+    addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js', { updateViaCache:'none' })
+        .catch(function(){ return navigator.serviceWorker.register('sw.js'); })
+        .then(swUpdate).catch(function(){});
+    });
+    addEventListener('visibilitychange', function(){ if(!document.hidden) swUpdate(); });
+    addEventListener('focus', swUpdate);
+    addEventListener('pageshow', swUpdate);
+  }
   (function(){
     var set=function(id,n2,sz){ var e=$(id); if(e) e.innerHTML=ic(n2,sz); };
     set('brandIc','compass',18); set('aiIc','spark',17); set('mapIc','map',16); set('aiHeadIc','spark',16);
