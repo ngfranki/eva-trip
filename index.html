@@ -123,33 +123,59 @@
   .mapbtn{display:none}
 
   /* ============ doc ============ */
-  .page{max-width:660px; margin:0 auto; padding:0 20px 150px}
-  .hero{position:relative; height:200px; margin:0 -20px;
-        background:linear-gradient(160deg,#9DB4CE,#7E9E9A 40%,#C2A87E)}
-  .hero.hasph{background-size:cover; background-position:center 42%; background-repeat:no-repeat}
-  .hero::after{content:""; position:absolute; inset:0;
-        background:linear-gradient(180deg,rgba(0,0,0,.10) 0%,rgba(0,0,0,0) 38%,rgba(0,0,0,.30) 100%)}
-  .herocard{position:relative; z-index:2; margin:-72px 0 26px; background:var(--card); border-radius:10px; box-shadow:var(--sh2); padding:20px 22px}
-  .herocard h1{margin:0; font-size:34px; font-weight:700; letter-spacing:-.03em; line-height:1.1}
-  .herocard .sub{display:flex; align-items:center; gap:6px; margin-top:9px; font-size:14px; color:var(--muted); font-weight:600}
-  .hstats{display:flex; gap:22px; margin-top:16px; padding-top:14px; border-top:1px solid var(--line)}
-  .hstats div{flex:none}
-  .hstats div span{white-space:nowrap}
-  /* 375px 闊：加咗〔工具〕掣之後「已完成／未排期」會摺行，收窄間距 */
-  @media (max-width:420px){ .hstats{gap:12px} .hstats div b{font-size:18px} .hfx{min-width:46px; padding:6px 7px} }
-  .hstats div b{display:block; font-size:20px; font-weight:700; line-height:1.15; letter-spacing:-.02em}
-  .hstats div span{font-size:12px; color:var(--muted)}
-  /* 🔴 .kebab 預設 opacity:0（行程格 hover 先出），而且嗰條 rule 寫喺後面會蓋過呢度
-     —— 所以用 .kebab.hedit 加特異性，唔係嘅話 hero 三粒點永遠睇唔到 */
-  .kebab.hedit{position:absolute; top:14px; right:12px; z-index:3; opacity:1; width:38px; height:38px;
-    font-size:22px; line-height:1; color:var(--ink); background:var(--soft); border:1px solid var(--line); border-radius:99px}
-  .hfx{margin-left:auto; align-self:center; display:flex; flex-direction:column; align-items:center; gap:2px;
-       min-width:52px; min-height:44px; padding:6px 10px; border-radius:10px; border:1px solid var(--line);
-       background:var(--soft); color:var(--acc); font-size:12px; font-weight:800}
-  .hfx:active{background:var(--acc); color:#fff}
+  .page{max-width:660px; margin:0 auto; padding:8px 22px 168px}
+  /* 一眼而家：時間、位置、今日天氣。淺底、四邊留白，唔貼住頂欄。 */
+  .nowstrip{margin:12px 0 32px; padding:18px 18px 16px; background:var(--soft2); border-radius:18px;
+    display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:16px; row-gap:2px; align-items:center}
+  .ns-time{display:flex; flex-direction:column; align-items:flex-start; min-width:0}
+  .ns-time b{font-size:28px; font-weight:700; letter-spacing:-.04em; line-height:1}
+  .ns-hk{margin-top:6px; font-size:12px; font-weight:650; color:var(--muted); line-height:1.25}
+  .ns-place{text-align:right; font-size:16px; font-weight:750; letter-spacing:-.02em; line-height:1.3;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .ns-tag{font-style:normal; margin-left:6px; font-size:10px; font-weight:800; color:var(--muted);
+    border:1px solid var(--line); border-radius:99px; padding:1px 6px; vertical-align:1px}
+  .ns-wx{grid-column:1 / -1; display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px;
+    margin-top:14px; min-height:28px; font-size:14px; font-weight:700; color:var(--ink)}
+  .ns-wx b{font-size:18px; letter-spacing:-.03em}
+  .ns-wx .dim{color:var(--muted); font-weight:650; font-size:13.5px}
+  .ns-wx .ico{color:var(--ink2)}
 
-  .sec{margin:0 0 30px; scroll-margin-top:62px}
-  .sech{display:flex; align-items:center; gap:8px; margin:0 0 12px}
+  /* 短封面 + 平面標題，唔再疊一張有陰影嘅大卡 */
+  .herothin{height:88px; margin:0 -22px 22px;
+    background:linear-gradient(160deg,#C5D0DC,#D9E0DA 52%,#E7DCCB); background-size:cover; background-position:center 40%}
+  .tripid{position:relative; padding:2px 44px 0 0; margin-bottom:6px}
+  .tripid h1{margin:0; font-size:26px; font-weight:750; letter-spacing:-.03em; line-height:1.2}
+  .tripid .sub{margin-top:10px; font-size:14px; color:var(--muted); font-weight:600; line-height:1.4}
+  .tripid .sub.when{margin-top:4px}
+  .quiet{display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:16px; font-size:13px; color:var(--muted); font-weight:650}
+  .quiet b{color:var(--ink); font-weight:750}
+  .quiet button{color:var(--link); font-size:13px; font-weight:700}
+  /* 🔴 .kebab 預設 opacity:0（行程格 hover 先出），而且嗰條 rule 寫喺後面會蓋過呢度
+     —— 所以用 .kebab.hedit 加特異性，唔係嘅話三粒點永遠睇唔到 */
+  .kebab.hedit{position:absolute; top:0; right:0; z-index:3; opacity:1; width:36px; height:36px;
+    font-size:20px; line-height:1; color:var(--ink2); background:transparent; border-radius:99px}
+  .kebab.hedit:active{background:var(--soft)}
+
+  .qrow{display:flex; justify-content:space-between; margin:22px 0 40px}
+  .qrow button{flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:6px;
+    padding:10px 0; color:var(--ink2); border-radius:12px}
+  .qrow button:active{background:var(--soft)}
+  .qrow button b{font-size:11px; font-weight:750; color:var(--ink); height:13px; line-height:13px}
+  .qrow button span{font-size:11px; font-weight:650; color:var(--muted)}
+
+  .foldbtn{display:flex; align-items:center; gap:8px; min-height:44px; min-width:0; flex:1; text-align:left}
+  .foldbtn h2{margin:0}
+  .sec .chev{transition:transform .16s ease}
+  .sec.shut{margin-bottom:14px}
+  .sec.shut .sech{margin-bottom:0; padding:4px 0}
+  .sec.shut .chev{transform:rotate(-90deg)}
+  .sec.shut .secbody{display:none}
+  .n.prev{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:46vw; font-weight:600}
+  .foldact{display:flex; justify-content:flex-end; margin:0 0 10px}
+  .morebar{margin:6px 0 32px}
+
+  .sec{margin:0 0 40px; scroll-margin-top:62px}
+  .sech{display:flex; align-items:center; gap:8px; margin:0 0 16px}
   .sech .chev{color:var(--muted); font-size:11px}
   .sech h2{margin:0; font-size:24px; font-weight:700; letter-spacing:-.03em}
   .sech .n{font-size:13px; color:var(--muted); font-weight:600}
@@ -241,7 +267,7 @@
   .empty{color:var(--muted); font-size:14px; padding:16px 2px; line-height:1.75}
 
   /* ============ item rows ============ */
-  .rows{display:flex; flex-direction:column; gap:2px}
+  .rows{display:flex; flex-direction:column; gap:10px}
   .row{position:relative; display:flex; gap:9px; align-items:flex-start; padding-left:14px}
   .row.drag{opacity:.3}
   .row.over .rcard{box-shadow:inset 0 2px 0 var(--acc)}
@@ -317,14 +343,15 @@
   .sug .hd{font-size:11px; color:var(--muted2); padding:6px 10px 3px; font-weight:700; letter-spacing:.06em; text-transform:uppercase}
 
   /* ============ day ============ */
-  .day{margin-bottom:14px}
-  .dayh{display:flex; align-items:baseline; gap:9px; margin:20px 0 9px}
+  .day{margin-bottom:28px}
+  .dayh{display:flex; align-items:baseline; gap:9px; margin:28px 0 12px}
+  .sec .day:first-of-type .dayh{margin-top:4px}
   .dayh .dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto; align-self:center}
   .dayh h3{margin:0; font-size:17px; font-weight:700; letter-spacing:-.02em}
   .dayh .dd{font-size:13.5px; color:var(--muted)}
   .dayh .sp{flex:1}
   .dayh .tot{font-size:13px; color:var(--muted); font-weight:600}
-  .dayw{font-size:12.5px; color:var(--muted); margin:-4px 0 9px 18px; letter-spacing:.01em}
+  .dayw{font-size:12.5px; color:var(--muted); margin:2px 0 12px 18px; letter-spacing:.01em}
   .leg.from{color:var(--ink2); font-weight:600}
 
   /* ============ budget ============ */
@@ -698,14 +725,15 @@
 
   /* ============ print ============ */
   @media print{
-    .side,.mapwrap,.top,.add,.kebab,.grip,.tick,.ai,.sheet,.menu,.netbar,.hero,.hedit,.tbtn,.empty,.leg::before{display:none !important}
+    .side,.mapwrap,.top,.add,.kebab,.grip,.tick,.ai,.sheet,.menu,.netbar,.herothin,.nowstrip,.qrow,.hedit,.tbtn,.empty,.leg::before{display:none !important}
     html,body{overflow:visible !important; height:auto !important; background:#fff !important; color:#000 !important; font-size:11pt}
     .shell{display:block !important; height:auto !important}
     .doc{overflow:visible !important; height:auto !important; background:#fff !important}
     .page{max-width:none !important; padding:0 !important}
-    .herocard{margin:0 0 14px !important; box-shadow:none !important; padding:0 !important}
-    .herocard h1{font-size:20pt}
-    .hstats{border-top:1px solid #bbb}
+    .tripid{margin:0 0 14px !important; padding:0 !important}
+    .tripid h1{font-size:20pt}
+    .quiet{border-top:1px solid #bbb; padding-top:6px}
+    .sec.shut .secbody{display:block !important}
     .rcard{background:#f7f7f7 !important; break-inside:avoid}
     .sec,.day,.row{break-inside:avoid}
     .sech h2{font-size:15pt}
@@ -743,10 +771,12 @@
     .mapwrap{position:fixed; inset:0; z-index:50; display:none}
     .mapwrap.open{display:block}
     .mapclose{position:absolute; top:12px; right:12px; z-index:6; background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:7px 14px; font-size:13.5px; font-weight:700}
-    .page{padding:0 16px 130px}
-    .hero{margin:0 -16px; height:160px}
-    .herocard{margin-top:-60px}
-    .herocard h1{font-size:27px}
+    .page{padding:6px 18px 150px}
+    .herothin{margin:0 -18px 20px; height:80px}
+    .tripid h1{font-size:24px}
+    .nowstrip{margin:10px 0 28px; padding:16px 16px 15px}
+    .ns-time b{font-size:26px}
+    .ns-place{font-size:15px}
     .sech h2{font-size:21px}
     .top{padding:8px 14px}
     .addbar .fi{flex:1 1 100%}
@@ -836,7 +866,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261107-v35';
+  var APP_VER='20261107-v36';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -883,6 +913,12 @@
     copy:'<rect x="8.5" y="8.5" width="12" height="12" rx="2.2"/><path d="M15.5 5.5V5A2 2 0 0 0 13.5 3H5.5A2 2 0 0 0 3.5 5v8a2 2 0 0 0 2 2h.5"/>',
     book:'<path d="M4 4.5A2 2 0 0 1 6 2.5h13v17H6a2 2 0 0 0-2 2Z"/><path d="M4 4.5v17"/><path d="M8 7h7"/><path d="M8 11h7"/>',
     compass:'<circle cx="12" cy="12" r="9"/><path d="m15.8 8.2-2 5.6-5.6 2 2-5.6Z"/>',
+    wxsun:'<circle cx="12" cy="12" r="3.6"/><path d="M12 3v2.1M12 18.9V21M3 12h2.1M18.9 12H21M5.4 5.4l1.5 1.5M17.1 17.1l1.5 1.5M18.6 5.4l-1.5 1.5M6.9 17.1l-1.5 1.5"/>',
+    wxpart:'<circle cx="8.2" cy="8" r="2.3"/><path d="M8.2 3.7v1.3M8.2 11v1.2M3.9 8h1.3M11.2 8h1.2M5.2 5l.9.9M10.3 10.1l.9.9M11.2 5l-.9.9"/><path d="M8.8 18.2h8.2a3.1 3.1 0 0 0 .3-6.2 3.8 3.8 0 0 0-6.6-1"/>',
+    wxcloud:'<path d="M7.2 17.6h9.3a3.5 3.5 0 0 0 .4-7 4.5 4.5 0 0 0-8.7-1.2 3.2 3.2 0 0 0-1 8.2Z"/>',
+    wxrain:'<path d="M7 14.4h9.4a3.4 3.4 0 0 0 .3-6.8 4.3 4.3 0 0 0-8.3-1.1A3 3 0 0 0 7 14.4Z"/><path d="M8.8 16.8v2M12 16.8v2M15.2 16.8v2"/>',
+    wxsnow:'<path d="M7 13.8h9.4a3.4 3.4 0 0 0 .3-6.8 4.3 4.3 0 0 0-8.3-1.1A3 3 0 0 0 7 13.8Z"/><path d="M9 16.4v2.2M12 16.2v2.4M15 16.4v2.2M8.2 17.5h1.6M11.2 17.4h1.6M14.2 17.5h1.6"/>',
+    wxstorm:'<path d="M7 13.5h9.4a3.4 3.4 0 0 0 .3-6.8 4.3 4.3 0 0 0-8.3-1.1A3 3 0 0 0 7 13.5Z"/><path d="m12.2 15-2 3.4h2.3l-1.6 3.2"/>',
     route:'<circle cx="6" cy="18.5" r="2.6"/><circle cx="18" cy="5.5" r="2.6"/><path d="M8.6 18.5h5.9a3.4 3.4 0 0 0 0-6.8H9.5a3.4 3.4 0 0 1 0-6.2h5.9"/>',
     print:'<path d="M6.5 9V3.5h11V9"/><path d="M6.5 17.5H5A1.8 1.8 0 0 1 3.2 15.7v-4.9A1.8 1.8 0 0 1 5 9h14a1.8 1.8 0 0 1 1.8 1.8v4.9a1.8 1.8 0 0 1-1.8 1.8h-1.5"/><path d="M6.5 14h11v6.5h-11Z"/>',
     gear:'<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.3a2 2 0 1 1-4 0V21a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.3-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.1V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 11a2 2 0 1 1 0 4Z"/>'
@@ -1325,6 +1361,7 @@
         delete tenkiBusy[p.key];
         if(!j||j.ok!==true||!j.days) tenkiMem[p.key]={at:Date.now(), ok:false};
         else { j.at=Date.now(); j.ok=true; tenkiMem[p.key]=j; }
+        if(String(p.key).indexOf('glance|')===0) glanceAbsorbTenki(p.key);
         tenkiPaint();
       })
       .catch(function(){
@@ -1377,7 +1414,7 @@
   // 目前位置：開 app 問一次 GPS。日本用 tenki 最近市區；其他地方用 Open-Meteo。
   // 拒絕、日本以外 tenki 失敗、或者對唔到市區 → 呢張卡唔霸位，當日行程照用站點，再退 Open-Meteo。
   // 座標只留喺記憶（同「而家」卡一樣），唔寫入會同步嘅 state。
-  var gpsPaused=false, hereFix=null, hereLabel='', hereLabelSig='', hereNameBusy='';
+  var gpsPaused=false, hereFix=null, hereLabel='', hereCity='', hereLabelSig='', hereNameBusy='';
   var hereOm=null, hereOmAt=0, hereOmBusy=false;
   function hereKick(){
     if(gpsPaused || gpsErr || gpsWatch!==null) return;
@@ -1404,6 +1441,12 @@
       var name = loc && loc!==city ? loc : (city && city!==ctry ? city : '');
       if(/[+／]/.test(name) || name.length>24) name='';
       hereLabel=name;
+      hereCity = (city && city!==ctry) ? city : '';
+      if(/[+／]/.test(hereCity) || hereCity.length>24) hereCity='';
+      if(glanceMem && glanceMem.src==='gps'){
+        var gp=glancePlace();
+        if(gp){ glanceMem.place=gp; glanceSave(glanceMem); }
+      }
       tenkiPaint();
     }).catch(function(){ if(hereNameBusy===sig){ hereNameBusy=''; hereLabelSig=sig; hereLabel=''; } });
   }
@@ -1461,6 +1504,250 @@
     }
     return hereOmHTML();
   }
+
+  // ---------- 首頁頂部「而家」：時間、位置、今日天氣 ----------
+  // 上次成功嘅結果留喺呢部機（tripGlance），開頁即刻出，再背景更新。
+  // 唔寫入會同步嘅 state。座標只留兩位小數（大約一公里）。
+  // 拒絕定位就用行程而家嗰一站，唔好留白。
+  var GLANCE_KEY='tripGlance';
+  var glanceMem=null, glanceBusy='', glanceFail=null, foldOpen={};
+  var HK_TZ=480;
+  function glanceRead(){
+    if(glanceMem) return glanceMem;
+    try{ glanceMem=JSON.parse(localStorage.getItem(GLANCE_KEY)||'null'); }catch(e){ glanceMem=null; }
+    if(!glanceMem || glanceMem.lat==null) glanceMem=null;
+    return glanceMem;
+  }
+  function glanceSave(g){
+    glanceMem=g;
+    try{
+      localStorage.setItem(GLANCE_KEY, JSON.stringify({
+        at:g.at, sig:g.sig, lat:+Number(g.lat).toFixed(2), lng:+Number(g.lng).toFixed(2),
+        place:g.place||'', src:g.src||'', tz:g.tz==null?null:g.tz,
+        temp:g.temp==null?null:g.temp, high:g.high==null?null:g.high,
+        low:g.low==null?null:g.low, rain:typeof g.rain==='number'?g.rain:null,
+        code:g.code==null?null:g.code, label:g.label||''
+      }));
+    }catch(e){}
+  }
+  function glanceDenied(){
+    if(gpsPaused || gpsErr) return true;
+    return !navigator.geolocation;
+  }
+  function glanceNear(a, lat, lng){
+    if(!a || a.lat==null || lat==null || lng==null) return false;
+    return Math.abs(+a.lat-lat)<0.4 && Math.abs(+a.lng-lng)<0.4;
+  }
+  function wxIcon(code, text){
+    var t=String(text||'');
+    if(t){
+      if(/雷/.test(t)) return 'wxstorm';
+      if(/雪/.test(t) && /雨/.test(t)) return 'wxrain';
+      if(/雪/.test(t)) return 'wxsnow';
+      if(/雨/.test(t)) return 'wxrain';
+      if(/霧/.test(t)) return 'wxcloud';
+      if(/晴/.test(t) && /陰|雲|曇/.test(t)) return 'wxpart';
+      if(/陰|雲|曇/.test(t)) return 'wxcloud';
+      if(/晴/.test(t)) return 'wxsun';
+    }
+    var c=+code;
+    if(!isFinite(c)) return 'wxcloud';
+    if(c===0||c===1) return 'wxsun';
+    if(c===2) return 'wxpart';
+    if(c===3||c===45||c===48) return 'wxcloud';
+    if((c>=51&&c<=67)||(c>=80&&c<=82)) return 'wxrain';
+    if((c>=71&&c<=77)||c===85||c===86) return 'wxsnow';
+    if(c>=95) return 'wxstorm';
+    return 'wxcloud';
+  }
+  function currentStop(){
+    var t=curTrip(); if(!t) return null;
+    var ds=days(), pick=null, d='';
+    if(ds.length){
+      var td=today();
+      d = ds.indexOf(td)>=0 ? td : (td<ds[0] ? ds[0] : ds[ds.length-1]);
+      var items=dayItems(d).filter(function(x){ return kd(x.kind).geo && x.lat!=null && x.lng!=null; });
+      if(items.length){
+        if(d===td){
+          pick=null;
+          for(var i=0;i<items.length;i++) if(!items[i].done){ pick=items[i]; break; }
+          if(!pick) pick=items[items.length-1];
+        } else pick = td<ds[0] ? items[0] : items[items.length-1];
+      }
+    }
+    if(!pick){
+      var all=tItems().filter(function(x){ return kd(x.kind).geo && x.lat!=null && x.lng!=null; });
+      if(all.length) pick=all[0];
+    }
+    if(pick){
+      return {lat:+pick.lat, lng:+pick.lng, place:String(pick.name||'').trim(), src:'stop', q:placeQuery(pick)};
+    }
+    var pt=d? dayPt(d) : null;
+    if(!pt || pt.lat==null) return null;
+    var nm=String(t.dest||t.name||'').split(/[、,，]/)[0].trim();
+    return {lat:+pt.lat, lng:+pt.lng, place:nm, src:'stop', q:placeQuery({name:t.dest||'', addr:''})};
+  }
+  function glanceTarget(){
+    if(!glanceDenied() && myPos){
+      return {lat:+myPos.lat, lng:+myPos.lng, place:hereLabel||'', src:'gps', q:''};
+    }
+    if(!glanceDenied() && !myPos){
+      var c=glanceRead();
+      if(c && c.src!=='stop') return {lat:+c.lat, lng:+c.lng, place:c.place||'', src:c.src||'gps', q:''};
+    }
+    return currentStop();
+  }
+  function glanceTenkiHit(lat, lng){
+    if(lat==null || !inJapan(+lat,+lng)) return null;
+    var m=tenkiMem['glance|'+(+lat).toFixed(2)+','+(+lng).toFixed(2)];
+    if(!m || !m.ok || !m.days) return null;
+    var td=today(), hit=null, i;
+    for(i=0;i<m.days.length;i++) if(m.days[i].date===td) hit=m.days[i];
+    return hit? {m:m, hit:hit} : null;
+  }
+  function glanceAbsorbTenki(key){
+    if(!glanceMem || ('glance|'+glanceMem.sig)!==key) return;
+    var tk=glanceTenkiHit(glanceMem.lat, glanceMem.lng);
+    if(!tk) return;
+    var h=tk.hit;
+    if(h.high!=null) glanceMem.high=h.high;
+    if(h.low!=null) glanceMem.low=h.low;
+    if(typeof h.rain==='number') glanceMem.rain=h.rain;
+    if(h.weather) glanceMem.label=h.weather;
+    if(glanceMem.src==='gps' && !glanceMem.place && tk.m.place) glanceMem.place=tk.m.place;
+    glanceSave(glanceMem);
+  }
+  function glanceFetch(tgt){
+    var sig=(+tgt.lat).toFixed(2)+','+(+tgt.lng).toFixed(2);
+    glanceBusy=sig;
+    var u='https://api.open-meteo.com/v1/forecast?latitude='+sig.split(',')[0]+
+      '&longitude='+sig.split(',')[1]+
+      '&current=temperature_2m,weather_code'+
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'+
+      '&timezone=auto&forecast_days=1';
+    fetch(u).then(function(r){ return r.ok? r.json():null; }).then(function(j){
+      if(glanceBusy===sig) glanceBusy='';
+      if(!j){ glanceFail={sig:sig, at:Date.now()}; return; }
+      var cur=j.current||{}, dly=j.daily||{};
+      var code=cur.weather_code!=null? cur.weather_code : (dly.weather_code? dly.weather_code[0] : null);
+      var prev=glanceRead();
+      var rec={
+        at:Date.now(), sig:sig, lat:+tgt.lat, lng:+tgt.lng,
+        place:(tgt.src==='gps' && glancePlace())? glancePlace() : (tgt.place || (prev && prev.sig===sig ? prev.place : '') || ''),
+        src:tgt.src||'',
+        tz: j.utc_offset_seconds!=null ? Math.round(j.utc_offset_seconds/60) : lngTz(tgt.lng),
+        temp: cur.temperature_2m!=null ? cur.temperature_2m : null,
+        high: dly.temperature_2m_max? dly.temperature_2m_max[0] : null,
+        low: dly.temperature_2m_min? dly.temperature_2m_min[0] : null,
+        rain: (dly.precipitation_probability_max && typeof dly.precipitation_probability_max[0]==='number') ? dly.precipitation_probability_max[0] : null,
+        code:code, label:(code!=null && WXI[code]) ? WXI[code] : ''
+      };
+      glanceFail=null;
+      glanceSave(rec);
+      glanceAbsorbTenki('glance|'+sig);
+      if(tgt.src==='gps') hereName();
+      tenkiPaint();
+    }).catch(function(){
+      if(glanceBusy===sig) glanceBusy='';
+      glanceFail={sig:sig, at:Date.now()};
+    });
+  }
+  function glanceKick(){
+    var tgt=glanceTarget();
+    if(!tgt || tgt.lat==null || tgt.lng==null) return;
+    var sig=(+tgt.lat).toFixed(2)+','+(+tgt.lng).toFixed(2);
+    if(inJapan(+tgt.lat,+tgt.lng)){
+      var tk=tenkiMem['glance|'+sig];
+      var tkTtl=tk ? (tk.ok? 2*3600*1000 : 15*60*1000) : 0;
+      if((!tk || (Date.now()-tk.at)>=tkTtl) && !tenkiBusy['glance|'+sig]){
+        tenkiLoad({key:'glance|'+sig, q:tgt.q||'', lat:+(+tgt.lat).toFixed(3), lng:+(+tgt.lng).toFixed(3)});
+      }
+    }
+    var cur=glanceRead();
+    // 成功攞過就當新鮮，就算個別欄係 null。否則每次 render 都會再打。
+    var fresh=cur && cur.sig===sig && (Date.now()-(cur.at||0))<20*60*1000;
+    if(fresh || glanceBusy===sig) return;
+    if(glanceFail && glanceFail.sig===sig && (Date.now()-glanceFail.at)<2*60*1000) return;
+    glanceFetch(tgt);
+  }
+  // 區名太泛（札幌嘅「中央區」）一眼分唔到城市，頂條用城市。
+  function glancePlace(){
+    var city=String(hereCity||'').replace(/(特別行政區|都|道|府|縣|县|市)$/,'').trim();
+    var loc=String(hereLabel||'').replace(/(特別行政區|都|道|府|縣|县|市)$/,'').trim();
+    if(hereLabel && /區$/.test(hereLabel) && city) return city;
+    return loc || city || hereLabel || '';
+  }
+  function glanceShown(){
+    var denied=glanceDenied();
+    var cache=glanceRead();
+    var src='', lat=null, lng=null, place='', wx=null;
+    if(!denied && myPos){
+      src='gps'; lat=+myPos.lat; lng=+myPos.lng;
+      place=glancePlace();
+      if(!place && cache && glanceNear(cache,lat,lng)) place=cache.place||'';
+      if(cache && glanceNear(cache,lat,lng)) wx=cache;
+      if(glanceMem && glanceMem.sig===lat.toFixed(2)+','+lng.toFixed(2)) wx=glanceMem;
+    } else if(!denied && !myPos && cache){
+      src=cache.src||'gps'; lat=+cache.lat; lng=+cache.lng; place=cache.place||''; wx=cache;
+    } else {
+      var stop=currentStop();
+      if(stop){
+        src='stop'; lat=stop.lat; lng=stop.lng; place=stop.place||'';
+        if(cache && glanceNear(cache,lat,lng)) wx=cache;
+        if(glanceMem && glanceMem.sig===lat.toFixed(2)+','+lng.toFixed(2)) wx=glanceMem;
+      }
+    }
+    if(lat!=null){
+      var tk=glanceTenkiHit(lat,lng);
+      if(tk){
+        wx=Object.assign({}, wx||{});
+        if(tk.hit.high!=null) wx.high=tk.hit.high;
+        if(tk.hit.low!=null) wx.low=tk.hit.low;
+        if(typeof tk.hit.rain==='number') wx.rain=tk.hit.rain;
+        if(tk.hit.weather) wx.label=tk.hit.weather;
+        if(src==='gps' && !place && tk.m.place) place=tk.m.place;
+        if(wx.tz==null && cache && cache.tz!=null && glanceNear(cache,lat,lng)) wx.tz=cache.tz;
+      }
+    }
+    var tz=(wx && wx.tz!=null)? wx.tz : (lat!=null? lngTz(lng) : null);
+    return {src:src, place:place, lat:lat, lng:lng, wx:wx, tz:tz, denied:denied};
+  }
+  function glanceClocks(s){
+    var tz=s.tz;
+    var loc=tz==null? hhmm(new Date()) : hhmm(atTz(new Date(), tz));
+    var base=tz==null? -new Date().getTimezoneOffset() : tz;
+    var hk=Math.abs(base-HK_TZ)>=30 ? ('當地 · 香港 '+hhmm(atTz(new Date(), HK_TZ))) : '';
+    return {loc:loc, hk:hk};
+  }
+  function glanceHTML(){
+    glanceKick();
+    var s=glanceShown(), c=glanceClocks(s), w=s.wx||{};
+    var has=w.temp!=null || w.high!=null || w.low!=null || w.label || w.code!=null;
+    var temp=w.temp!=null? Math.round(w.temp)+'°' : '';
+    var hl='';
+    if(w.low!=null || w.high!=null) hl=(w.low==null?'—':Math.round(w.low)+'°')+' / '+(w.high==null?'—':Math.round(w.high)+'°');
+    var rain=typeof w.rain==='number'? ('降水 '+Math.round(w.rain)+'%') : '';
+    var place=s.place;
+    if(!place) place = s.denied ? (s.lat!=null ? '行程位置' : '未能取得位置') : '定位中';
+    var tag=s.src==='stop'? '<i class="ns-tag">行程</i>' : '';
+    var wxRow=has
+      ? '<div class="ns-wx">'+ic(wxIcon(w.code, w.label),22)+
+        (temp?'<b class="num">'+esc(temp)+'</b>':'')+
+        (hl?'<span class="dim num">'+esc(hl)+'</span>':'')+
+        (rain?'<span class="dim num">'+esc(rain)+'</span>':'')+'</div>'
+      : '<div class="ns-wx dim">'+((s.lat==null && s.denied)?'開啟定位，或先在行程加入地點':'取得天氣…')+'</div>';
+    return '<div class="nowstrip" id="nowstrip">'+
+      '<div class="ns-time"><b class="num" data-clk="loc">'+esc(c.loc)+'</b>'+
+        '<span class="ns-hk" data-clk="hk"'+(c.hk?'': ' style="display:none"')+'>'+esc(c.hk)+'</span></div>'+
+      '<div class="ns-place">'+esc(place)+tag+'</div>'+wxRow+'</div>';
+  }
+  function secShut(id){ return id!=='s-itin' && !foldOpen[id]; }
+  function foldHead(id, title, extra, right){
+    return '<div class="sec'+(secShut(id)?' shut':'')+'" id="'+id+'"><div class="sech">'+
+      '<button class="foldbtn" data-act="fold" data-s="'+id+'">'+ic('chev',13,'chev')+
+      '<h2>'+title+'</h2>'+(extra||'')+'</button>'+(right||'')+'</div><div class="secbody">';
+  }
+  function foldEnd(){ return '</div></div>'; }
 
   // ---------- state / migration ----------
   function defState(){ return {v:2, trips:[], lists:[], items:[], logs:{}, settings:{curTrip:null,updatedAt:null}, meta:{}, wx:{}, del:{}}; }
@@ -1867,6 +2154,7 @@
         localStorage.removeItem(SESS_KEY);
         localStorage.removeItem('tripKey');
         localStorage.removeItem('tripCache');
+        localStorage.removeItem('tripGlance');
       }catch(e){}
       KEY=''; SESS=null; MODE='';
       location.reload();
@@ -2471,13 +2759,14 @@
     if(MODE==='cloud') wxFetch();      // 自己有守衛，唔會每次 render 都打
     fxFetch();                          // 自動匯率，同樣有守衛
     var h='<div class="page">';
-    h+=hero(t);
-    h+=twoUp();
+    h+=glanceHTML();
+    h+=tripHead(t);
+    h+=quickRow();
+    h+=itinSec();
+    tLists().forEach(function(l){ h+=listSec(l); });
+    h+='<div class="morebar"><button class="pill bare" data-act="newlist">＋ 新清單</button></div>';
     h+=exploreSec();
     h+=notesSec(t);
-    tLists().forEach(function(l){ h+=listSec(l); });
-    h+='<div style="margin:0 0 26px"><button class="tbtn" data-act="newlist">＋ 新清單</button></div>';
-    h+=itinSec();
     h+=budgetSec();
     h+='</div>';
     $('main').innerHTML=h;
@@ -2594,33 +2883,34 @@
   // 2026-09-15 修：舊版揀「評分最高」→ 4.8 分但只有 6 個人評嘅 Airbnb 房相做咗封面。
   // 首頁行程格已經有 tripPhoto()（評分×人數×地標類型），hero 用返同一套。
   function heroPhoto(){ var t=curTrip(); return t? tripPhoto(t) : ''; }
-  function hero(t){
+  function tripHead(t){
     var it=tItems(), done=it.filter(function(x){return x.done;}).length, n=days().length;
+    var un=it.filter(function(x){return !x.date;}).length;
     var ph=heroPhoto();
-    return '<div class="hero'+(ph?' hasph':'')+'"'+
-      (ph?' style="background-image:url(\''+esc(ph)+'\')"':'')+'></div>'+
-      '<div class="herocard"><button class="kebab hedit" data-act="edittrip" title="改旅程">⋯</button>'+
+    var when=t.start? (md(t.start)+'–'+md(t.end)+' · '+n+'日') : '未定日期';
+    return '<div class="triphead">'+
+      (ph?'<div class="herothin hasph" style="background-image:url(\''+esc(ph)+'\')"></div>':'')+
+      '<div class="tripid"><button class="kebab hedit" data-act="edittrip" title="改旅程">⋯</button>'+
       '<h1><button class="h1back" data-act="home" title="所有旅程">'+ic('chev',16,'rot90')+'</button>'+esc(t.name)+'</h1>'+
-      '<div class="sub">'+esc(t.dest||'')+(t.dest?' · ':'')+
-      (t.start? md(t.start)+'–'+md(t.end)+' · '+n+'日':'未定日期')+'</div>'+
-      '<div class="hstats">'+
-      '<div><b class="num">'+it.length+'</b><span>項目</span></div>'+
-      '<div><b class="num">'+done+'</b><span>已完成</span></div>'+
-      '<div><b class="num">'+it.filter(function(x){return !x.date;}).length+'</b><span>未排期</span></div>'+
-      '<div><b class="num">'+Math.round(homeTotal()).toLocaleString()+'</b><span>'+esc(cur())+'</span></div>'+
-      '<button class="hfx" data-act="fxsheet" title="工具：現在位置／今日行程／換算">'+ic('spark',16,'inline')+'<span>工具</span></button>'+
-      '</div></div>';
+      (t.dest?'<div class="sub">'+esc(t.dest)+'</div>':'')+
+      '<div class="sub when">'+esc(when)+'</div>'+
+      '<div class="quiet">'+
+      '<span><b class="num">'+it.length+'</b> 項</span>'+
+      '<span><b class="num">'+done+'</b> 已完成</span>'+
+      '<span><b class="num">'+un+'</b> 未排期</span>'+
+      '<button data-act="go" data-s="s-bud"><b class="num">'+Math.round(homeTotal()).toLocaleString()+'</b> '+esc(cur())+'</button>'+
+      '<button data-act="fxsheet" title="現在位置、今日行程、換算">工具</button>'+
+      '</div></div></div>';
   }
-  function twoUp(){
+  function quickRow(){
     var counts={}; tItems().forEach(function(x){ counts[x.kind]=(counts[x.kind]||0)+1; });
     var order=['flight','stay','car','eat','place','buy','check'];
-    var h='<div class="twoup"><div class="bkcard"><span class="cardlbl">快速加</span><div class="bkrow">';
+    var h='<div class="qrow">';
     order.forEach(function(k){
-      h+='<button data-act="addkind" data-k="'+k+'" title="加一個'+KINDS[k].n+'"><b>'+(counts[k]||'')+'</b><em>'+ic(KINDS[k].i,20)+'</em><span>'+KINDS[k].n+'</span></button>';
+      var n=counts[k]||0;
+      h+='<button data-act="addkind" data-k="'+k+'" title="加一個'+KINDS[k].n+'"><b class="num">'+(n||'')+'</b>'+
+        ic(KINDS[k].i,20)+'<span>'+KINDS[k].n+'</span></button>';
     });
-    h+='</div></div>';
-    h+='<div class="sumcard"><span class="cardlbl">預算</span><div class="bigno">'+esc(fmtCcy(cur(),homeTotal()))+'</div>'+
-       '<a data-act="go" data-s="s-bud">查看明細</a></div>';
     return h+'</div>';
   }
   // ---------- 附件（Supabase Storage · trip-files · 同一個 session token）----------
@@ -2783,15 +3073,14 @@
     var t=curTrip(); if(!t) return '';
     var ex=exList();
     var busy=!!exBusy;
-    var h='<div class="sec" id="s-explore"><div class="sech">'+ic('chev',13,'chev')+'<h2>探索</h2>'+
-      (ex&&ex.items?'<span class="n">'+ex.items.length+'</span>':'')+'<span class="sp"></span>'+
-      '<button class="pill acc" data-act="explore"'+(busy?' disabled':'')+'>'+ic('spark',15,'inline')+' '+
+    var h=foldHead('s-explore','探索', ex&&ex.items?'<span class="n">'+ex.items.length+'</span>':'');
+    h+='<div class="foldact"><button class="pill acc" data-act="explore"'+(busy?' disabled':'')+'>'+ic('spark',15,'inline')+' '+
       (busy?'搜尋中…':(ex?'換一批':'看看有什麼好去處'))+'</button></div>';
     if(!ex || !ex.items || !ex.items.length){
-      h+='<div class="panel pad"><div class="empty">'+
+      h+='<div class="empty">'+
          (busy?'<span class="spin"></span>AI 正在挑選地點，再向 Google 取得相片和評分…'
-              :'叫 AI 照住「'+esc(t.dest||t.name)+'」推介，再由 Google 補相同評分')+'</div></div>';
-      return h+'</div>';
+              :'叫 AI 照住「'+esc(t.dest||t.name)+'」推介，再由 Google 補相同評分')+'</div>';
+      return h+foldEnd();
     }
     h+='<div class="excards">';
     ex.items.forEach(function(r,i){
@@ -2804,13 +3093,13 @@
         (r.why?'<div class="wy">'+esc(r.why)+'</div>':'')+
         '</div></div>';
     });
-    return h+'</div></div>';
+    return h+'</div>'+foldEnd();
   }
   var exBusy=false;
   function runExplore(){
     var t=curTrip(); if(!t || exBusy) return;
     if(MODE!=='cloud'){ alert('要雲端模式先用得 AI'); return; }
-    exBusy=true; render();
+    exBusy=true; foldOpen['s-explore']=1; render();
     var have=tItems().map(function(x){ return x.name; }).join('、');
     var pr='你係旅程顧問。幫我推介「'+(t.dest||t.name)+'」值得去的地方。\n'+
       (have?'我已經有：'+have+'（唔好重複）\n':'')+
@@ -2856,23 +3145,25 @@
     });
   }
   function notesSec(t){
-    return '<div class="sec" id="s-note"><div class="sech">'+ic('chev',13,'chev')+'<h2>筆記</h2></div>'+
-      '<div class="panel pad"><textarea class="inp" id="tripNote" style="box-shadow:none;background:var(--soft)" placeholder="簽證、匯率、想吃的東西、朋友介紹…">'+esc(t.note||'')+'</textarea></div></div>';
+    var prev=String(t.note||'').replace(/\s+/g,' ').trim();
+    if(prev.length>22) prev=prev.slice(0,22)+'…';
+    return foldHead('s-note','筆記', prev?'<span class="n prev">'+esc(prev)+'</span>':'')+
+      '<textarea class="inp" id="tripNote" placeholder="簽證、匯率、想吃的東西、朋友介紹…">'+esc(t.note||'')+'</textarea>'+
+      foldEnd();
   }
   function listSec(l){
     var arr=listItems(l.id);
-    return '<div class="sec" id="s-'+l.id+'"><div class="sech">'+ic('chev',13,'chev')+'<h2>'+esc(l.name)+'</h2><span class="n">'+arr.length+'</span><span class="sp"></span>'+
-      '<button class="kebab" data-act="listmenu" data-id="'+l.id+'">⋯</button></div>'+
+    return foldHead('s-'+l.id, esc(l.name), '<span class="n">'+arr.length+'</span>',
+      '<button class="kebab" data-act="listmenu" data-id="'+l.id+'" style="opacity:1">⋯</button>')+
       '<div class="panel" data-drop="list:'+l.id+'">'+
       (arr.length? '<div class="rows">'+arr.map(function(x,i){return rowHTML(x,null);}).join('')+'</div>'
                  : '<div class="empty">還沒有內容。輸入名稱，或從行程拖過來。</div>')+
-      addHTML('list:'+l.id)+'</div></div>';
+      addHTML('list:'+l.id)+'</div>'+foldEnd();
   }
   function itinSec(){
     var ds=days();
-    if(!ds.length) return '<div class="sec" id="s-itin"><div class="sech">'+ic('chev',13,'chev')+'<h2>行程</h2></div><div class="panel pad"><div class="empty">未定日期<br>按右上角 ⋯ 輸入出發／返程日</div></div></div>';
-    var h='<div class="sec" id="s-itin"><div class="sech big">'+ic('chev',13,'chev')+'<h2>行程</h2><span class="n">'+ds.length+' 日</span></div>';
-    h+=hereHTML();
+    if(!ds.length) return '<div class="sec" id="s-itin"><div class="sech"><h2>行程</h2></div><div class="empty">未定日期。按右上角 ⋯ 輸入出發同返程日。</div></div>';
+    var h='<div class="sec" id="s-itin"><div class="sech"><h2>行程</h2><span class="n">'+ds.length+' 日</span></div>';
     ds.forEach(function(d,i){
       var arr=dayItems(d), c=dayColor(i), tot=sumHome(arr);
       var wxl=dayWx(d);
@@ -3001,16 +3292,16 @@
   }
   function budgetSec(){
     var it=tItems().filter(function(x){ return +x.cost>0; });
-    var h='<div class="sec" id="s-bud"><div class="sech big"><span class="chev">\u25be</span><h2>預算</h2><span class="sp"></span>'+
-      '<button class="pill acc" data-act="newexp">＋ 加開支</button></div>';
+    var h=foldHead('s-bud','預算','<span class="n">'+esc(fmtCcy(cur(),homeTotal()))+'</span>');
     var tot=homeTotal(), n=days().length;
     h+='<div class="exptot"><div class="amt">'+esc(fmtCcy(cur(),tot))+
        '<small>'+it.length+' 筆'+(n?' · 平均每日 '+esc(fmtCcy(cur(),tot/n)):'')+'</small></div>'+
+       '<button class="pill acc" data-act="newexp">＋ 加開支</button>'+
        '<button class="pill acc" data-act="fxsheet">換算</button>'+
        '<button class="pill" data-act="rateset">匯率設定</button></div>';
     var miss=unknownCcys();
     if(miss.length) h+='<div class="hint err">'+esc(miss.join('、'))+' 未設定匯率，總數以 1:1 計算。請按「匯率設定」填寫。</div>';
-    if(!it.length){ h+='<div class="empty">還沒有開支<br>在項目中填寫價錢，或按「＋ 加開支」</div></div>'; return h; }
+    if(!it.length){ h+='<div class="empty">還沒有開支<br>在項目中填寫價錢，或按「＋ 加開支」</div>'+foldEnd(); return h; }
 
     // 按分類分佈
     var by={}; it.forEach(function(x){ by[x.kind]=(by[x.kind]||0)+toHome(x.cost,itemCcy(x)); });
@@ -3036,7 +3327,7 @@
          (conv?'<i>≈ '+esc(fmtCcy(cur(),toHome(x.cost,c)))+'</i>':'')+'</div>'+
          '<button class="kebab" data-act="edititem" data-id="'+x.id+'" style="opacity:1">⋯</button></div>';
     });
-    return h+'</div></div>';
+    return h+'</div>'+foldEnd();
   }
   function toc(){
     var head='<button class="tochome" data-act="home">'+ic('chev',14,'rot90')+' 我的旅程</button>';
@@ -4115,7 +4406,8 @@
     }, function(e){
       gpsErr = e.code===1? '你拒絕了定位權限（Safari 設定 → 位置）'
              : (e.code===3? '無法取得位置（訊號弱）' : '定位出錯');
-      if($('pan').__now) nowRender();
+      if($('pan') && $('pan').__now) nowRender();
+      tenkiPaint();
       if(cb){ var f2=cb; cb=null; f2(false); }
     }, {enableHighAccuracy:true, maximumAge:15000, timeout:20000});
   }
@@ -5536,9 +5828,22 @@
     else if(act==='offline'){ offlineSheet(); }
     else if(act==='precache'){ precacheFiles(); }
     else if(act==='clrprecache'){ clearPrecache(); }
-    else if(act==='go'){ var s3=$(el.getAttribute('data-s')); if(s3) s3.scrollIntoView({block:'start',behavior:'smooth'});
+    else if(act==='fold'){
+      var fs=el.getAttribute('data-s'); if(!fs) return;
+      if(foldOpen[fs]) delete foldOpen[fs]; else foldOpen[fs]=1;
+      var box=$(fs); if(box) box.classList.toggle('shut', !foldOpen[fs]);
+    }
+    else if(act==='go'){
+      var sid=el.getAttribute('data-s');
+      var s3=sid? $(sid) : null;
+      if(s3){
+        var sec=s3.classList.contains('sec')? s3 : s3.closest('.sec');
+        if(sec && sec.id){ foldOpen[sec.id]=1; sec.classList.remove('shut'); }
+        s3.scrollIntoView({block:'start',behavior:'smooth'});
+      }
       document.querySelectorAll('#toc button').forEach(function(b){ b.classList.remove('on'); }); el.classList.add('on');
-      sideOpen(false); }
+      sideOpen(false);
+    }
     else if(act==='mapday'){ mapDay=el.getAttribute('data-d'); if(map) map.__fit=0; if(gmap) gmap.__fit=0; drawMap(); }
     else if(act==='openmap'){ $('mapwrap').classList.add('open');
       setTimeout(function(){ if(map) map.invalidateSize(); gKick(); },80); }
@@ -5803,6 +6108,17 @@
   });
   document.addEventListener('visibilitychange',function(){ if(!document.hidden) refreshIfChanged(); });
   setInterval(refreshIfChanged,45000);
+  setInterval(function(){
+    var root=$('nowstrip'); if(!root) return;
+    var c=glanceClocks(glanceShown());
+    var a=root.querySelector('[data-clk="loc"]');
+    if(a && a.textContent!==c.loc) a.textContent=c.loc;
+    var b=root.querySelector('[data-clk="hk"]');
+    if(b){
+      if(c.hk){ b.style.display=''; if(b.textContent!==c.hk) b.textContent=c.hk; }
+      else b.style.display='none';
+    }
+  },15000);
   addEventListener('resize',gKick);
   addEventListener('orientationchange',gKick);
   addEventListener('online',function(){
