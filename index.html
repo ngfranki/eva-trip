@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261107-v43">
+<html lang="zh-HK" data-build="20261107-v44">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -11,6 +11,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="旅程記錄">
 <meta name="theme-color" content="#FFFFFF">
+<meta name="color-scheme" content="light dark">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
@@ -31,6 +32,7 @@
     --sh:0 1px 2px rgba(33,37,41,.06);
     --sh2:0 4px 14px rgba(33,37,41,.10), 0 1px 3px rgba(33,37,41,.08);
     --side:188px; --mapw:40%;
+    color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark){
     :root{
@@ -778,6 +780,20 @@
     input:not([type=checkbox]):not([type=radio]), select, textarea{font-size:16px}
     .inp{padding:11px 12px}
   }
+  /* 暗號欄。iOS Safari 同 WhatsApp／LINE／Instagram 內置瀏覽器畫密碼圓點時
+     唔會 fallback 字體。頁面用 Source Sans 3，部機未下載到個字體（Franki 部機有 cache，
+     其他人第一趟入）圓點就係空白，睇落好似冇打到字。改用系統字，並鎖死文字色，
+     避免深色模式把圓點畫成同底同色。 */
+  input[type="password"]{
+    font-family: system-ui, -apple-system, "Segoe UI", "Helvetica Neue", sans-serif;
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--ink);
+    -webkit-text-fill-color: var(--ink);
+    caret-color: var(--ink);
+    background-color: var(--surf);
+    opacity: 1;
+  }
   .inp:focus{border-color:var(--acc)}
   textarea.inp{resize:vertical; min-height:80px; line-height:1.55}
   .two{display:grid; grid-template-columns:1fr 1fr; gap:10px}
@@ -881,7 +897,7 @@
   <div class="box">
     <h2>旅程記錄</h2>
     <p>行程規劃＋旅程日誌。輸入暗號即可同步雲端；不想同步，也可以只在這部裝置使用。</p>
-    <input class="inp" id="gateKey" type="password" autocomplete="off" placeholder="暗號">
+    <input class="inp" id="gateKey" type="password" name="trip-pass" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="暗號">
     <button class="btn" id="gateGo">進入</button>
     <button class="btn ghost" id="gateLocal" style="margin-top:8px">只在這部裝置使用</button>
     <div class="hint" id="gateMsg"></div>
@@ -898,7 +914,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261107-v43" style="padding-top:0">v43</div>
+        <div id="ver" data-build="20261107-v44" style="padding-top:0">v44</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -957,7 +973,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261107-v43';
+  var APP_VER='20261107-v44';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -6676,18 +6692,35 @@
   addEventListener('offline',setNet);
   setNet();
   if('serviceWorker' in navigator){
-    // 新 SW 接手就 reload 一次。15 秒內唔准再 reload，避免同 activate navigate 打轉。
-    var swReloadLock=false;
+    // 新 SW 接手就 reload 一次。15 秒內唔准再 reload，避免打轉。
+    // 第一趟安裝（之前冇 controller）頁面本身已經係新版，唔好 reload，
+    // 否則人哋打緊暗號會被清走。打緊暗號都延後，等欄位空咗先至更新。
+    var swReloadLock=false, swReloadWait=false;
+    var swHadController=!!navigator.serviceWorker.controller;
+    function gateTyping(){
+      if(loginBusy) return true;
+      var el=$('gateKey'), gate=$('gate');
+      if(!el||!gate||gate.className.indexOf('show')<0) return false;
+      return document.activeElement===el || !!(el.value&&String(el.value).length);
+    }
     function reloadForSW(){
+      if(gateTyping()){ swReloadWait=true; return; }
       if(swReloadLock) return;
       var now=Date.now(), prev=0;
       try{ prev=+sessionStorage.getItem('swReloadAt')||0; }catch(e){}
       if(now-prev<15000) return;
       swReloadLock=true;
+      swReloadWait=false;
       try{ sessionStorage.setItem('swReloadAt', String(now)); }catch(e){}
       location.reload();
     }
-    navigator.serviceWorker.addEventListener('controllerchange', reloadForSW);
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(!swHadController){ swHadController=true; return; }
+      reloadForSW();
+    });
+    $('gateKey').addEventListener('blur', function(){
+      if(swReloadWait) setTimeout(function(){ if(!gateTyping()) reloadForSW(); }, 400);
+    });
     navigator.serviceWorker.addEventListener('message', function(e){
       var t=e.data && e.data.type;
       if(t==='reload' || t==='shell') reloadForSW();
