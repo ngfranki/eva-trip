@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261107-v40">
+<html lang="zh-HK" data-build="20261107-v41">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -146,25 +146,40 @@
   .locimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center top; display:block}
   .locsky{position:absolute; top:0; left:0; right:0; display:flex; align-items:flex-start;
     justify-content:space-between; gap:14px; padding:11px 14px 0; pointer-events:none}
-  .locleft{flex:1 1 auto; min-width:0; max-width:58%}
-  .locright{flex:0 0 auto; max-width:42%; text-align:right}
-  .locname,.loctime,.locwx,.locnote,.lochk{
-    text-shadow:0 1px 0 rgba(255,255,255,.92), 0 0 8px rgba(255,255,255,.75)}
-  .locname{font-size:15px; font-weight:750; letter-spacing:-.02em; line-height:1.2; color:#31404c}
-  .loctag{font-style:normal; margin-left:6px; font-size:10px; font-weight:700; color:#5c6b78;
-    border:1px solid rgba(90,105,120,.28); border-radius:99px; padding:0 5px; vertical-align:1px}
-  .locnote{margin-top:2px; font-size:11px; font-weight:600; line-height:1.3; color:#5a6976;
+  .locleft{flex:1 1 auto; min-width:0; max-width:54%}
+  .locright{flex:0 0 auto; max-width:46%; text-align:right}
+  .locname,.loctime,.locwx,.locnote,.lochk,.loccond{
+    text-shadow:0 1px 0 rgba(255,255,255,.92), 0 0 10px rgba(255,255,255,.8)}
+  .locname{font-size:22px; font-weight:600; letter-spacing:-.02em; line-height:1.15; color:#2a3844}
+  .loctag{font-style:normal; margin-left:6px; font-size:11px; font-weight:600; color:#5c6b78;
+    border:1px solid rgba(90,105,120,.28); border-radius:99px; padding:0 5px; vertical-align:2px}
+  .locnote{margin-top:3px; font-size:12.5px; font-weight:600; line-height:1.3; color:#5a6976;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .loctime{display:block; font-size:18px; font-weight:750; letter-spacing:-.03em; line-height:1; color:#31404c}
-  .locwx{display:flex; align-items:center; justify-content:flex-end; gap:3px; margin-top:3px;
-    font-size:13px; font-weight:750; line-height:1; color:#31404c}
-  .locwx .ico{color:#4a5966}
-  .lochk{display:block; margin-top:2px; font-size:10.5px; font-weight:650; line-height:1.2; color:#5a6976}
-  .locextra{padding:14px 22px 0; font-size:13.5px; font-weight:650; color:var(--muted)}
+  .loctime{display:block; font-size:28px; font-weight:600; letter-spacing:-.03em; line-height:1; color:#2a3844}
+  .locwx{display:flex; align-items:center; justify-content:flex-end; gap:5px; margin-top:4px;
+    font-size:22px; font-weight:600; line-height:1; color:#2a3844}
+  .locwx .ico{color:#3d4c59}
+  .loccond{font-size:15px; font-weight:600; max-width:4.2em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .lochk{display:block; margin-top:3px; font-size:12px; font-weight:600; line-height:1.2; color:#5a6976}
+  .wxstrip{margin:16px 22px 0; display:flex; flex-direction:column; gap:8px}
+  .wxrow{display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px;
+    font-size:14px; font-weight:600; color:var(--ink2); line-height:1.35}
+  .wxrow b{color:var(--ink); font-weight:650; margin-right:2px}
+  .wxrow .ico{color:var(--ink2)}
   .tripid{position:relative; padding:2px 44px 0 0; margin-bottom:6px}
   .tripid h1{margin:0; font-size:26px; font-weight:750; letter-spacing:-.03em; line-height:1.2}
   .tripid .sub{margin-top:10px; font-size:14px; color:var(--muted); font-weight:600; line-height:1.4}
   .tripid .sub.when{margin-top:4px}
+  .daychips{display:flex; gap:8px; overflow-x:auto; margin:14px 0 2px; padding:2px 2px 8px;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch}
+  .daychips::-webkit-scrollbar{display:none}
+  .dchip{flex:0 0 auto; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-width:62px; min-height:48px; padding:7px 10px; border:1px solid var(--line); border-radius:14px;
+    background:var(--soft2); color:var(--ink2)}
+  .dchip b{font-size:13.5px; font-weight:650; letter-spacing:-.01em; line-height:1.2}
+  .dchip small{margin-top:2px; font-size:11px; font-weight:600; color:var(--muted)}
+  .dchip.today{background:var(--acc-soft); border-color:var(--acc); color:var(--acc)}
+  .dchip.today small{color:var(--acc)}
   .quiet{display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:16px; font-size:13px; color:var(--muted); font-weight:650}
   .quiet b{color:var(--ink); font-weight:750}
   .quiet button{color:var(--link); font-size:13px; font-weight:700}
@@ -361,7 +376,7 @@
   .sug .hd{font-size:11px; color:var(--muted2); padding:6px 10px 3px; font-weight:700; letter-spacing:.06em; text-transform:uppercase}
 
   /* ============ day ============ */
-  .day{margin-bottom:28px}
+  .day{margin-bottom:28px; scroll-margin-top:72px}
   .dayh{display:flex; align-items:baseline; gap:9px; margin:28px 0 12px}
   .sec .day:first-of-type .dayh{margin-top:4px}
   .dayh .dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto; align-self:center}
@@ -791,10 +806,11 @@
     .mapclose{position:absolute; top:12px; right:12px; z-index:6; background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:7px 14px; font-size:13.5px; font-weight:700}
     .page{padding:6px 18px 150px}
     .locblock{margin:6px -18px 20px}
-    .locsky{padding:10px 12px 0; gap:10px}
-    .locname{font-size:14.5px}
-    .loctime{font-size:17px}
-    .locextra{padding:12px 18px 0}
+    .locsky{padding:10px 12px 0; gap:8px}
+    .locname{font-size:20px}
+    .loctime{font-size:24px}
+    .locwx{font-size:20px}
+    .wxstrip{margin:14px 18px 0}
     .tripid h1{font-size:24px}
     .nowstrip{margin:16px 0 28px; padding:16px 16px 15px}
     .ns-time b{font-size:26px}
@@ -837,7 +853,7 @@
     <div class="sfoot">
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
-      <div id="ver" data-build="20261107-v40" style="padding-top:6px">v40</div>
+      <div id="ver" data-build="20261107-v41" style="padding-top:6px">v41</div>
     </div>
   </aside>
 
@@ -888,7 +904,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261107-v40';
+  var APP_VER='20261107-v41';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1548,7 +1564,12 @@
         place:g.place||'', src:g.src||'', tz:g.tz==null?null:g.tz,
         temp:g.temp==null?null:g.temp, high:g.high==null?null:g.high,
         low:g.low==null?null:g.low, rain:typeof g.rain==='number'?g.rain:null,
-        code:g.code==null?null:g.code, label:g.label||''
+        feels:g.feels==null?null:g.feels, wind:g.wind==null?null:g.wind,
+        hum:g.hum==null?null:g.hum, uv:g.uv==null?null:g.uv,
+        code:g.code==null?null:g.code, label:g.label||'',
+        tmrCode:g.tmrCode==null?null:g.tmrCode, tmrLabel:g.tmrLabel||'',
+        tmrHigh:g.tmrHigh==null?null:g.tmrHigh, tmrLow:g.tmrLow==null?null:g.tmrLow,
+        tmrRain:typeof g.tmrRain==='number'?g.tmrRain:null
       }));
     }catch(e){}
   }
@@ -1620,39 +1641,52 @@
     }
     return currentStop();
   }
-  function glanceTenkiHit(lat, lng){
+  function glanceTenkiOn(lat, lng, date){
     if(lat==null || !inJapan(+lat,+lng)) return null;
     var m=tenkiMem['glance|'+(+lat).toFixed(2)+','+(+lng).toFixed(2)];
     if(!m || !m.ok || !m.days) return null;
-    var td=today(), hit=null, i;
-    for(i=0;i<m.days.length;i++) if(m.days[i].date===td) hit=m.days[i];
+    var hit=null, i;
+    for(i=0;i<m.days.length;i++) if(m.days[i].date===date) hit=m.days[i];
     return hit? {m:m, hit:hit} : null;
+  }
+  function glanceTenkiHit(lat, lng){ return glanceTenkiOn(lat, lng, today()); }
+  function fillTenkiDay(rec, hit, prefix){
+    if(!hit) return;
+    var hi=prefix? prefix+'High' : 'high';
+    var lo=prefix? prefix+'Low' : 'low';
+    var rn=prefix? prefix+'Rain' : 'rain';
+    var lb=prefix? prefix+'Label' : 'label';
+    if(hit.high!=null) rec[hi]=hit.high;
+    if(hit.low!=null) rec[lo]=hit.low;
+    if(typeof hit.rain==='number') rec[rn]=hit.rain;
+    if(hit.weather) rec[lb]=hit.weather;
   }
   function glanceAbsorbTenki(key){
     if(!glanceMem || ('glance|'+glanceMem.sig)!==key) return;
     var tk=glanceTenkiHit(glanceMem.lat, glanceMem.lng);
-    if(!tk) return;
-    var h=tk.hit;
-    if(h.high!=null) glanceMem.high=h.high;
-    if(h.low!=null) glanceMem.low=h.low;
-    if(typeof h.rain==='number') glanceMem.rain=h.rain;
-    if(h.weather) glanceMem.label=h.weather;
-    if(glanceMem.src==='gps' && !glanceMem.place && tk.m.place) glanceMem.place=tk.m.place;
-    glanceSave(glanceMem);
+    if(tk){
+      fillTenkiDay(glanceMem, tk.hit, '');
+      if(glanceMem.src==='gps' && !glanceMem.place && tk.m.place) glanceMem.place=tk.m.place;
+    }
+    var tm=glanceTenkiOn(glanceMem.lat, glanceMem.lng, shift(today(),1));
+    if(tm) fillTenkiDay(glanceMem, tm.hit, 'tmr');
+    if(tk || tm) glanceSave(glanceMem);
   }
   function glanceFetch(tgt){
     var sig=(+tgt.lat).toFixed(2)+','+(+tgt.lng).toFixed(2);
     glanceBusy=sig;
     var u='https://api.open-meteo.com/v1/forecast?latitude='+sig.split(',')[0]+
       '&longitude='+sig.split(',')[1]+
-      '&current=temperature_2m,weather_code'+
-      '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'+
-      '&timezone=auto&forecast_days=1';
+      '&current=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,wind_speed_10m'+
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max'+
+      '&timezone=auto&forecast_days=2';
     fetch(u).then(function(r){ return r.ok? r.json():null; }).then(function(j){
       if(glanceBusy===sig) glanceBusy='';
       if(!j){ glanceFail={sig:sig, at:Date.now()}; return; }
       var cur=j.current||{}, dly=j.daily||{};
-      var code=cur.weather_code!=null? cur.weather_code : (dly.weather_code? dly.weather_code[0] : null);
+      function at(key, i){ var a=dly[key]; return (a && a[i]!=null)? a[i] : null; }
+      var code=cur.weather_code!=null? cur.weather_code : at('weather_code', 0);
+      var tmrCode=at('weather_code', 1);
       var prev=glanceRead();
       var rec={
         at:Date.now(), sig:sig, lat:+tgt.lat, lng:+tgt.lng,
@@ -1660,10 +1694,18 @@
         src:tgt.src||'',
         tz: j.utc_offset_seconds!=null ? Math.round(j.utc_offset_seconds/60) : lngTz(tgt.lng),
         temp: cur.temperature_2m!=null ? cur.temperature_2m : null,
-        high: dly.temperature_2m_max? dly.temperature_2m_max[0] : null,
-        low: dly.temperature_2m_min? dly.temperature_2m_min[0] : null,
-        rain: (dly.precipitation_probability_max && typeof dly.precipitation_probability_max[0]==='number') ? dly.precipitation_probability_max[0] : null,
-        code:code, label:(code!=null && WXI[code]) ? WXI[code] : ''
+        feels: cur.apparent_temperature!=null ? cur.apparent_temperature : null,
+        wind: cur.wind_speed_10m!=null ? cur.wind_speed_10m : null,
+        hum: cur.relative_humidity_2m!=null ? cur.relative_humidity_2m : null,
+        uv: at('uv_index_max', 0),
+        high: at('temperature_2m_max', 0),
+        low: at('temperature_2m_min', 0),
+        rain: typeof at('precipitation_probability_max', 0)==='number' ? at('precipitation_probability_max', 0) : null,
+        code:code, label:(code!=null && WXI[code]) ? WXI[code] : '',
+        tmrCode:tmrCode, tmrLabel:(tmrCode!=null && WXI[tmrCode]) ? WXI[tmrCode] : '',
+        tmrHigh: at('temperature_2m_max', 1),
+        tmrLow: at('temperature_2m_min', 1),
+        tmrRain: typeof at('precipitation_probability_max', 1)==='number' ? at('precipitation_probability_max', 1) : null
       };
       glanceFail=null;
       glanceSave(rec);
@@ -1688,7 +1730,7 @@
     }
     var cur=glanceRead();
     // 成功攞過就當新鮮，就算個別欄係 null。否則每次 render 都會再打。
-    var fresh=cur && cur.sig===sig && (Date.now()-(cur.at||0))<20*60*1000;
+    var fresh=cur && cur.sig===sig && cur.feels!==undefined && (Date.now()-(cur.at||0))<20*60*1000;
     if(fresh || glanceBusy===sig) return;
     if(glanceFail && glanceFail.sig===sig && (Date.now()-glanceFail.at)<2*60*1000) return;
     glanceFetch(tgt);
@@ -1730,6 +1772,11 @@
         if(tk.hit.weather) wx.label=tk.hit.weather;
         if(src==='gps' && !place && tk.m.place) place=tk.m.place;
         if(wx.tz==null && cache && cache.tz!=null && glanceNear(cache,lat,lng)) wx.tz=cache.tz;
+      }
+      var tm=glanceTenkiOn(lat, lng, shift(today(),1));
+      if(tm){
+        wx=wx||{};
+        fillTenkiDay(wx, tm.hit, 'tmr');
       }
     }
     var tz=(wx && wx.tz!=null)? wx.tz : (lat!=null? lngTz(lng) : null);
@@ -1919,12 +1966,37 @@
     glanceKick();
     var w=g.wx||{}, c=glanceClocks(g);
     var temp=w.temp!=null? Math.round(w.temp)+'°' : '';
+    var cond=w.label||'';
     var tag=g.src==='stop'? '<i class="loctag">行程</i>' : '';
-    var bits=[];
-    if(w.low!=null || w.high!=null) bits.push((w.low==null?'—':Math.round(w.low)+'°')+' / '+(w.high==null?'—':Math.round(w.high)+'°'));
-    if(typeof w.rain==='number') bits.push('降水 '+Math.round(w.rain)+'%');
-    var wxbit=(w.code!=null || w.label || temp)
-      ? '<div class="locwx">'+(w.code!=null||w.label? ic(wxIcon(w.code, w.label),15):'')+(temp?'<b class="num">'+esc(temp)+'</b>':'')+'</div>'
+    function pair(lo,hi){
+      if(lo==null && hi==null) return '';
+      return (lo==null?'—':Math.round(lo)+'°')+' / '+(hi==null?'—':Math.round(hi)+'°');
+    }
+    function span(t){ return '<span>'+esc(t)+'</span>'; }
+    var todayBits=[];
+    if(cond) todayBits.push(span(cond));
+    if(pair(w.low,w.high)) todayBits.push(span(pair(w.low,w.high)));
+    if(typeof w.rain==='number') todayBits.push(span('降水 '+Math.round(w.rain)+'%'));
+    if(w.feels!=null) todayBits.push(span('體感 '+Math.round(w.feels)+'°'));
+    if(w.wind!=null) todayBits.push(span('風 '+Math.round(w.wind)+'km/h'));
+    if(w.hum!=null) todayBits.push(span('濕 '+Math.round(w.hum)+'%'));
+    if(w.uv!=null) todayBits.push(span('紫外 '+Math.round(w.uv)));
+    var tmrBits=[];
+    if(w.tmrLabel || w.tmrHigh!=null || w.tmrLow!=null || typeof w.tmrRain==='number'){
+      if(w.tmrCode!=null || w.tmrLabel) tmrBits.push(ic(wxIcon(w.tmrCode, w.tmrLabel),18));
+      if(w.tmrLabel) tmrBits.push(span(w.tmrLabel));
+      if(pair(w.tmrLow,w.tmrHigh)) tmrBits.push(span(pair(w.tmrLow,w.tmrHigh)));
+      if(typeof w.tmrRain==='number') tmrBits.push(span('降水 '+Math.round(w.tmrRain)+'%'));
+    }
+    var strip=(todayBits.length||tmrBits.length)
+      ? '<div class="wxstrip">'+
+          (todayBits.length?'<div class="wxrow"><b>今日</b>'+todayBits.join('')+'</div>':'')+
+          (tmrBits.length?'<div class="wxrow"><b>聽日</b>'+tmrBits.join('')+'</div>':'')+
+        '</div>' : '';
+    var wxbit=(w.code!=null || cond || temp)
+      ? '<div class="locwx">'+(w.code!=null||cond? ic(wxIcon(w.code, cond),30):'')+
+          (temp?'<b class="num">'+esc(temp)+'</b>':'')+
+          (cond?'<span class="loccond">'+esc(cond)+'</span>':'')+'</div>'
       : '';
     return '<div class="locblock">'+
       '<div class="lochero"><img class="locimg" alt="" src="'+esc(art)+'">'+
@@ -1939,7 +2011,7 @@
             '<span class="lochk" data-clk="hk"'+(c.hk?'':' style="display:none"')+'>'+esc(c.hk)+'</span>'+
           '</div>'+
         '</div></div>'+
-      (bits.length?'<div class="locextra">'+esc(bits.join(' · '))+'</div>':'')+
+      strip+
       '</div>';
   }
   function secShut(id){ return id!=='s-itin' && !foldOpen[id]; }
@@ -3084,6 +3156,17 @@
 
   // 2026-09-15 修：舊版揀「評分最高」→ 4.8 分但只有 6 個人評嘅 Airbnb 房相做咗封面。
   // 行程格仍然用 tripPhoto()。總覽頂部唔再用封面，改為而家所在嘅相片。
+  function dayChips(){
+    var ds=days();
+    if(!ds.length) return '';
+    var td=today();
+    var h='<div class="daychips">';
+    ds.forEach(function(d,i){
+      h+='<button class="dchip'+(d===td?' today':'')+'" data-act="go" data-s="s-d'+i+'">'+
+        '<b>第'+(i+1)+'日</b><small>'+md(d)+'</small></button>';
+    });
+    return h+'</div>';
+  }
   function tripHead(t){
     var it=tItems(), done=it.filter(function(x){return x.done;}).length, n=days().length;
     var un=it.filter(function(x){return !x.date;}).length;
@@ -3093,6 +3176,7 @@
       '<h1><button class="h1back" data-act="home" title="所有旅程">'+ic('chev',16,'rot90')+'</button>'+esc(t.name)+'</h1>'+
       (t.dest?'<div class="sub">'+esc(t.dest)+'</div>':'')+
       '<div class="sub when">'+esc(when)+'</div>'+
+      dayChips()+
       '<div class="quiet">'+
       '<span><b class="num">'+it.length+'</b> 項</span>'+
       '<span><b class="num">'+done+'</b> 已完成</span>'+
@@ -6034,13 +6118,23 @@
     }
     else if(act==='go'){
       var sid=el.getAttribute('data-s');
-      var s3=sid? $(sid) : null;
-      if(s3){
+      function jumpTo(){
+        var s3=sid? $(sid) : null;
+        if(!s3) return;
         var sec=s3.classList.contains('sec')? s3 : s3.closest('.sec');
         if(sec && sec.id){ foldOpen[sec.id]=1; sec.classList.remove('shut'); }
-        s3.scrollIntoView({block:'start',behavior:'smooth'});
+        var docEl=document.querySelector('.doc');
+        if(docEl){
+          var top=s3.getBoundingClientRect().top - docEl.getBoundingClientRect().top + docEl.scrollTop - 64;
+          docEl.scrollTo({top:Math.max(0,top), behavior:'smooth'});
+        } else s3.scrollIntoView({block:'start',behavior:'smooth'});
       }
-      document.querySelectorAll('#toc button').forEach(function(b){ b.classList.remove('on'); }); el.classList.add('on');
+      if(sid && !$(sid)){ view='trip'; render(); setTimeout(jumpTo, 30); }
+      else jumpTo();
+      if(!el.classList.contains('dchip')){
+        document.querySelectorAll('#toc button').forEach(function(b){ b.classList.remove('on'); });
+        el.classList.add('on');
+      }
       sideOpen(false);
     }
     else if(act==='mapday'){ mapDay=el.getAttribute('data-d'); if(map) map.__fit=0; if(gmap) gmap.__fit=0; drawMap(); }
