@@ -1,24 +1,22 @@
 // trip-ai — eva-trip 後端代理 (Supabase Edge Function)
-// 所有付費 key 都留喺伺服器；瀏覽器只帶 x-client-info 暗號。
-// 唔讀 SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY。閘係下面嗰兩個暗號，
-// 唔係 client 帶嚟嘅 JWT。publishable key 只放 apikey header 就得。
+// 所有付費 key 都留喺伺服器；瀏覽器只帶 x-client-info 工作階段 token（app-auth 簽發）。
+// 閘係 app-auth session（appSessionOk），唔係 client 帶嚟嘅 JWT。publishable key 只放 apikey header 就得。
 //
 // secrets：
 //   OPENROUTER_API_KEY  AI（同 meal-vision 共用）
-//   TRIP_KEY            旅程自己嘅暗號閘（2026-09-16 起）
-//   MEAL_KEY            舊嘅共用暗號閘（過渡期仍然收；同 meal-vision 共用，唔准改）
 //   GOOGLE_MAPS_KEY     Google Places + Routes（eva-trip server key）
 //
-// 用法（一律 POST，回 {…} JSON）：
-//   {intent:'plan'|'extract'|'log', prompt}   AI 一次過
-//   {messages:[…]}                           AI 對話
+// 用法（一律 POST）：
+//   {intent:'plan'|'extract'|'log', prompt}   AI 一次過，回 JSON {text}
+//   {messages:[…]}                           AI 對話，回 JSON {text}
+//   {messages:[…], stream:true}              AI 對話，回 SSE（OpenRouter 原樣轉發）
 //   {op:'autocomplete', q, lat?, lng?}       地點搜尋建議
 //   {op:'details', placeId}                  地點詳情（名／地址／座標／評分／時間／相）
 //   {op:'photo', name, maxPx?}               相片 URL（回 {url}）
 //   {op:'route', points:[{lat,lng}…], mode?} 真路線時間距離
 //   {near:{lat,lng,kind,radius?}}            搵附近（OSM Overpass 代理）
 const OR = "https://openrouter.ai/api/v1/chat/completions";
-const MODEL = "anthropic/claude-sonnet-5";
+const MODEL = "deepseek/deepseek-chat-v3.1";
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, apikey, x-client-info, content-type",
@@ -44,18 +42,27 @@ async function gPost(url: string, body: unknown, fieldMask: string) {
   try { return { ok: true, data: JSON.parse(t) }; } catch { return { ok: false, status: 502, detail: "bad json" }; }
 }
 
+// 2026-10-27 app-auth: also accept a server-issued session token (wbhs1.<hex>) in x-client-info.
+// 2026-10-27 phase 3: this is now the only gate.
+async function appSessionOk(req: Request, scope: string): Promise<boolean> {
+  const t = req.headers.get("x-client-info") ?? "";
+  if (!/^wbhs1\.[a-f0-9]{64}$/.test(t)) return false;
+  let pk = "";
+  try { const b = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}"); pk = typeof b.default === "string" ? b.default : (Object.values(b).find((v) => typeof v === "string") as string ?? ""); } catch { /* ignore */ }
+  if (!pk) pk = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const r = await fetch((Deno.env.get("SUPABASE_URL") ?? "") + "/rest/v1/rpc/app_session_ok", {
+    method: "POST",
+    headers: { apikey: pk, ...(pk.startsWith("eyJ") ? { Authorization: "Bearer " + pk } : {}), "x-client-info": t, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_scope: scope }), signal: AbortSignal.timeout(8000),
+  }).catch(() => null);
+  return !!r && r.ok && (await r.json().catch(() => false)) === true;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
-  // 暗號閘。2026-09-16 換暗號：TRIP_KEY 係旅程自己嘅新暗號，MEAL_KEY 係舊嘅共用暗號。
-  // 過渡期兩個都收；喺手機同 Mac 都入完新暗號、確認正常之後，
-  // 就喺 Supabase 後台刪走 MEAL_KEY 對呢個 function 嘅依賴（見 換暗號_步驟2）。
-  // 🔴 MEAL_KEY 係飲食 app 嘅 meal-vision 共用，所以呢度只加唔改。
-  const sent = req.headers.get("x-client-info") ?? "";
-  const tripKey = Deno.env.get("TRIP_KEY") ?? "";
-  const oldKey = Deno.env.get("MEAL_KEY") ?? "";
-  const ok = (tripKey && sent === tripKey) || (oldKey && sent === oldKey);
-  if (!ok) return json({ error: "unauthorized" }, 401);
+  // 2026-10-27 phase 3: old passphrase gates (TRIP_KEY / MEAL_KEY) removed; only app-auth session tokens are accepted.
+  if (!(await appSessionOk(req, "trip"))) return json({ error: "unauthorized" }, 401);
 
   const body = await req.json().catch(() => ({}));
 
@@ -292,14 +299,26 @@ Deno.serve(async (req) => {
     messages = [{ role: "system", content: system }, { role: "user", content: prompt }];
   }
 
+  // 對話先可以串流。排行程／抽資料仍然一次過回 JSON，避免舊 caller 讀 SSE。
+  const wantStream = body.stream === true && Array.isArray(body.messages) && body.messages.length > 0;
   const r = await fetch(OR, {
     method: "POST",
     headers: { Authorization: `Bearer ${Deno.env.get("OPENROUTER_API_KEY") ?? ""}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, max_tokens: 4000, messages }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 4000, messages, stream: wantStream }),
   });
   if (!r.ok) {
     const detail = await r.text();
     return json({ error: "upstream", status: r.status, detail: detail.slice(0, 500) }, 502);
+  }
+  if (wantStream) {
+    if (!r.body) return json({ error: "no-stream" }, 502);
+    return new Response(r.body, {
+      headers: {
+        ...cors,
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache",
+      },
+    });
   }
   const j = await r.json();
   return json({ text: j?.choices?.[0]?.message?.content ?? "" });
