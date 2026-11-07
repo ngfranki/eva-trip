@@ -140,14 +140,27 @@
   .ns-wx .dim{color:var(--muted); font-weight:650; font-size:13.5px}
   .ns-wx .ico{color:var(--ink2)}
 
-  /* 插畫自己一格，字放喺圖下面，唔遮住畫面。 */
-  .locblock{margin:8px -22px 6px}
+  /* 插畫頂部係天空。地名靠左、時間天氣靠右，只佔天空一條，唔遮風景。 */
+  .locblock{margin:8px -22px 22px}
   .lochero{position:relative; aspect-ratio:16/9; overflow:hidden; background:#e7eef3}
-  .locimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; display:block}
-  .locin{padding:18px 22px 4px}
-  .locname{font-size:26px; font-weight:750; letter-spacing:-.03em; line-height:1.15; color:var(--ink)}
-  .locfact{margin:6px 0 0; font-size:14.5px; font-weight:600; line-height:1.45; color:var(--muted);
-    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .locimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center top; display:block}
+  .locsky{position:absolute; top:0; left:0; right:0; display:flex; align-items:flex-start;
+    justify-content:space-between; gap:14px; padding:11px 14px 0; pointer-events:none}
+  .locleft{flex:1 1 auto; min-width:0; max-width:58%}
+  .locright{flex:0 0 auto; max-width:42%; text-align:right}
+  .locname,.loctime,.locwx,.locnote,.lochk{
+    text-shadow:0 1px 0 rgba(255,255,255,.92), 0 0 8px rgba(255,255,255,.75)}
+  .locname{font-size:15px; font-weight:750; letter-spacing:-.02em; line-height:1.2; color:#31404c}
+  .loctag{font-style:normal; margin-left:6px; font-size:10px; font-weight:700; color:#5c6b78;
+    border:1px solid rgba(90,105,120,.28); border-radius:99px; padding:0 5px; vertical-align:1px}
+  .locnote{margin-top:2px; font-size:11px; font-weight:600; line-height:1.3; color:#5a6976;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .loctime{display:block; font-size:18px; font-weight:750; letter-spacing:-.03em; line-height:1; color:#31404c}
+  .locwx{display:flex; align-items:center; justify-content:flex-end; gap:3px; margin-top:3px;
+    font-size:13px; font-weight:750; line-height:1; color:#31404c}
+  .locwx .ico{color:#4a5966}
+  .lochk{display:block; margin-top:2px; font-size:10.5px; font-weight:650; line-height:1.2; color:#5a6976}
+  .locextra{padding:14px 22px 0; font-size:13.5px; font-weight:650; color:var(--muted)}
   .tripid{position:relative; padding:2px 44px 0 0; margin-bottom:6px}
   .tripid h1{margin:0; font-size:26px; font-weight:750; letter-spacing:-.03em; line-height:1.2}
   .tripid .sub{margin-top:10px; font-size:14px; color:var(--muted); font-weight:600; line-height:1.4}
@@ -730,7 +743,7 @@
 
   /* ============ print ============ */
   @media print{
-    .side,.mapwrap,.top,.add,.kebab,.grip,.tick,.ai,.sheet,.menu,.netbar,.lochero,.locin,.nowstrip,.qrow,.hedit,.tbtn,.empty,.leg::before{display:none !important}
+    .side,.mapwrap,.top,.add,.kebab,.grip,.tick,.ai,.sheet,.menu,.netbar,.lochero,.locextra,.nowstrip,.qrow,.hedit,.tbtn,.empty,.leg::before{display:none !important}
     html,body{overflow:visible !important; height:auto !important; background:#fff !important; color:#000 !important; font-size:11pt}
     .shell{display:block !important; height:auto !important}
     .doc{overflow:visible !important; height:auto !important; background:#fff !important}
@@ -777,9 +790,11 @@
     .mapwrap.open{display:block}
     .mapclose{position:absolute; top:12px; right:12px; z-index:6; background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:7px 14px; font-size:13.5px; font-weight:700}
     .page{padding:6px 18px 150px}
-    .locblock{margin:6px -18px 4px}
-    .locin{padding:14px 18px 2px}
-    .locname{font-size:24px}
+    .locblock{margin:6px -18px 20px}
+    .locsky{padding:10px 12px 0; gap:10px}
+    .locname{font-size:14.5px}
+    .loctime{font-size:17px}
+    .locextra{padding:12px 18px 0}
     .tripid h1{font-size:24px}
     .nowstrip{margin:16px 0 28px; padding:16px 16px 15px}
     .ns-time b{font-size:26px}
@@ -873,7 +888,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261107-v38';
+  var APP_VER='20261107-v39';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1724,7 +1739,7 @@
     var tz=s.tz;
     var loc=tz==null? hhmm(new Date()) : hhmm(atTz(new Date(), tz));
     var base=tz==null? -new Date().getTimezoneOffset() : tz;
-    var hk=Math.abs(base-HK_TZ)>=30 ? ('當地 · 香港 '+hhmm(atTz(new Date(), HK_TZ))) : '';
+    var hk=Math.abs(base-HK_TZ)>=30 ? ('香港 '+hhmm(atTz(new Date(), HK_TZ))) : '';
     return {loc:loc, hk:hk};
   }
   function glanceHTML(){
@@ -1901,12 +1916,31 @@
     var name=(show && show.name) || sub.name || '';
     var fact=show && show.fact && !sacred(show.fact) ? show.fact : '';
     if(sacred(name)){ name=''; fact=''; }
+    glanceKick();
+    var w=g.wx||{}, c=glanceClocks(g);
+    var temp=w.temp!=null? Math.round(w.temp)+'°' : '';
+    var tag=g.src==='stop'? '<i class="loctag">行程</i>' : '';
+    var bits=[];
+    if(w.low!=null || w.high!=null) bits.push((w.low==null?'—':Math.round(w.low)+'°')+' / '+(w.high==null?'—':Math.round(w.high)+'°'));
+    if(typeof w.rain==='number') bits.push('降水 '+Math.round(w.rain)+'%');
+    var wxbit=(w.code!=null || w.label || temp)
+      ? '<div class="locwx">'+(w.code!=null||w.label? ic(wxIcon(w.code, w.label),15):'')+(temp?'<b class="num">'+esc(temp)+'</b>':'')+'</div>'
+      : '';
     return '<div class="locblock">'+
-      '<div class="lochero"><img class="locimg" alt="" src="'+esc(art)+'"></div>'+
-      '<div class="locin">'+
-        (name?'<div class="locname">'+esc(name)+'</div>':'')+
-        (fact?'<p class="locfact">'+esc(fact)+'</p>':'')+
-      '</div></div>';
+      '<div class="lochero"><img class="locimg" alt="" src="'+esc(art)+'">'+
+        '<div class="locsky">'+
+          '<div class="locleft">'+
+            (name?'<div class="locname">'+esc(name)+tag+'</div>':'')+
+            (fact?'<div class="locnote">'+esc(fact)+'</div>':'')+
+          '</div>'+
+          '<div class="locright">'+
+            '<b class="loctime num" data-clk="loc">'+esc(c.loc)+'</b>'+
+            wxbit+
+            '<span class="lochk" data-clk="hk"'+(c.hk?'':' style="display:none"')+'>'+esc(c.hk)+'</span>'+
+          '</div>'+
+        '</div></div>'+
+      (bits.length?'<div class="locextra">'+esc(bits.join(' · '))+'</div>':'')+
+      '</div>';
   }
   function secShut(id){ return id!=='s-itin' && !foldOpen[id]; }
   function foldHead(id, title, extra, right){
@@ -2928,7 +2962,6 @@
     fxFetch();                          // 自動匯率，同樣有守衛
     var h='<div class="page">';
     h+=locHeroHTML();
-    h+=glanceHTML();
     h+=tripHead(t);
     h+=quickRow();
     h+=itinSec();
@@ -6275,11 +6308,10 @@
   document.addEventListener('visibilitychange',function(){ if(!document.hidden) refreshIfChanged(); });
   setInterval(refreshIfChanged,45000);
   setInterval(function(){
-    var root=$('nowstrip'); if(!root) return;
+    var a=document.querySelector('[data-clk="loc"]'); if(!a) return;
     var c=glanceClocks(glanceShown());
-    var a=root.querySelector('[data-clk="loc"]');
-    if(a && a.textContent!==c.loc) a.textContent=c.loc;
-    var b=root.querySelector('[data-clk="hk"]');
+    if(a.textContent!==c.loc) a.textContent=c.loc;
+    var b=document.querySelector('[data-clk="hk"]');
     if(b){
       if(c.hk){ b.style.display=''; if(b.textContent!==c.hk) b.textContent=c.hk; }
       else b.style.display='none';
