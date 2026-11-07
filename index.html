@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261107-v44">
+<html lang="zh-HK" data-build="20261107-v45">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -718,16 +718,14 @@
          transition:box-shadow .14s,transform .14s; display:block; width:100%}
   .tcard:hover{box-shadow:var(--sh3,0 6px 20px rgba(0,0,0,.13)); transform:translateY(-2px)}
   .tcard.on{border-color:var(--acc)}
-  .tph{position:relative; height:124px; background-size:cover; background-position:center 45%;
-       background-repeat:no-repeat; background-color:var(--soft)}
-  .tph.noph{display:flex; align-items:center; justify-content:center}
-  .tph.noph em{color:#fff; opacity:.75}
-  .twhen{position:absolute; left:10px; bottom:10px; font-size:11.5px; font-weight:800;
+  .tph{position:relative; height:124px; background:var(--soft); overflow:hidden}
+  .tph img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 42%; display:block}
+  .twhen{position:absolute; z-index:2; left:10px; bottom:10px; font-size:11.5px; font-weight:800;
          padding:3px 8px; border-radius:20px; background:rgba(255,255,255,.94); color:var(--ink);
          letter-spacing:.02em; box-shadow:0 1px 4px rgba(0,0,0,.18)}
   .twhen.now{background:var(--acc); color:#fff}
   .twhen.past{background:rgba(0,0,0,.6); color:#fff}
-  .tnow{position:absolute; right:10px; top:10px; font-size:11px; font-weight:800; padding:3px 8px;
+  .tnow{position:absolute; z-index:2; right:10px; top:10px; font-size:11px; font-weight:800; padding:3px 8px;
         border-radius:20px; background:var(--ink); color:#fff; letter-spacing:.02em}
   .tinfo{padding:12px 13px 10px}
   .tnm{font-size:16px; font-weight:700; letter-spacing:-.02em; line-height:1.25;
@@ -914,7 +912,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261107-v44" style="padding-top:0">v44</div>
+        <div id="ver" data-build="20261107-v45" style="padding-top:0">v45</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -973,7 +971,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261107-v44';
+  var APP_VER='20261107-v45';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -3334,6 +3332,19 @@
     // 全部都唔達標（新行程／冷門地方）就隨便揀一張，好過空白
     return c[0].photoUrl;
   }
+  // 行程格封面用本地卡通，同首頁插畫同一套。Google 相片 URL 會過期，
+  // 過期就變灰格；冇相就變漸變加指南針。目的地對唔上就用海邊小鎮。
+  function tripCardArt(t){
+    var items=tripItems(t.id).filter(function(x){ return kd(x.kind).geo && x.lat!=null && x.lng!=null; });
+    items.sort(function(a,b){
+      var d=String(a.date||'9999').localeCompare(String(b.date||'9999'));
+      return d || ((a.ord||0)-(b.ord||0));
+    });
+    var lat=null, lng=null;
+    if(items.length){ lat=+items[0].lat; lng=+items[0].lng; }
+    var hint=String(t.dest||'')+' '+String(t.name||'');
+    return 'hero/'+heroRegion(lat, lng, hint)+'.webp';
+  }
   function tripDays(t){
     if(!t.start||!t.end) return 0;
     return Math.max(1, diffD(t.start,t.end)+1);
@@ -3369,14 +3380,12 @@
     }
     h+='<div class="tgrid">';
     ts.forEach(function(t,i){
-      var ph=tripPhoto(t), w=tripWhen(t);
+      var art=tripCardArt(t), w=tripWhen(t);
       var its=tripItems(t.id), done=its.filter(function(x){ return x.done; }).length;
       var nd=tripDays(t), cur=(t.id===state.settings.curTrip);
       var pct=its.length? Math.round(done/its.length*100) : 0;
       h+='<div class="tcard'+(cur?' on':'')+'" data-act="picktrip" data-id="'+t.id+'">'+
-        '<div class="tph'+(ph?'':' noph')+'"'+(ph?' style="background-image:url(\''+esc(ph)+'\')"':
-            ' style="background:linear-gradient(135deg,'+dayColor(i)+','+dayColor(i+3)+')"')+'>'+
-          (ph?'':'<em>'+ic('compass',30)+'</em>')+
+        '<div class="tph"><img alt="" src="'+esc(art)+'" onerror="this.onerror=null;this.src=\'hero/default.webp\'">'+
           '<span class="twhen '+w.cls+'">'+esc(w.txt)+'</span>'+
           (cur?'<span class="tnow">正在查看</span>':'')+
         '</div>'+
