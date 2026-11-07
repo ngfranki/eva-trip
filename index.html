@@ -140,22 +140,16 @@
   .ns-wx .dim{color:var(--muted); font-weight:650; font-size:13.5px}
   .ns-wx .ico{color:var(--ink2)}
 
-  /* 短封面 + 平面標題，唔再疊一張有陰影嘅大卡 */
-  /* 而家所在：相片做平靜背景，名字同一句地方介紹靠下，上面留白 */
-  .lochero{position:relative; min-height:228px; margin:6px -22px 28px; overflow:hidden;
-    background:linear-gradient(165deg,#b7c6d4,#d5ddd4 55%,#e4d8c6); color:#fff;
-    display:flex; flex-direction:column; justify-content:flex-end; padding:52px 22px 22px}
-  .locimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 42%}
-  .lochero::after{content:""; position:absolute; inset:0; pointer-events:none;
-    background:linear-gradient(180deg,rgba(16,20,24,.05) 0%,rgba(16,20,24,.02) 38%,rgba(16,20,24,.62) 100%)}
-  .locin{position:relative; z-index:1; max-width:34em}
-  .locname{font-size:30px; font-weight:750; letter-spacing:-.03em; line-height:1.15;
-    text-shadow:0 1px 10px rgba(0,0,0,.35)}
-  .locfact{margin:10px 0 0; font-size:14.5px; font-weight:600; line-height:1.5; max-width:36em;
-    color:rgba(255,255,255,.94); text-shadow:0 1px 8px rgba(0,0,0,.4);
+  /* 而家所在：卡通插畫做背景。字放喺淺色小卡，唔加暗色遮罩，幅畫保持光。 */
+  .lochero{position:relative; aspect-ratio:16/9; margin:6px -22px 28px; overflow:hidden;
+    background:#e7eef3; display:flex; flex-direction:column; justify-content:flex-end; padding:16px 16px 14px}
+  .locimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center}
+  .locin{position:relative; z-index:1; max-width:min(100%, 28em); align-self:flex-start;
+    background:rgba(255,255,255,.88); border-radius:16px; padding:12px 16px 13px;
+    box-shadow:0 8px 22px rgba(40,55,70,.08)}
+  .locname{font-size:26px; font-weight:750; letter-spacing:-.03em; line-height:1.15; color:#2c3844}
+  .locfact{margin:6px 0 0; font-size:14px; font-weight:600; line-height:1.45; color:#4d5b68;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
-  .locred{position:absolute; right:12px; top:10px; z-index:1; font-size:10px; font-weight:700;
-    color:rgba(255,255,255,.78); text-decoration:none; text-shadow:0 1px 4px rgba(0,0,0,.5)}
   .tripid{position:relative; padding:2px 44px 0 0; margin-bottom:6px}
   .tripid h1{margin:0; font-size:26px; font-weight:750; letter-spacing:-.03em; line-height:1.2}
   .tripid .sub{margin-top:10px; font-size:14px; color:var(--muted); font-weight:600; line-height:1.4}
@@ -785,8 +779,8 @@
     .mapwrap.open{display:block}
     .mapclose{position:absolute; top:12px; right:12px; z-index:6; background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:7px 14px; font-size:13.5px; font-weight:700}
     .page{padding:6px 18px 150px}
-    .lochero{margin:4px -18px 26px; min-height:210px; padding:48px 20px 20px}
-    .locname{font-size:28px}
+    .lochero{margin:4px -18px 26px; padding:14px 14px 12px}
+    .locname{font-size:24px}
     .tripid h1{font-size:24px}
     .nowstrip{margin:10px 0 28px; padding:16px 16px 15px}
     .ns-time b{font-size:26px}
@@ -880,7 +874,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261107-v36';
+  var APP_VER='20261107-v37';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1757,11 +1751,19 @@
       '<div class="ns-place">'+esc(place)+tag+'</div>'+wxRow+'</div>';
   }
 
-  // ---------- 而家所在：地名、一句介紹、一張平靜相片 ----------
-  // 相片走 Wikimedia Commons（免 key）。寺、神社、宮、廟、亭、教堂等一律唔用。
-  // 對唔到就用預先揀好嘅街景／自然相。結果留喺呢部機，開頁即刻出。
+  // ---------- 而家所在：地名、一句介紹、本地卡通插畫 ----------
+  // 插畫按最近地區揀（東京、札幌、十勝、阿寒、香港，其餘用海邊小鎮）。
+  // GPS 冇開就用行程而家嗰一站嘅座標。唔再打 Wikimedia 攞實物相。
+  // 一句介紹仍係中文維基，寺、神社、宮、廟、亭、教堂等字就唔顯示。
   var HERO_KEY='tripHero';
   var heroMem=null, heroBusy='';
+  var HERO_SPOTS=[
+    ['tokyo', 35.681, 139.767],
+    ['sapporo', 43.064, 141.347],
+    ['tokachi', 42.923, 143.204],
+    ['akan', 43.22, 144.24],
+    ['hongkong', 22.319, 114.169]
+  ];
   var HERO_EN={
     '札幌':'Sapporo','東京':'Tokyo','大阪':'Osaka','京都':'Kyoto','名古屋':'Nagoya',
     '福岡':'Fukuoka','廣島':'Hiroshima','広島':'Hiroshima','仙台':'Sendai',
@@ -1773,24 +1775,17 @@
     '香港':'Hong Kong','台北':'Taipei','臺北':'Taipei','首爾':'Seoul','曼谷':'Bangkok',
     '新加坡':'Singapore','倫敦':'London','巴黎':'Paris'
   };
-  var HERO_FALL={
-    '札幌':'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Sapporo_City_Skyline.jpg/960px-Sapporo_City_Skyline.jpg',
-    '東京':'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Tokyo_Marunouchi_in_Spring.jpg/960px-Tokyo_Marunouchi_in_Spring.jpg',
-    '香港':'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Hong_Kong_Harbour_Night_2019-06-11.jpg/960px-Hong_Kong_Harbour_Night_2019-06-11.jpg',
-    '*':'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Peyto_Lake_in_winter.jpg/960px-Peyto_Lake_in_winter.jpg'
-  };
   function sacred(s){
     var t=String(s||'');
     var bare=t.replace(/宮崎|宮古/g,'');
     if(/宮/.test(bare)) return true;
     return /temple|shrine|jinja|jingu|taisha|torii|pagoda|church|cathedral|chapel|mosque|buddha|buddhist|shinto|deity|goddess|altar|stupa|monastery|senso-?ji|kinkaku|ginkaku|fushimi|inari|meiji[\s_-]*jingu|todai-?ji|itsukushima|hachiman|daibutsu|寺|神社|神宮|神宫|大社|鳥居|鸟居|廟|庙|亭|佛|仏|菩薩|菩萨|觀音|观音|教堂|禮拜|礼拜|清真寺|五重塔|金閣|銀閣|银阁|稻荷|稲荷/i.test(t);
   }
-  function plainMeta(s){ return String(s||'').replace(/<[^>]+>/g,' '); }
   function heroRead(){
     if(heroMem) return heroMem;
     try{ heroMem=JSON.parse(localStorage.getItem(HERO_KEY)||'null'); }catch(e){ heroMem=null; }
     if(!heroMem || !heroMem.key) heroMem=null;
-    if(heroMem && sacred((heroMem.caption||'')+' '+(heroMem.fact||''))) heroMem=null;
+    if(heroMem && sacred(heroMem.fact||'')) heroMem=null;
     return heroMem;
   }
   function heroSave(h){
@@ -1832,9 +1827,25 @@
       else if(g.lat>35.4 && g.lat<35.9 && g.lng>139.3 && g.lng<140) safe='東京';
       else if(g.lat>22.15 && g.lat<22.6 && g.lng>113.8 && g.lng<114.45) safe='香港';
     }
-    return {key:safe||'', name:safe||''};
+    return {key:safe||'', name:safe||'', hint: (name||'')+' '+(addr||'')};
   }
-  function heroFallback(name){ return HERO_FALL[name]||HERO_FALL['*']; }
+  function heroRegion(lat, lng, hint){
+    var best='default', bd=170;
+    if(lat!=null && lng!=null && isFinite(+lat) && isFinite(+lng)){
+      HERO_SPOTS.forEach(function(s){
+        var d=hav([+lat,+lng],[s[1],s[2]]);
+        if(d<bd){ bd=d; best=s[0]; }
+      });
+      if(best!=='default') return best;
+    }
+    var b=String(hint||'');
+    if(/十勝|帯広|帶廣|obihiro/i.test(b)) return 'tokachi';
+    if(/阿寒|釧路|kushiro|akan/i.test(b)) return 'akan';
+    if(/札幌|小樽|sapporo|otaru/i.test(b)) return 'sapporo';
+    if(/東京|橫濱|横浜|箱根|tokyo|yokohama|hakone/i.test(b)) return 'tokyo';
+    if(/香港|hong\s*kong/i.test(b)) return 'hongkong';
+    return 'default';
+  }
   function tidyFact(raw){
     var t=String(raw||'').replace(/（[^）]*）|\([^)]*\)/g,'').replace(/\s+/g,' ').trim();
     var sent=(t.split('。')[0]||'').trim();
@@ -1862,100 +1873,41 @@
       cb(fact);
     }).catch(function(){ cb(''); });
   }
-  function heroPick(list, name){
-    var en=(HERO_EN[name]||'').toLowerCase(), best=null, bs=-1;
-    list.forEach(function(im){
-      if(!im.url || !/^image\//.test(im.mime||'')) return;
-      if((im.w||0)<480 || (im.h||0)<280) return;
-      if(sacred(im.blob)) return;
-      if(/nissan|silhouette|racing|自動車|賽車|赛车|formula|gtr\b/i.test(im.blob)) return;
-      var s=1;
-      if(im.w>=im.h) s+=2;
-      var tl=String(im.title||'').toLowerCase();
-      if(en && tl.indexOf(en)>=0) s+=4;
-      if(name && String(im.title||'').indexOf(name)>=0) s+=4;
-      if(/skyline|harbour|harbor|river|snow|canal|park|mountain|湖|海|川|雪|河|山/.test(im.blob)) s+=3;
-      if(/metro|station|駅|車站|鐵路|铁路|rail|train|jr east|jr 東|列車|電車/i.test(im.blob)) s-=4;
-      if(s>bs){ bs=s; best=im; }
-    });
-    return best;
-  }
-  function heroSearch(q, cb){
-    var u='https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*'
-      +'&generator=search&gsrnamespace=6&gsrlimit=8&gsrsort=relevance'
-      +'&prop=imageinfo&iiprop=url|mime|size|extmetadata&iiurlwidth=960&gsrsearch='+encodeURIComponent(q);
-    fetch(u).then(function(r){ return r.ok? r.json():null; }).then(function(j){
-      var pages=j && j.query && j.query.pages, out=[];
-      if(pages) Object.keys(pages).forEach(function(k){
-        var p=pages[k], ii=(p.imageinfo||[])[0];
-        if(!ii) return;
-        var meta=ii.extmetadata||{};
-        function mv(x){ return x && x.value ? x.value : ''; }
-        out.push({ title:p.title||'', mime:ii.mime||'', w:ii.thumbwidth||0, h:ii.thumbheight||0,
-          url:String(ii.thumburl||'').split('?')[0],
-          blob:plainMeta([p.title, mv(meta.ObjectName), mv(meta.ImageDescription), mv(meta.Categories)].join(' ')) });
-      });
-      cb(out);
-    }).catch(function(){ cb([]); });
-  }
-  function heroQueries(name){
-    var en=HERO_EN[name]||'', q=[];
-    if(en) q.push(en+' cityscape');
-    if(en) q.push(en+' street');
-    if(name) q.push(name+' 街景');
-    return q.slice(0,3);
-  }
-  function heroPhotos(name, cb){
-    var qs=heroQueries(name), i=0;
-    function next(){
-      if(i>=qs.length){ cb(null); return; }
-      var q=qs[i++];
-      heroSearch(q, function(list){
-        var hit=heroPick(list, name);
-        if(hit && !sacred(hit.blob)) cb(hit);
-        else next();
-      });
-    }
-    next();
-  }
   function heroKick(){
     var sub=heroSubject();
     if(!sub.key || sacred(sub.key)) return;
     var cache=heroRead();
-    if(cache && cache.key===sub.key && cache.photo && (Date.now()-(cache.at||0))<12*3600*1000) return;
+    if(cache && cache.key===sub.key && (Date.now()-(cache.at||0))<12*3600*1000) return;
     if(heroBusy===sub.key) return;
     heroBusy=sub.key;
-    var left=2, fact='', photo='', cap='';
-    function finish(){
-      if(--left) return;
+    heroWiki(sub.name, function(f){
       if(heroBusy===sub.key) heroBusy='';
-      if(!photo || sacred(cap)){ photo=heroFallback(sub.name); cap=''; }
-      if(sacred(fact)) fact='';
-      heroSave({ key:sub.key, name:sub.name, fact:fact, photo:photo, caption:cap, at:Date.now() });
+      var fact=f && !sacred(f) ? f : '';
+      heroSave({ key:sub.key, name:sub.name, fact:fact, at:Date.now() });
       tenkiPaint();
-    }
-    heroWiki(sub.name, function(f){ fact=f||''; finish(); });
-    heroPhotos(sub.name, function(hit){
-      if(hit){ photo=hit.url; cap=hit.blob||hit.title||''; }
-      finish();
     });
   }
   function locHeroHTML(){
     heroKick();
     var sub=heroSubject();
+    var g=glanceShown();
+    var lat=g.lat, lng=g.lng;
+    if(lat==null){
+      var st=currentStop();
+      if(st && st.lat!=null){ lat=st.lat; lng=st.lng; }
+    }
+    var art='hero/'+heroRegion(lat, lng, sub.hint)+'.webp';
     var cache=heroRead();
     var show=cache && sub.key && cache.key===sub.key ? cache : null;
-    var photo=show && show.photo && !sacred((show.caption||'')+' '+(show.fact||'')) ? show.photo : '';
     var name=(show && show.name) || sub.name || '';
     var fact=show && show.fact && !sacred(show.fact) ? show.fact : '';
-    if(sacred(name)){ name=''; photo=''; fact=''; }
-    return '<div class="lochero">'+(photo?'<img class="locimg" alt="" src="'+esc(photo)+'" onerror="this.remove()">':'')+
+    if(sacred(name)){ name=''; fact=''; }
+    return '<div class="lochero">'+
+      '<img class="locimg" alt="" src="'+esc(art)+'">'+
       '<div class="locin">'+
         (name?'<div class="locname">'+esc(name)+'</div>':'')+
         (fact?'<p class="locfact">'+esc(fact)+'</p>':'')+
-      '</div>'+
-      (photo?'<a class="locred" href="https://commons.wikimedia.org/" target="_blank" rel="noopener">Wikimedia</a>':'')+
-      '</div>';
+      '</div></div>';
   }
   function secShut(id){ return id!=='s-itin' && !foldOpen[id]; }
   function foldHead(id, title, extra, right){
