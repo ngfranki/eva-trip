@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261107-v41">
+<html lang="zh-HK" data-build="20261107-v42">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -103,6 +103,13 @@
                      white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .sfoot{margin-top:auto; padding:10px 16px 0; font-size:11px; color:var(--muted2)}
   .sfoot button{color:var(--muted); font-size:13px; display:block; padding:4px 0}
+  .verrow{display:flex; align-items:center; justify-content:space-between; gap:8px; padding-top:8px}
+  .verrow #ver{padding-top:0}
+  .sfoot .forceup{display:inline; color:var(--link); font-weight:700; font-size:13px; padding:6px 0}
+  #uptoast{position:fixed; z-index:200; left:50%; bottom:calc(18px + env(safe-area-inset-bottom));
+    transform:translateX(-50%); background:rgba(33,37,41,.9); color:#fff;
+    font-size:13px; font-weight:650; padding:8px 14px; border-radius:99px; pointer-events:none}
+  #uptoast[hidden]{display:none}
 
   /* ============ topbar ============ */
   .top{position:sticky; top:0; z-index:12; background:var(--surf); border-bottom:1px solid var(--line);
@@ -853,7 +860,10 @@
     <div class="sfoot">
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
-      <div id="ver" data-build="20261107-v41" style="padding-top:6px">v41</div>
+      <div class="verrow">
+        <div id="ver" data-build="20261107-v42" style="padding-top:0">v42</div>
+        <button class="forceup" data-act="forceup" type="button">強制更新</button>
+      </div>
     </div>
   </aside>
 
@@ -904,7 +914,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261107-v41';
+  var APP_VER='20261107-v42';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -6350,6 +6360,7 @@
       if(!fn||!v){ var m2=$('aiMsg'); if(m2) m2.textContent='尚未貼上內容'; return; }
       fn(v);
     }
+    else if(act==='forceup'){ forceUpdate(); }
     else if(act==='settings'){
       var gp = GOOG===true? '✅ 已接通' : (GOOG===false? '⚠️ 未接通（用 OpenStreetMap）' : '－ 未試過');
       var gm = mapKey()? (gState==='on'? '✅ Google 底圖' : (gState==='fail'? '⚠️ 載入失敗' : '⏳ 載入中')) : '－ 用 OpenStreetMap';
@@ -6449,14 +6460,96 @@
       }).catch(function(){});
     }
     addEventListener('load', function(){
-      navigator.serviceWorker.register('sw.js', { updateViaCache:'none' })
-        .catch(function(){ return navigator.serviceWorker.register('sw.js'); })
-        .then(swUpdate).catch(function(){});
+      navigator.serviceWorker.register('sw.js', { updateViaCache:'none' }).then(swUpdate).catch(function(){});
     });
-    addEventListener('visibilitychange', function(){ if(!document.hidden) swUpdate(); });
+    addEventListener('visibilitychange', function(){ if(!document.hidden){ swUpdate(); checkBuild(); } });
     addEventListener('focus', swUpdate);
-    addEventListener('pageshow', swUpdate);
+    addEventListener('pageshow', function(){ swUpdate(); checkBuild(); });
   }
+  var BUILD=document.documentElement.getAttribute('data-build')||'';
+  function showUpToast(msg){
+    var t=document.getElementById('uptoast');
+    if(!t){
+      t=document.createElement('div');
+      t.id='uptoast';
+      document.body.appendChild(t);
+    }
+    t.textContent=msg||'有新版，更新中…';
+    t.hidden=false;
+  }
+  function isTileCache(name){ return /-tiles$/.test(String(name||'')); }
+  function forceUpdate(){
+    showUpToast('更新中…');
+    // 只保證本機行程已寫入 localStorage。唔會清 localStorage / IndexedDB。
+    if(state) cacheSave();
+    function wipe(){
+      var next=function(){
+        var u=new URL(location.href);
+        u.searchParams.set('v', String(Date.now()));
+        location.replace(u.toString());
+      };
+      var dropSW=function(){
+        if(!('serviceWorker' in navigator)) return Promise.resolve();
+        return navigator.serviceWorker.getRegistrations().then(function(list){
+          return Promise.all((list||[]).map(function(r){ return r.unregister(); }));
+        });
+      };
+      var dropCache=function(){
+        if(!window.caches) return Promise.resolve();
+        return caches.keys().then(function(keys){
+          return Promise.all(keys.filter(function(k){ return !isTileCache(k); }).map(function(k){ return caches.delete(k); }));
+        });
+      };
+      dropSW().catch(function(){}).then(dropCache).catch(function(){}).then(next, next);
+    }
+    if(MODE==='cloud' && KEY && (dirty || pTimer)){
+      if(pTimer){ clearTimeout(pTimer); pTimer=null; }
+      persist();
+      var n=0;
+      (function waitSync(){
+        if(!dirty || n++>16){ wipe(); return; }
+        setTimeout(waitSync, 400);
+      })();
+      return;
+    }
+    wipe();
+  }
+  function checkBuild(){
+    if(!BUILD) return;
+    var u=new URL('version.json', location.href);
+    u.searchParams.set('t', String(Date.now()));
+    fetch(u.toString(), { cache:'no-store', credentials:'same-origin' })
+      .then(function(r){ return r.ok? r.json():null; })
+      .then(function(j){
+        var b=j && j.build;
+        if(!b || b===BUILD){
+          try{
+            sessionStorage.removeItem('swTried');
+            var cur=new URL(location.href);
+            if(cur.searchParams.get('b')){
+              cur.searchParams.delete('b');
+              history.replaceState(null, '', cur.pathname+cur.search+cur.hash);
+            }
+          }catch(e){}
+          return;
+        }
+        var tried='';
+        try{ tried=sessionStorage.getItem('swTried')||''; }catch(e){}
+        if(tried===b) return;
+        try{ sessionStorage.setItem('swTried', b); }catch(e){}
+        showUpToast();
+        var go=function(){
+          var next=new URL(location.href);
+          next.searchParams.set('b', b);
+          location.replace(next.toString());
+        };
+        if(!('serviceWorker' in navigator)){ go(); return; }
+        navigator.serviceWorker.getRegistration().then(function(reg){
+          if(reg) return reg.update().catch(function(){});
+        }).catch(function(){}).then(go);
+      }).catch(function(){});
+  }
+  checkBuild();
   (function(){
     var set=function(id,n2,sz){ var e=$(id); if(e) e.innerHTML=ic(n2,sz); };
     set('brandIc','compass',18); set('aiIc','spark',17); set('mapIc','map',16); set('aiHeadIc','spark',16);

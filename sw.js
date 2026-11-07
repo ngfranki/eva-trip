@@ -2,7 +2,7 @@
 // 目標：出門冇網都開得到 app、睇得返行程、之前睇過嘅地圖照樣有。
 // 注意：唔會批量預載地圖磚 —— OSM 嘅使用條款唔准 bulk download。
 // 只 cache 你自己睇過嘅磚（正常瀏覽行為），所以出門前喺 wifi 慢慢碌一次個地圖就會存低。
-const V = 'trip-v21';
+const V = 'trip-v22';
 const SHELL = `${V}-shell`;
 const TILES = `${V}-tiles`;
 const TILE_MAX = 1200;
@@ -17,11 +17,17 @@ const SHELL_URLS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(SHELL)
-      .then((c) => Promise.allSettled(SHELL_URLS.map((u) => c.add(u))))
-      .then(() => self.skipWaiting())
-  );
+  e.waitUntil((async () => {
+    const c = await caches.open(SHELL);
+    await Promise.allSettled(SHELL_URLS.map(async (u) => {
+      const abs = new URL(u, self.location).toString();
+      // index 唔好食 GitHub Pages 嘅 max-age=600，否則新 SW 預載都係舊頁
+      const fresh = u === './' || /index\.html$/.test(u);
+      const res = await fetch(abs, fresh ? { cache: 'no-store', credentials: 'same-origin' } : {});
+      if (res.ok) await c.put(u === './' ? './index.html' : u, res);
+    }));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (e) => {
@@ -84,8 +90,13 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // sw.js 自己一定要出網絡。如果由舊 SW 交返 cache，部手機會以為冇新版。
-  if (url.pathname.endsWith('/sw.js')) return;
+  // sw.js 同 version.json 一定要出網絡，而且唔寫入 cache。
+  if (url.pathname.endsWith('/sw.js') || url.pathname.endsWith('/version.json')) {
+    if (url.pathname.endsWith('/version.json')) {
+      e.respondWith(fetch(url.toString(), { cache: 'no-store', credentials: 'same-origin' }));
+    }
+    return;
+  }
 
   // 自己個 app：network-first（咁先收到新版），但一定要有 timeout。
   //
@@ -104,11 +115,15 @@ self.addEventListener('fetch', (e) => {
     e.respondWith((async () => {
       const cached = await caches.match(req, { ignoreSearch: true })
         || (isDoc ? await caches.match('./index.html') : null);
-      const net = fetch(req).then(async (res) => {
+      // GitHub Pages 對 index.html 落 max-age=600。navigation 用預設 cache 會攞到舊頁。
+      const netReq = isDoc
+        ? fetch(url.toString(), { cache: 'no-store', credentials: 'same-origin', redirect: 'follow' })
+        : fetch(req);
+      const net = netReq.then(async (res) => {
         if (res.ok) {
           const c = await caches.open(SHELL);
-          await c.put(req, res.clone());
           if (isDoc) await c.put('./index.html', res.clone());
+          else await c.put(req, res.clone());
         }
         return res;
       });
