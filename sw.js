@@ -2,7 +2,7 @@
 // 目標：出門冇網都開得到 app、睇得返行程、之前睇過嘅地圖照樣有。
 // 注意：唔會批量預載地圖磚 —— OSM 嘅使用條款唔准 bulk download。
 // 只 cache 你自己睇過嘅磚（正常瀏覽行為），所以出門前喺 wifi 慢慢碌一次個地圖就會存低。
-const V = 'trip-v23';
+const V = 'trip-v24';
 const SHELL = `${V}-shell`;
 const TILES = `${V}-tiles`;
 const TILE_MAX = 1200;
@@ -36,16 +36,13 @@ self.addEventListener('activate', (e) => {
     // trip-att 係用家自己預載嘅附件，換版唔好清走
     await Promise.all(ks.filter((k) => !k.startsWith(V) && k !== 'trip-att').map((k) => caches.delete(k)));
     await self.clients.claim();
-    // 舊頁冇 listener 都會被拉去新版。新 SW 已經 claim，呢次 navigation 由新 SW 處理。
+    // 唔好 client.navigate()。第一趟開頁（未入過暗號）activate 會整頁重載，
+    // 打緊嘅暗號即刻被清走，睇落好似點打都冇字。有 listener 嘅頁自己決定 reload；
+    // 打緊暗號就延後。
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    await Promise.all(all.map((client) => {
-      if (!client.navigate || !client.url) return Promise.resolve();
-      try {
-        const u = new URL(client.url);
-        if (u.origin !== self.location.origin) return Promise.resolve();
-      } catch (err) { return Promise.resolve(); }
-      return client.navigate(client.url).catch(() => {});
-    }));
+    all.forEach((client) => {
+      try { client.postMessage({ type: 'reload' }); } catch (err) {}
+    });
   })());
 });
 
