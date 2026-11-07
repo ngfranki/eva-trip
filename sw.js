@@ -2,7 +2,7 @@
 // 目標：出門冇網都開得到 app、睇得返行程、之前睇過嘅地圖照樣有。
 // 注意：唔會批量預載地圖磚 —— OSM 嘅使用條款唔准 bulk download。
 // 只 cache 你自己睇過嘅磚（正常瀏覽行為），所以出門前喺 wifi 慢慢碌一次個地圖就會存低。
-const V = 'trip-v19';
+const V = 'trip-v20';
 const SHELL = `${V}-shell`;
 const TILES = `${V}-tiles`;
 const TILE_MAX = 1200;
@@ -25,12 +25,22 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys()
-      // trip-att 係用家自己預載嘅附件，換版唔好清走
-      .then((ks) => Promise.all(ks.filter((k) => !k.startsWith(V) && k !== 'trip-att').map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
-  );
+  e.waitUntil((async () => {
+    const ks = await caches.keys();
+    // trip-att 係用家自己預載嘅附件，換版唔好清走
+    await Promise.all(ks.filter((k) => !k.startsWith(V) && k !== 'trip-att').map((k) => caches.delete(k)));
+    await self.clients.claim();
+    // 舊頁冇 listener 都會被拉去新版。新 SW 已經 claim，呢次 navigation 由新 SW 處理。
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    await Promise.all(all.map((client) => {
+      if (!client.navigate || !client.url) return Promise.resolve();
+      try {
+        const u = new URL(client.url);
+        if (u.origin !== self.location.origin) return Promise.resolve();
+      } catch (err) { return Promise.resolve(); }
+      return client.navigate(client.url).catch(() => {});
+    }));
+  })());
 });
 
 async function trimTiles() {
@@ -74,6 +84,9 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  // sw.js 自己一定要出網絡。如果由舊 SW 交返 cache，部手機會以為冇新版。
+  if (url.pathname.endsWith('/sw.js')) return;
+
   // 自己個 app：network-first（咁先收到新版），但一定要有 timeout。
   //
   // 🔴 2026-09-15 修（議會判為最高風險項）：舊版 `await fetch(req)` 冇 timeout。
@@ -84,12 +97,19 @@ self.addEventListener('fetch', (e) => {
   // 開個 app 睇「仲有幾遠、幾點天黑」。
   //
   // 所以：2.5 秒未返就即刻出 cache，但唔取消個 fetch，背景照更新落 cache。
+  // 開頁（navigation / index.html）如果先交咗舊 cache，網絡其後成功就叫頁面 reload 一次。
   const NET_MS = 2500;
+  const isDoc = req.mode === 'navigate' || /\/index\.html$/.test(url.pathname);
   if (url.origin === self.location.origin) {
     e.respondWith((async () => {
-      const cached = await caches.match(req);
+      const cached = await caches.match(req, { ignoreSearch: true })
+        || (isDoc ? await caches.match('./index.html') : null);
       const net = fetch(req).then(async (res) => {
-        if (res.ok) { const c = await caches.open(SHELL); await c.put(req, res.clone()); }
+        if (res.ok) {
+          const c = await caches.open(SHELL);
+          await c.put(req, res.clone());
+          if (isDoc) await c.put('./index.html', res.clone());
+        }
         return res;
       });
       // 背景更新失敗唔准變成 unhandled rejection
@@ -103,8 +123,19 @@ self.addEventListener('fetch', (e) => {
       const slow = new Promise((r) => setTimeout(() => r('SLOW'), NET_MS));
       try {
         const winner = await Promise.race([net, slow]);
-        if (winner === 'SLOW') return cached;      // 網絡太慢 → 即刻出手上嗰份
-        return winner;
+        if (winner === 'SLOW') {
+          if (isDoc) {
+            net.then((res) => {
+              if (!res || !res.ok) return;
+              return self.clients.matchAll({ type: 'window' }).then((cs) => {
+                cs.forEach((client) => client.postMessage({ type: 'shell' }));
+              });
+            }).catch(() => {});
+          }
+          return cached;      // 網絡太慢 → 即刻出手上嗰份
+        }
+        if (winner && winner.ok) return winner;
+        return cached;
       } catch (err) {
         return cached;                              // 網絡真係掛 → 出 cache
       }
