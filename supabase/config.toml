@@ -1,9 +1,11 @@
 # Gateway JWT check only. No secrets belong in this file.
 #
-# These four functions do not use a Supabase Auth user JWT.
+# These functions do not use a Supabase Auth user JWT.
 # trip-ai checks the x-client-info passphrase. trip-ask, trip-brief, and
 # hb-check check a secret in the JSON body. pg_cron calls the last three
 # with Content-Type and no Authorization header (see tools/setup_*.py).
+# tenki is a public read of tenki.jp (no secret). The browser sends only the
+# publishable apikey.
 #
 # verify_jwt stays off so the next deploy does not start requiring the
 # legacy anon JWT. This file does nothing until those functions are redeployed.
@@ -20,4 +22,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.hb-check]
+verify_jwt = false
+
+[functions.tenki]
 verify_jwt = false

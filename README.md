@@ -93,6 +93,12 @@ topbar 個橙色「而家」掣一撳就開：
 
 北海道十二月四點就天黑，室外行程排 15:30 之後基本摸黑 —— 呢個係做呢樣功能嘅原因。
 
+日本境內、而且嗰日喺今日起約兩星期內，會再顯示 [tenki.jp](https://tenki.jp/)（日本氣象協會）嘅今日／聽日／兩週預報（天氣、最高最低、降水概率），並連去原文。tenki.jp 冇官方 API，瀏覽器又被 CORS 擋住，所以經 Edge Function `tenki` 代攞，快取約兩小時。攞唔到、地點唔喺日本、或者日子超出預報窗，就照舊用上面嘅 Open-Meteo（或者往年同期）。
+
+**目前位置**：開行程會問一次 GPS（可以喺設定熄）。座標只留喺呢部機嘅記憶，用 POST 送去 `tenki` 揀最近市區，唔寫入行程、唔寫 log。人喺日本就出 tenki.jp；其他地方直接問 Open-Meteo（免 key）。地名用 BigDataCloud 嘅免 key 反向地理編碼，失敗就唔顯示名。拒絕定位就退回當日行程站點，再退 Open-Meteo。
+
+`tenki` 未 deploy 之前，畫面唔會出呢一欄，Open-Meteo 維持原樣。Deploy 見 `supabase/functions/tenki/index.ts` 開頭：`supabase functions deploy tenki --no-verify-jwt`，`verify_jwt = false`，唔使新 secret。唔好順手 redeploy `trip-ai`。
+
 ## 營業時間衝突
 
 Google 嘅全週營業時間已經存落 item，所以**零 API 成本**就比對得到：你排 19:00 但當日 17:00 關門、或者撞正休息日，直接喺該行提示。
@@ -177,6 +183,7 @@ share/data.json     分享資料（由 app 匯出）
 supabase/schema.sql 表 + RLS 暗號閘
 supabase/functions/
   trip-ai/index.ts  Edge Function（AI ＋ Google 代理）
+  tenki/index.ts    Edge Function（tenki.jp 日本預報，要另外 deploy）
 ```
 
 ## 每日總車程

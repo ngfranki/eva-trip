@@ -435,6 +435,28 @@
   .jma.load,.jma.stale{background:var(--soft); color:var(--muted2); font-weight:600}
   .jmawhen{font-weight:600; opacity:.7; font-size:11.5px}
   .jma a{margin-left:auto; color:inherit; text-decoration:underline; font-size:11.5px; opacity:.8}
+  /* tenki.jp：日本境內、預報窗內先出。橫向可滑，窄屏唔好撐破。 */
+  .tenki{margin:0 0 8px 18px}
+  .tenki-top{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+    font-size:12.5px; font-weight:700; color:var(--ink2); line-height:1.35}
+  .tenki-top b{color:var(--ink); font-weight:800}
+  .tenki-top span{font-weight:600; color:var(--muted)}
+  .tenki-top a{margin-left:auto; color:var(--link); font-size:11.5px; font-weight:700; text-decoration:none}
+  .tenki-scroll{display:flex; gap:6px; overflow-x:auto; margin-top:6px; padding-bottom:2px;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none}
+  .tenki-scroll::-webkit-scrollbar{height:0}
+  .tenki-d{flex:0 0 auto; width:68px; border:1px solid var(--line); border-radius:8px;
+    padding:5px 4px 6px; text-align:center; background:var(--soft2)}
+  .tenki-d.on{border-color:var(--acc); background:var(--acc-soft)}
+  .tenki-d i{display:block; font-style:normal; font-size:10.5px; color:var(--muted); font-weight:700}
+  .tenki-d b{display:block; font-size:11.5px; font-weight:800; line-height:1.25; margin-top:2px; word-break:break-word}
+  .tenki-d em{display:block; font-style:normal; font-size:11px; font-weight:700; margin-top:2px; font-variant-numeric:tabular-nums}
+  .tenki-d s{display:block; text-decoration:none; font-size:10.5px; color:var(--link); font-weight:700; margin-top:1px}
+  .tenki.load{font-size:12px; color:var(--muted2); font-weight:600; margin:0 0 8px 18px}
+  .here{margin:2px 0 12px; padding:8px 10px 8px; border:1px solid var(--line); border-radius:10px; background:var(--soft2)}
+  .here-k{font-size:11px; font-weight:800; letter-spacing:.04em; color:var(--muted); margin:0 0 4px}
+  .here .tenki,.here .tenki.load{margin:0}
+  .here .om{font-size:13px; font-weight:700; color:var(--ink2)}
   @media (prefers-color-scheme:dark){
     .jma.warn{background:#3A2A0C; color:#F5C06B}
     .jma.bad{background:#3A1414; color:#F09A94}
@@ -735,6 +757,8 @@
     .idx{left:0; top:10px}
     .rcard{margin-left:9px; padding-left:19px}
     .row{padding-left:12px}
+    .tenki,.tenki.load{margin-left:0}
+    .here{margin-left:0; margin-right:0}
   }
   @media (min-width:821px){ .mapclose{display:none} .mapbar{right:12px} }
 </style>
@@ -812,7 +836,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261027-v34';
+  var APP_VER='20261107-v35';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1177,7 +1201,9 @@
     var dr=dayDrive(d), rr=dayRoute(d);
     if(dr) bits.push('車程 '+minsTxt(dr.sec)+' · '+(dr.m/1000).toFixed(dr.m<10000?1:0)+'km'+
       (dr.real? (rr&&rr.traffic? '（計路況）':'') : '（估）'));
-    if(w && w.mx!=null){
+    // tenki.jp 已經覆蓋呢一日就唔好再疊一次 Open-Meteo 氣溫。車程同天黑照出。
+    var tk=tenkiHit(d);
+    if(!tk && w && w.mx!=null){
       bits.push(Math.round(w.mn)+'°~'+Math.round(w.mx)+'°');
       // 有具體雨雪量就唔好再講一次「雨」（舊版會出「雨 · 雨 24mm」）
       var amt='';
@@ -1185,7 +1211,7 @@
       else if(+w.pr>=1) amt='雨 '+(+w.pr).toFixed(0)+'mm';
       if(amt) bits.push(amt);
       else if(WXI[w.cd]) bits.push(WXI[w.cd]);
-    } else if(w && w.h && w.h.mx!=null){
+    } else if(!tk && w && w.h && w.h.mx!=null){
       // 超出 16 日預報窗 → 用往年同期實際數字，並且講明係往年
       bits.push('往年 '+Math.round(w.h.mn)+'°~'+Math.round(w.h.mx)+'°');
       if(w.h.sn!=null && w.h.sn>=0.3) bits.push('雪 '+(w.h.sn<1? w.h.sn.toFixed(1) : w.h.sn.toFixed(0))+'cm');
@@ -1198,6 +1224,242 @@
     }
     if(set) bits.push('天黑 '+set);
     return bits.join(' · ');
+  }
+
+  // ---------- tenki.jp（日本氣象協會）。經 Edge Function，瀏覽器打唔到。----------
+  // 只覆蓋日本、而且喺今日起約兩星期內。失敗、未 deploy、或者地點唔係日本：
+  // 呢度回空，上面 dayWx 繼續用 Open-Meteo／往年。
+  var TENKI_URL=SB+'/functions/v1/tenki';
+  var tenkiMem={}, tenkiBusy={};
+  var TENKI_EN=[
+    ['kawaguchiko','河口湖'],['karuizawa','軽井沢'],['yokohama','横浜'],['shinjuku','新宿'],
+    ['shibuya','渋谷'],['hakodate','函館'],['hiroshima','広島'],['kagoshima','鹿児島'],
+    ['nagasaki','長崎'],['kamakura','鎌倉'],['takayama','高山'],['sapporo','札幌'],
+    ['fushimi','伏見'],['asakusa','浅草'],['kanazawa','金沢'],['kumamoto','熊本'],
+    ['miyajima','宮島'],['niseko','ニセコ'],['furano','富良野'],['sendai','仙台'],
+    ['nagoya','名古屋'],['hakone','箱根'],['beppu','別府'],['otaru','小樽'],
+    ['kyoto','京都'],['osaka','大阪'],['tokyo','東京'],['nara','奈良'],
+    ['kobe','神戸'],['naha','那覇'],['ginza','銀座'],['ueno','上野'],
+    ['nikko','日光'],['atami','熱海']
+  ];
+  function inJapan(lat,lng){
+    if(lat==null||lng==null||!isFinite(+lat)||!isFinite(+lng)) return false;
+    lat=+lat; lng=+lng;
+    if(lat<24||lat>45.65||lng<122.9||lng>145.9) return false;
+    if(lat>33&&lat<38.8&&lng<131.05) return false;
+    if(lat<25.3&&lng<122) return false;
+    return true;
+  }
+  function tenkiWindow(d){
+    var t0=today();
+    return d>=t0 && d<=shift(t0,15);
+  }
+  function placeQuery(x){
+    var blob=((x&&x.addr)||'')+' '+((x&&x.name)||'');
+    var ms=blob.match(/[\u4e00-\u9fff]{1,12}(?:市[\u4e00-\u9fff]{1,8}区|[市区町村])/g);
+    if(ms&&ms.length){
+      var spec=ms.filter(function(s){ return /[区町村]$/.test(s); });
+      return (spec.length? spec[spec.length-1] : ms[ms.length-1]).slice(0,24);
+    }
+    var low=blob.toLowerCase(), best='', hit='';
+    TENKI_EN.forEach(function(p){
+      if(low.indexOf(p[0])>=0 && p[0].length>best.length){ best=p[0]; hit=p[1]; }
+    });
+    return hit;
+  }
+  function tenkiPlaces(d){
+    if(!tenkiWindow(d)) return [];
+    var items=dayItems(d).filter(function(x){ return x.lat!=null && x.lng!=null && inJapan(+x.lat,+x.lng); });
+    if(!items.length) return [];
+    var clusters=[];
+    items.forEach(function(x){
+      var hit=null;
+      for(var i=0;i<clusters.length;i++){
+        if(hav([clusters[i].lat,clusters[i].lng],[+x.lat,+x.lng])<35){ hit=clusters[i]; break; }
+      }
+      if(!hit) clusters.push({lat:+x.lat, lng:+x.lng, n:1, items:[x]});
+      else {
+        hit.n++;
+        hit.lat=(hit.lat*(hit.n-1)+ +x.lat)/hit.n;
+        hit.lng=(hit.lng*(hit.n-1)+ +x.lng)/hit.n;
+        hit.items.push(x);
+      }
+    });
+    return clusters.slice(0,3).map(function(c){
+      var best=c.items[0];
+      c.items.forEach(function(x){ if(x.kind==='stay' && best.kind!=='stay') best=x; });
+      var q=placeQuery(best);
+      return { key:(q||'·')+'|'+c.lat.toFixed(2)+','+c.lng.toFixed(2), q:q,
+               lat:+c.lat.toFixed(4), lng:+c.lng.toFixed(4) };
+    });
+  }
+  function tenkiHit(d){
+    var ps=tenkiPlaces(d);
+    for(var i=0;i<ps.length;i++){
+      var m=tenkiMem[ps[i].key];
+      if(!m||!m.ok||!m.days) continue;
+      for(var k=0;k<m.days.length;k++){
+        if(m.days[k].date===d && (m.days[k].high!=null || m.days[k].weather)) return m.days[k];
+      }
+    }
+    return null;
+  }
+  function tenkiPaint(){
+    var doc=$('doc'), y=doc? doc.scrollTop : 0;
+    if(view!=='home') render();
+    if(doc) doc.scrollTop=y;
+    if($('pan') && $('pan').__now) nowRender();
+  }
+  function tenkiLoad(p){
+    var m=tenkiMem[p.key];
+    var ttl=m ? (m.ok? 2*3600*1000 : 15*60*1000) : 0;
+    if(m && (Date.now()-m.at)<ttl) return m;
+    if(tenkiBusy[p.key]) return null;
+    tenkiBusy[p.key]=1;
+    var u=TENKI_URL+'?q='+encodeURIComponent(p.q||'')+'&lat='+encodeURIComponent(p.lat)+'&lng='+encodeURIComponent(p.lng);
+    // POST body，唔放 query。座標只係呢一個 request，唔寫入行程、唔入 localStorage。
+    fetch(TENKI_URL,{method:'POST', headers:{apikey:SBK, 'Accept':'application/json', 'Content-Type':'application/json'},
+      body:JSON.stringify({q:p.q||'', lat:p.lat, lng:p.lng})})
+      .then(function(r){ return r.ok? r.json() : null; })
+      .then(function(j){
+        delete tenkiBusy[p.key];
+        if(!j||j.ok!==true||!j.days) tenkiMem[p.key]={at:Date.now(), ok:false};
+        else { j.at=Date.now(); j.ok=true; tenkiMem[p.key]=j; }
+        tenkiPaint();
+      })
+      .catch(function(){
+        delete tenkiBusy[p.key];
+        tenkiMem[p.key]={at:Date.now(), ok:false};
+        tenkiPaint();
+      });
+    return null;
+  }
+  function tenkiTemp(x){
+    if(!x || (x.high==null && x.low==null)) return '';
+    return (x.high==null?'—':Math.round(x.high))+'°/'+(x.low==null?'—':Math.round(x.low))+'°';
+  }
+  function tenkiBox(m, d){
+    var days=m.days||[], hit=null, i;
+    for(i=0;i<days.length;i++) if(days[i].date===d) hit=days[i];
+    if(!hit) return '';
+    var when = hit.date===today()? '今日' : (hit.date===shift(today(),1)? '聽日' : md(hit.date));
+    var rainN = typeof hit.rain==='number'? hit.rain : null;
+    var rain = rainN==null? '' : ' · 降水 '+rainN+'%';
+    var h='<div class="tenki"><div class="tenki-top"><b>'+esc(m.place||'日本')+'</b><span>'+
+      esc(when+' '+(hit.weather||''))+' '+tenkiTemp(hit)+esc(rain)+'</span>'+
+      '<a href="'+esc(m.url||'https://tenki.jp/')+'" target="_blank" rel="noopener">tenki.jp</a></div>';
+    if(days.length>1){
+      h+='<div class="tenki-scroll">';
+      days.forEach(function(x){
+        h+='<div class="tenki-d'+(x.date===d?' on':'')+'"><i>'+esc(md(x.date))+'</i><b>'+esc(x.weather||'—')+
+          '</b><em>'+tenkiTemp(x)+'</em>'+(typeof x.rain==='number'?'<s>'+x.rain+'%</s>':'')+'</div>';
+      });
+      h+='</div>';
+    }
+    return h+'</div>';
+  }
+  function tenkiHTML(d){
+    var ps=tenkiPlaces(d);
+    if(!ps.length) return '';
+    var h='';
+    ps.forEach(function(p){
+      var m=tenkiLoad(p);
+      if(!m){
+        if(tenkiBusy[p.key]) h+='<div class="tenki load"><span class="spin"></span>取得 tenki.jp…</div>';
+        return;
+      }
+      if(!m.ok) return;
+      h+=tenkiBox(m, d);
+    });
+    return h;
+  }
+
+  // 目前位置：開 app 問一次 GPS。日本用 tenki 最近市區；其他地方用 Open-Meteo。
+  // 拒絕、日本以外 tenki 失敗、或者對唔到市區 → 呢張卡唔霸位，當日行程照用站點，再退 Open-Meteo。
+  // 座標只留喺記憶（同「而家」卡一樣），唔寫入會同步嘅 state。
+  var gpsPaused=false, hereFix=null, hereLabel='', hereLabelSig='', hereNameBusy='';
+  var hereOm=null, hereOmAt=0, hereOmBusy=false;
+  function hereKick(){
+    if(gpsPaused || gpsErr || gpsWatch!==null) return;
+    if(!navigator.geolocation){ gpsErr='這部裝置不支援定位'; return; }
+    gpsStart(null);
+  }
+  function hereSpec(){
+    if(!myPos || !inJapan(+myPos.lat,+myPos.lng)) return null;
+    var lat=+myPos.lat, lng=+myPos.lng;
+    return { key:'here|'+lat.toFixed(2)+','+lng.toFixed(2), q:'', lat:+lat.toFixed(3), lng:+lng.toFixed(3) };
+  }
+  function hereName(){
+    if(!myPos) return;
+    var sig=(+myPos.lat).toFixed(2)+','+(+myPos.lng).toFixed(2);
+    if(hereLabelSig===sig || hereNameBusy===sig) return;
+    hereNameBusy=sig;
+    var u='https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+(+myPos.lat).toFixed(3)+
+      '&longitude='+(+myPos.lng).toFixed(3)+'&localityLanguage=zh';
+    fetch(u).then(function(r){ return r.ok? r.json():null; }).then(function(j){
+      if(hereNameBusy!==sig) return;
+      hereNameBusy=''; hereLabelSig=sig; hereLabel='';
+      if(!j){ tenkiPaint(); return; }
+      var loc=String(j.locality||'').trim(), city=String(j.city||'').trim(), ctry=String(j.countryName||'').trim();
+      var name = loc && loc!==city ? loc : (city && city!==ctry ? city : '');
+      if(/[+／]/.test(name) || name.length>24) name='';
+      hereLabel=name;
+      tenkiPaint();
+    }).catch(function(){ if(hereNameBusy===sig){ hereNameBusy=''; hereLabelSig=sig; hereLabel=''; } });
+  }
+  function hereOmGo(){
+    if(!myPos) return;
+    var sig=(+myPos.lat).toFixed(2)+','+(+myPos.lng).toFixed(2);
+    if(hereOm && hereOm.sig===sig && (Date.now()-hereOmAt)<30*60*1000) return;
+    if(hereOmBusy) return;
+    hereOmBusy=true;
+    var u='https://api.open-meteo.com/v1/forecast?latitude='+(+myPos.lat).toFixed(2)+
+      '&longitude='+(+myPos.lng).toFixed(2)+
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'+
+      '&timezone=auto&forecast_days=1';
+    fetch(u).then(function(r){ return r.ok? r.json():null; }).then(function(j){
+      hereOmBusy=false;
+      var d=j&&j.daily;
+      if(d && d.time && d.time[0]){
+        hereOm={sig:sig, date:d.time[0], cd:d.weather_code[0], mx:d.temperature_2m_max[0],
+                mn:d.temperature_2m_min[0], rain:d.precipitation_probability_max[0]};
+        hereOmAt=Date.now();
+      }
+      tenkiPaint();
+    }).catch(function(){ hereOmBusy=false; tenkiPaint(); });
+  }
+  function hereOmHTML(){
+    hereName(); hereOmGo();
+    var who=hereLabel? ' · '+esc(hereLabel) : '';
+    if(!hereOm || hereOm.sig!==(+myPos.lat).toFixed(2)+','+(+myPos.lng).toFixed(2)){
+      return '<div class="here"><div class="here-k">目前位置'+who+'</div><div class="tenki load"><span class="spin"></span>取得目前位置天氣…</div></div>';
+    }
+    var bits=['今日'];
+    if(WXI[hereOm.cd]) bits.push(WXI[hereOm.cd]);
+    if(hereOm.mx!=null && hereOm.mn!=null) bits.push(Math.round(hereOm.mn)+'°/'+Math.round(hereOm.mx)+'°');
+    if(typeof hereOm.rain==='number') bits.push('降水 '+hereOm.rain+'%');
+    return '<div class="here"><div class="here-k">目前位置'+who+'</div><div class="om">'+esc(bits.join(' · '))+'</div></div>';
+  }
+  function hereHTML(){
+    if(gpsPaused || gpsErr) return '';
+    if(!myPos){
+      if(gpsWatch!==null) return '<div class="here"><div class="here-k">目前位置</div><div class="tenki load"><span class="spin"></span>取得目前位置…</div></div>';
+      return '';
+    }
+    if(inJapan(+myPos.lat,+myPos.lng)){
+      var p=hereSpec(); if(!p) return hereOmHTML();
+      var m=tenkiLoad(p);
+      if(!m){
+        if(tenkiBusy[p.key]) return '<div class="here"><div class="here-k">目前位置</div><div class="tenki load"><span class="spin"></span>取得 tenki.jp…</div></div>';
+        return hereOmHTML();
+      }
+      if(!m.ok) return hereOmHTML();
+      var box=tenkiBox(m, today());
+      if(!box) return hereOmHTML();
+      var who=m.place? ' · '+esc(m.place) : (hereLabel? ' · '+esc(hereLabel) : '');
+      return '<div class="here"><div class="here-k">目前位置'+who+'</div>'+box+'</div>';
+    }
+    return hereOmHTML();
   }
 
   // ---------- state / migration ----------
@@ -2202,6 +2464,7 @@
       $('main').innerHTML=homeView();
       $('toc').innerHTML=toc();
       var v0=$('ver'); if(v0) v0.textContent='v '+APP_VER;
+      hereKick();
       return;
     }
     ensureList();
@@ -2221,6 +2484,7 @@
     $('toc').innerHTML=toc();
     var v=$('ver'); if(v) v.textContent='v '+APP_VER;
     drawMap();
+    hereKick();
   }
   // 封面：揀個有相、評分最高嘅地點做 hero；冇就用漸變
   // ==================== 首頁：行程格 ====================
@@ -2608,6 +2872,7 @@
     var ds=days();
     if(!ds.length) return '<div class="sec" id="s-itin"><div class="sech">'+ic('chev',13,'chev')+'<h2>行程</h2></div><div class="panel pad"><div class="empty">未定日期<br>按右上角 ⋯ 輸入出發／返程日</div></div></div>';
     var h='<div class="sec" id="s-itin"><div class="sech big">'+ic('chev',13,'chev')+'<h2>行程</h2><span class="n">'+ds.length+' 日</span></div>';
+    h+=hereHTML();
     ds.forEach(function(d,i){
       var arr=dayItems(d), c=dayColor(i), tot=sumHome(arr);
       var wxl=dayWx(d);
@@ -2615,7 +2880,8 @@
          '<h3>第'+(i+1)+'日</h3><span class="dd">'+longD(d)+'</span><span class="sp"></span>'+
          (tot?'<span class="tot">'+money(tot)+'</span>':'')+
          '<button class="kebab" data-act="daymenu" data-d="'+d+'">⋯</button></div>'+
-         (wxl?'<div class="dayw">'+esc(wxl)+'</div>':'');
+         (wxl?'<div class="dayw">'+esc(wxl)+'</div>':'')+
+         tenkiHTML(d);
       h+='<div class="panel" data-drop="day:'+d+'">';
       if(arr.length){
         h+='<div class="rows">';
@@ -3838,10 +4104,12 @@
     if(gpsWatch!==null){ if(cb) cb(true); return; }
     gpsErr='';
     gpsWatch=navigator.geolocation.watchPosition(function(pos){
-      myPos={ lat:pos.coords.latitude, lng:pos.coords.longitude,
-              acc:pos.coords.accuracy, at:Date.now() };
+      var lat=pos.coords.latitude, lng=pos.coords.longitude;
+      var moved=!hereFix || hav([hereFix.lat,hereFix.lng],[lat,lng])>1.2;
+      myPos={ lat:lat, lng:lng, acc:pos.coords.accuracy, at:Date.now() };
       gpsErr='';
-      if($('pan').__now) nowRender();
+      if(moved){ hereFix={lat:lat, lng:lng}; tenkiPaint(); }
+      else if($('pan') && $('pan').__now) nowRender();
       if(gmap) meMarker();
       if(cb){ var f=cb; cb=null; f(true); }
     }, function(e){
@@ -3852,6 +4120,7 @@
     }, {enableHighAccuracy:true, maximumAge:15000, timeout:20000});
   }
   function gpsStop(){
+    gpsPaused=true; hereFix=null;
     if(gpsWatch!==null){ try{ navigator.geolocation.clearWatch(gpsWatch); }catch(e){} gpsWatch=null; }
     myPos=null;
     if(gMe){ try{ gMe.setMap(null); }catch(e){} gMe=null; }
@@ -4015,8 +4284,10 @@
        '<b>第'+(i+1)+'日 · '+longD(d)+(d===td? ' · 今日':'')+'</b>'+
        '<button class="tdb" data-act="tdday" data-d="'+(ds[i+1]||'')+'"'+(i>=ds.length-1?' disabled':'')+'>›</button>'+
        '</div>';
+    if(d===today()) h+=hereHTML();
     var wl=dayWx(d);
     if(wl) h+='<div class="tdwx">'+esc(wl)+'</div>';
+    h+=tenkiHTML(d);
     var jp=dayPt(d);
     if(jp) h+=jmaHTML(jp.lat, jp.lng, function(){ if($('pan').__now && nowTab==='today') nowRender(); });
     var lp=legFromPrev(d);
@@ -4310,6 +4581,7 @@
       '<button class="ntab'+(nowTab==='near'?' on':'')+'" data-act="nowtab" data-t="near">附近</button>'+
       '</div><div id="nowBox" class="nowwrap"></div>');
     $('pan').__now=1;
+    gpsPaused=false;
     nowRender();
     if(nowTab==='now' && !gpsOn()) gpsStart(function(){ nowRender(); });
     if(nowTimer) clearInterval(nowTimer);
@@ -5502,7 +5774,7 @@
         '<div class="fld" style="margin-top:16px"><label>定位（GPS）</label>'+
         '<div class="inp" style="background:var(--soft2)">'+(gpsOn()? '✅ 開住 · 精度 ±'+(myPos?Math.round(myPos.acc)+'m':'取得中') : (gpsErr? '⚠️ '+esc(gpsErr) : '－ 未開'))+'</div>'+
         '<div class="hint">「現在位置」卡會自動開啟。位置<b>只保留在你的裝置</b>，不會儲存到雲端、不會傳送給第三方；'+
-        '只用來計算「由你目前位置到下一站有多遠」和「現場天氣」。</div></div>'+
+        '只用來計算「由你目前位置到下一站有多遠」、「現場天氣」和「目前位置的今日天氣」。座標不會寫入行程。</div></div>'+
         '<div class="btnrow"><button class="btn ghost" data-act="gpsoff">關閉定位</button></div>'+
         '<button class="btn ghost" data-act="offline" style="margin-top:18px">'+ic('note',15,'inline')+' 離線準備（預載附件）</button>'+
         '<button class="btn ghost" data-act="enrichall" style="margin-top:8px">'+ic('spark',15,'inline')+' 補齊未有 Google 資料的地點</button>'+
