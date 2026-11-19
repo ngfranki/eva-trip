@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261119-v56">
+<html lang="zh-HK" data-build="20261119-v57">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -988,6 +988,39 @@
   }
   @media print{.travelFriends,.friendStamp{display:none}}
 
+  .tripDock{display:none}
+  @media screen{
+    .tripPage{width:100%;max-width:488px;padding-inline:clamp(18px,5vw,30px)}
+    .tripPage .triphead{margin-block:18px 25px}
+    #s-itin>.sech{gap:8px;margin:0 0 11px;padding-left:3px}
+    #s-itin>.sech>.friendStamp{width:39px;height:39px}
+    #s-itin>.sech>.n{margin-left:2px;padding-left:9px;border-left:1px solid var(--rule)}
+    .dayPages{border:1px solid var(--rule);border-radius:15px;background:color-mix(in srgb,var(--paper) 88%,var(--surf));padding-inline:clamp(10px,3vw,17px)}
+    .dayPages>.day+.day{border-top:1px solid color-mix(in srgb,var(--rule) 70%,transparent)}
+    .dayPages .daySummary{grid-template-columns:54px minmax(0,1fr) 14px;gap:14px;min-height:55px;padding:7px 0;border:0}
+    .dayPages .daySummary b{border-radius:12px;font-size:12px;line-height:1.5;padding:3px 0;white-space:nowrap}
+    .dayPlace{display:flex;align-items:baseline;flex-wrap:wrap;gap:1px 10px;min-width:0}
+    .dayPlace strong{max-width:100%;overflow-wrap:anywhere}
+    .dayPlace small{font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .daySummary i{display:grid;place-items:center}
+    .daySummary i svg{transform:rotate(-90deg)}
+    .daySummary[aria-expanded=true] i svg{transform:rotate(0)}
+    .dayPages .daySummary[aria-expanded=true]{background:transparent}
+    .dayPages .day:has(>.daySummary[aria-expanded=true]){padding-bottom:12px}
+    .dayPages .daySummary:focus-visible{outline:2px solid var(--moss);outline-offset:1px;border-radius:5px}
+  }
+  @media screen and (max-width:820px){
+    .doc:has(.tripPage){margin-bottom:calc(50px + env(safe-area-inset-bottom))}
+    .doc:has(.tripPage) .tripPage{padding-bottom:36px}
+    .doc:has(.tripPage) .tripDock{display:flex;justify-content:center;align-items:center;position:fixed;inset:auto 0 0;z-index:13;
+      gap:clamp(8px,3vw,18px);background:var(--paper);border-top:1px solid var(--thread);padding:2px 10px calc(3px + env(safe-area-inset-bottom))}
+    .tripDock span{display:flex}.tripDock #dockTop{transform:rotate(180deg)}
+    .tripDock button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding-inline:6px;gap:6px;font-size:13px;font-weight:650;color:var(--moss)}
+    body:has(.tripPage) .chatfab,body:has(.tripPage) .totop{display:none}
+    .doc:has(.tripPage) .top{padding-inline:max(8px,calc((100% - 460px)/2))}
+  }
+  @media screen and (prefers-color-scheme:dark){.tripDock button{color:#b8cfaa}}
+
 </style>
 </head>
 <body>
@@ -1013,7 +1046,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261119-v56" style="padding-top:0">v56</div>
+        <div id="ver" data-build="20261119-v57" style="padding-top:0">v57</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1033,6 +1066,11 @@
     </div>
     <div class="netbar" id="netbar">📴 離線中 — 可以查看和修改，重新連線後會自動同步</div>
     <div id="main"></div>
+    <nav class="tripDock" aria-label="旅程捷徑">
+      <button type="button" data-act="doclibrary"><span id="dockFiles"></span>全部附件</button>
+      <button type="button" data-act="ai"><span id="dockChat"></span>問行程</button>
+      <button type="button" data-act="totop"><span id="dockTop"></span>回頁頂</button>
+    </nav>
   </main>
 
   <section class="mapwrap" id="mapwrap">
@@ -1074,7 +1112,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261119-v56';
+  var APP_VER='20261119-v57';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -4035,10 +4073,10 @@
   function itinSec(){
     var ds=days();
     if(!ds.length) return '<div class="sec" id="s-itin"><div class="sech"><h2>行程</h2></div><div class="empty">未定日期。按右上角 ⋯ 輸入出發同返程日。</div></div>';
-    var h='<div class="sec" id="s-itin"><div class="sech"><span class="friendStamp" aria-hidden="true"></span><h2>每日行程</h2><span class="n">'+ds.length+' 日</span></div>';
+    var h='<div class="sec" id="s-itin"><div class="sech"><span class="friendStamp" aria-hidden="true"></span><h2>每日行程</h2><span class="n">'+ds.length+' 日</span></div><div class="dayPages">';
     ds.forEach(function(d,i){
       var dest=dayDestination(d), opened=expandedDay===curTrip().id+'|'+d || printDays;
-      h+='<div class="day daySumWrap" id="s-d'+i+'"><button class="daySummary" data-act="showday" data-d="'+d+'" aria-expanded="'+opened+'"><b>Day '+(i+1)+'</b><strong>'+esc(dest.name)+'</strong><small>'+md(d)+' '+dow(d)+'</small><i>'+(opened?'⌄':'›')+'</i></button>';
+      h+='<div class="day daySumWrap" id="s-d'+i+'"><button class="daySummary" data-act="showday" data-d="'+d+'" aria-expanded="'+opened+'"><b>Day '+(i+1)+'</b><span class="dayPlace"><strong>'+esc(dest.name)+'</strong><small>'+md(d)+'（'+dow(d)+'）</small></span><i>'+ic('chev',13)+'</i></button>';
       if(!opened){h+='</div>';return;}
       var arr=dayItems(d), c=dayColor(i), tot=sumHome(arr);
       var schedule=new Map(dayPlan(d).map(function(r){return [r.x.id,r];}));
@@ -4083,7 +4121,7 @@
       if(lg && lg.text) h+='<div class="jr" data-act="journal" data-d="'+d+'">'+(lg.mood?'<span class="mo">'+esc(lg.mood)+'</span>':'')+esc(lg.text)+'</div>';
       h+='</div>';
     });
-    return h+'</div>';
+    return h+'</div></div>';
   }
   // 地點資料（note）顯示用。三件事：
   //   a. 入面嘅 URL 變做撳得到嘅連結 —— 你 46 條 maps.app.goo.gl 全部撳唔到，等於冇
@@ -7216,7 +7254,7 @@
   checkBuild();
   (function(){
     var set=function(id,n2,sz){ var e=$(id); if(e) e.innerHTML=ic(n2,sz); };
-    set('brandIc','compass',18); set('aiIc','spark',17); set('mapIc','map',16); set('aiHeadIc','spark',16); set('chatFab','chat',26); set('toTop','chev',18);
+    set('brandIc','compass',18); set('aiIc','spark',17); set('mapIc','map',16); set('aiHeadIc','spark',16); set('dockFiles','copy',16); set('dockChat','chat',17); set('dockTop','chev',15); set('chatFab','chat',26); set('toTop','chev',18);
     var docScroll=$('doc');
     if(docScroll){
       var syncToTop=function(){
