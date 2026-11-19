@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261119-v51">
+<html lang="zh-HK" data-build="20261119-v52">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -153,9 +153,9 @@
   .locblock{margin:8px -22px 22px}
   .lochero{position:relative; aspect-ratio:2.1; overflow:hidden; background:#e7eef3}
   .locimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:24% 86%; display:block}
-  .lochero.wxcloud .locimg,.lochero.wxpart .locimg{filter:saturate(.8)}
-  .lochero.wxrain .locimg,.lochero.wxstorm .locimg{filter:saturate(.62) brightness(.84)}
-  .lochero.wxsnow .locimg{filter:saturate(.68) brightness(1.06)}
+  .nearbyplaces{display:flex;gap:8px;align-items:center;padding:6px 14px;font-size:13px;color:var(--muted)}
+  .nearbyplaces select{min-width:0;max-width:75%;border:1px solid var(--line);border-radius:8px;padding:4px;font:inherit;background:var(--paper);color:var(--ink)}
+  .locimg{background-repeat:no-repeat}
   .lochero .locwx .num{font-size:clamp(25px,4vw,38px)}
   .lochero::after{content:"";position:absolute;inset:0 0 auto;height:44%;background:linear-gradient(#fffaeddf,transparent);pointer-events:none}
   .precip{position:absolute;inset:0;pointer-events:none;background-repeat:repeat}
@@ -175,6 +175,7 @@
   .locname,.loctime,.locwx,.locnote,.lochk,.loccond{
     text-shadow:0 1px 0 rgba(255,255,255,.92), 0 0 10px rgba(255,255,255,.8)}
   .locname{font-size:22px; font-weight:600; letter-spacing:-.02em; line-height:1.15; color:#2a3844}
+  .locname{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
   .loctag{font-style:normal; margin-left:6px; font-size:11px; font-weight:600; color:#5c6b78;
     border:1px solid rgba(90,105,120,.28); border-radius:99px; padding:0 5px; vertical-align:2px}
   .locnote{margin-top:3px; font-size:12.5px; font-weight:600; line-height:1.3; color:#5a6976;
@@ -927,7 +928,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261119-v51" style="padding-top:0">v51</div>
+        <div id="ver" data-build="20261119-v52" style="padding-top:0">v52</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -976,7 +977,8 @@
 </section>
 <div id="menuHost"></div>
 
-<script src="./scene-weather.js"></script>
+<script src="./scene-keys.js"></script>
+<script src="./trip-scenery.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
@@ -987,7 +989,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261119-v51';
+  var APP_VER='20261119-v52';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1333,9 +1335,9 @@
       save(true); render();
     }).catch(function(){ wxBusy=false; wxFail=Date.now(); });
   }
-  var WXI={0:'晴',1:'大致晴',2:'多雲',3:'密雲',45:'霧',48:'霧',51:'微雨',53:'微雨',55:'微雨',
+  var WXI={0:'晴',1:'大致晴',2:'多雲',3:'密雲',45:'霧',48:'霧',51:'微雨',53:'微雨',55:'微雨',56:'凍毛雨',57:'凍毛雨',
     61:'雨',63:'雨',65:'大雨',66:'凍雨',67:'凍雨',71:'雪',73:'雪',75:'大雪',77:'雪粒',
-    80:'雨',81:'雨',82:'大雨',85:'陣雪',86:'大陣雪',95:'雷雨',96:'雷雨',99:'雷雨'};
+    80:'雨',81:'雨',82:'大雨',85:'陣雪',86:'大陣雪',95:'雷雨',96:'雷雨伴冰雹',99:'強雷雨伴冰雹'};
   // 每日標題嗰行：氣溫 · 雪 · 天黑
   // 全日總車程。真數（Google）先，冇就用逐段直線估算加埋並標明「估」。
   function dayDrive(d){
@@ -1646,15 +1648,21 @@
   }
   function glanceSave(g){
     glanceMem=g;
+    var remembered=g.sceneKey;
+    if(g.src==='gps' && myPos){
+      var trip=curTrip(), plan=TripScenery.planned(trip,new Date());
+      remembered=TripScenery.resolve(trip,myPos.lat,myPos.lng,hav,selectedScene,plan && plan.key,myPos.acc).key;
+    }
     try{
       localStorage.setItem(GLANCE_KEY, JSON.stringify({
         at:g.at, sig:g.sig, lat:+Number(g.lat).toFixed(2), lng:+Number(g.lng).toFixed(2),
+        sceneKey:remembered,
         place:g.place||'', src:g.src||'', tz:g.tz==null?null:g.tz,
         temp:g.temp==null?null:g.temp, high:g.high==null?null:g.high,
         low:g.low==null?null:g.low, rain:typeof g.rain==='number'?g.rain:null,
         feels:g.feels==null?null:g.feels, wind:g.wind==null?null:g.wind,
         hum:g.hum==null?null:g.hum, uv:g.uv==null?null:g.uv,
-        isDay:g.isDay, snowfall:g.snowfall, depth:g.depth, rainNow:g.rainNow,
+        gust:g.gust, visibility:g.visibility, isDay:g.isDay, snowfall:g.snowfall, depth:g.depth, rainNow:g.rainNow,
         code:g.code==null?null:g.code, label:g.label||'',
         tmrCode:g.tmrCode==null?null:g.tmrCode, tmrLabel:g.tmrLabel||'',
         tmrHigh:g.tmrHigh==null?null:g.tmrHigh, tmrLow:g.tmrLow==null?null:g.tmrLow,
@@ -1768,7 +1776,7 @@
     glanceBusy=sig;
     var u='https://api.open-meteo.com/v1/forecast?latitude='+sig.split(',')[0]+
       '&longitude='+sig.split(',')[1]+
-      '&current=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,wind_speed_10m,is_day,snowfall,rain,showers&hourly=snow_depth'+
+      '&current=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,visibility,is_day,snowfall,rain,showers&hourly=snow_depth'+
       '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max'+
       '&timezone=auto&forecast_days=2';
     fetch(u).then(function(r){ return r.ok? r.json():null; }).then(function(j){
@@ -1784,7 +1792,7 @@
       var hourly=j.hourly||{}, hour=(cur.time||'').slice(0,13)+':00';
       var depthIndex=(hourly.time||[]).indexOf(hour);
       var rec={
-        isDay:cur.is_day, snowfall:cur.snowfall, rainNow:(cur.rain||0)+(cur.showers||0),
+        gust:cur.wind_gusts_10m, visibility:cur.visibility, isDay:cur.is_day, snowfall:cur.snowfall, rainNow:(cur.rain||0)+(cur.showers||0),
         depth:depthIndex>=0 && hourly.snow_depth ? hourly.snow_depth[depthIndex] : null,
         at:Date.now(), sig:sig, lat:+tgt.lat, lng:+tgt.lng,
         place:(tgt.src==='gps' && glancePlace())? glancePlace() : (tgt.place || (prev && prev.sig===sig ? prev.place : '') || ''),
@@ -1877,7 +1885,8 @@
       }
     }
     var tz=(wx && wx.tz!=null)? wx.tz : (lat!=null? lngTz(lng) : null);
-    return {src:src, place:place, lat:lat, lng:lng, wx:wx, tz:tz, denied:denied};
+    return {src:src, place:place, lat:lat, lng:lng, wx:wx, tz:tz, denied:denied,
+      cachedScene:!myPos && src==='gps' && cache ? cache.sceneKey : null};
   }
   function glanceClocks(s){
     var tz=s.tz;
@@ -2045,6 +2054,16 @@
       tenkiPaint();
     });
   }
+  function sceneStyle(art){
+    return 'background-image:url('+art.path+');background-size:'+art.cols*100+'% '+art.rows*100+'%;background-position:'+art.x+'% '+art.y+'%';
+  }
+  var selectedScene='';
+  document.addEventListener('change',function(e){
+    if(!e.target.matches('select[data-nearby-scenes]')) return;
+    selectedScene=e.target.value;
+    var block=e.target.closest('.locblock');
+    if(block) block.outerHTML=locHeroHTML();
+  });
   function locHeroHTML(){
     heroKick();
     var sub=heroSubject();
@@ -2054,7 +2073,15 @@
       var st=currentStop();
       if(st && st.lat!=null){ lat=st.lat; lng=st.lng; }
     }
-    var landmark=TripScenery.nearest(lat,lng,hav);
+    var trip=curTrip(), planned=TripScenery.planned(trip,new Date());
+    var hint=planned ? planned.key : '';
+    var nearby=TripScenery.resolve(trip,lat,lng,hav,selectedScene,hint,myPos && myPos.acc);
+    if(selectedScene && !nearby.options.some(function(o){return o.key===selectedScene;})) selectedScene='';
+    var landmark=nearby.key;
+    if(!selectedScene && g.cachedScene && SCENE_KEYS.includes(g.cachedScene) && TripScenery.entry(trip,g.cachedScene)){
+      landmark=g.cachedScene;
+      if(!nearby.options.some(function(o){return o.key===landmark;})) nearby.options=[];
+    }
     var cache=heroRead();
     var show=cache && sub.key && cache.key===sub.key ? cache : null;
     var name=(show && show.name) || sub.name || '';
@@ -2072,7 +2099,6 @@
     }
     var fresh=w.at && Date.now()-w.at<30*60000;
     if(fresh && w.isDay!=null) night=w.isDay===0;
-    var scene=TripScenery.condition(w,night);
     var lightClass=night?'scene-night':'';
     if(!night && solar && solar.rise && solar.set){
       function clockMinutes(value){var parts=value.split(':');return +parts[0]*60 + +parts[1];}
@@ -2080,23 +2106,41 @@
       if(minutes<clockMinutes(solar.rise)+120) lightClass='scene-morning';
       else if(minutes>clockMinutes(solar.set)-90) lightClass='scene-evening';
     }
-    var art='hero/scenes/'+(landmark||'default')+'/'+scene.image+'.webp';
-    if(landmark){
-      var landmarkName=TripScenery.places[landmark][0];
-      if(name!==landmarkName) fact='';
-      name=name && name!==landmarkName ? name+' · '+landmarkName : landmarkName;
+    var light=lightClass.replace('scene-','');
+    // After the dawn window, keep a morning activity until 11 local time.
+    var phase=!night && !light && c.loc<'11:00'?'morning':light;
+    var scene=TripScenery.condition(w,night,phase);
+    var art=TripScenery.artwork(landmark,scene,night,phase);
+    var exact=nearby.options.length>0 || g.cachedScene===landmark || (g.src==='stop' && hint===landmark);
+    var stop=TripScenery.entry(exact?trip:null,landmark);
+    if(stop){
+      if(name!==stop.place) fact='';
+      name=stop.place+(exact?'':'一帶');
     }
-
-    var tag=g.src==='stop'? '<i class="loctag">行程</i>' : '';
+    var selector='';
+    if(nearby.options.length>1){
+      selector='<label class="nearbyplaces">附近地點 <select data-nearby-scenes>'+nearby.options.map(function(o){
+        return '<option value="'+esc(o.key)+'"'+(o.key===landmark?' selected':'')+'>'+esc(o.place)+'</option>';
+      }).join('')+'</select></label>';
+    }
+    var tag=g.src==='stop'? '<i class="loctag">行程推算</i>' : '';
     function pair(lo,hi){
       if(lo==null && hi==null) return '';
       return (lo==null?'—':Math.round(lo)+'°')+' / '+(hi==null?'—':Math.round(hi)+'°');
     }
     function span(t){ return '<span>'+esc(t)+'</span>'; }
     var todayBits=[];
+    if(g.src==='gps' && myPos && myPos.acc>100) todayBits.push(span('定位約 ±'+Math.round(myPos.acc)+' 米'));
+    var specific={blizzard:'強風伴降雪',wind:'強風',sleet:'雨雪混合',downpour:'大雨',fog:'霧',heavysnow:'大雪',hail:'雷雨伴冰雹',freezingrain:'凍雨'};
+    if(specific[scene.kind]) cond=specific[scene.kind];
     if(scene.covered) todayBits.push(span('估算積雪 '+(w.depth<0.01?'不足 1':Math.round(w.depth*100))+' cm'));
     if(w.at && !fresh) todayBits.push(span('上次更新 '+hhmm(atTz(new Date(w.at),g.tz))));
-    if(cond) todayBits.push(span(cond));
+    if(cond) todayBits.push(span(w.code==null?'全日預報 · '+cond:cond));
+    else if(w.code==null){
+      var sig=lat!=null && lng!=null ? Number(lat).toFixed(2)+','+Number(lng).toFixed(2) : '';
+      var unavailable=navigator.onLine===false || (glanceFail && glanceFail.sig===sig);
+      todayBits.push(span(unavailable?'暫時未有當地天氣':'等緊當地天氣'));
+    }
     if(pair(w.low,w.high)) todayBits.push(span(pair(w.low,w.high)));
     if(typeof w.rain==='number') todayBits.push(span('降水 '+Math.round(w.rain)+'%'));
     if(w.feels!=null) todayBits.push(span('體感 '+Math.round(w.feels)+'°'));
@@ -2121,7 +2165,7 @@
           (cond?'<span class="loccond">'+esc(cond)+'</span>':'')+'</div>'
       : '';
     return '<div class="locblock">'+
-      '<div class="lochero '+skyClass+' '+lightClass+'"><img class="locimg" alt="" src="'+esc(art)+'">'+
+      '<div class="lochero '+skyClass+' '+lightClass+'"><div class="locimg" role="img" aria-label="'+esc((name||'旅途')+' · '+(cond||'旅程插畫'))+'" style="'+sceneStyle(art)+'"></div>'+
         (scene.covered && scene.sky?'<div aria-hidden="true" class="precip '+scene.sky+'"></div>':'')+
         '<div class="locsky">'+
           '<div class="locleft">'+
@@ -2134,7 +2178,7 @@
             '<span class="lochk" data-clk="hk"'+(c.hk?'':' style="display:none"')+'>'+esc(c.hk)+'</span>'+
           '</div>'+
         '</div></div>'+
-      strip+
+      selector+strip+
       '</div>';
   }
   function secShut(id){ return id!=='s-itin' && !foldOpen[id]; }
@@ -3395,10 +3439,19 @@
       var d=String(a.date||'9999').localeCompare(String(b.date||'9999'));
       return d || ((a.ord||0)-(b.ord||0));
     });
+    if(t.sceneStops && items.length){
+      var scenic=items.reduce(function(best,x){return coverScore(x)>coverScore(best)?x:best;},items[0]);
+      var match=TripScenery.resolve(t,+scenic.lat,+scenic.lng,hav);
+      if(match.options.length){
+        var panel=TripScenery.artwork(match.key,TripScenery.condition({code:0},false,''),false,'');
+        return '<span class="locimg" aria-hidden="true" style="'+sceneStyle(panel)+'"></span>';
+      }
+    }
     var lat=null, lng=null;
     if(items.length){ lat=+items[0].lat; lng=+items[0].lng; }
     var hint=String(t.dest||'')+' '+String(t.name||'');
-    return 'hero/'+heroRegion(lat, lng, hint)+'.webp';
+    var path='hero/'+heroRegion(lat,lng,hint)+'.webp';
+    return '<img alt="" src="'+esc(path)+'" onerror="this.onerror=null;this.src=\'hero/default.webp\'">';
   }
   function tripDays(t){
     if(!t.start||!t.end) return 0;
@@ -3441,7 +3494,7 @@
       var nd=tripDays(t), cur=(t.id===state.settings.curTrip);
       var pct=its.length? Math.round(done/its.length*100) : 0;
       h+='<div class="tcard'+(cur?' on':'')+'" data-act="picktrip" data-id="'+t.id+'">'+
-        '<div class="tph"><img alt="" src="'+esc(art)+'" onerror="this.onerror=null;this.src=\'hero/default.webp\'">'+
+        '<div class="tph">'+art+
           '<span class="twhen '+w.cls+'">'+esc(w.txt)+'</span>'+
           (cur?'<span class="tnow">正在查看</span>':'')+
         '</div>'+
@@ -4995,12 +5048,16 @@
     if(!navigator.geolocation){ gpsErr='這部裝置不支援定位'; if(cb) cb(false); return; }
     if(gpsWatch!==null){ if(cb) cb(true); return; }
     gpsErr='';
+    var lastScene='';
     gpsWatch=navigator.geolocation.watchPosition(function(pos){
       var lat=pos.coords.latitude, lng=pos.coords.longitude;
       var moved=!hereFix || hav([hereFix.lat,hereFix.lng],[lat,lng])>1.2;
       myPos={ lat:lat, lng:lng, acc:pos.coords.accuracy, at:Date.now() };
       gpsErr='';
-      if(moved){ hereFix={lat:lat, lng:lng}; tenkiPaint(); }
+      var match=TripScenery.resolve(curTrip(),lat,lng,hav,selectedScene,null,myPos.acc);
+      var currentScene=match.key+'|'+match.options.map(function(o){return o.key;}).join(',');
+      if(moved) hereFix={lat:lat, lng:lng};
+      if(moved || currentScene!==lastScene){ lastScene=currentScene; tenkiPaint(); }
       else if($('pan') && $('pan').__now) nowRender();
       meMarker();
       if(cb){ var f=cb; cb=null; f(true); }
@@ -6709,8 +6766,7 @@
 
         '<div class="fld" style="margin-top:16px"><label>定位（GPS）</label>'+
         '<div class="inp" style="background:var(--soft2)">'+(gpsOn()? '✅ 開住 · 精度 ±'+(myPos?Math.round(myPos.acc)+'m':'取得中') : (gpsErr? '⚠️ '+esc(gpsErr) : '－ 未開'))+'</div>'+
-        '<div class="hint">「現在位置」卡會自動開啟。位置<b>只保留在你的裝置</b>，不會儲存到雲端、不會傳送給第三方；'+
-        '只用來計算「由你目前位置到下一站有多遠」、「現場天氣」和「目前位置的今日天氣」。座標不會寫入行程。</div></div>'+
+        '<div class="hint">開啟定位後，手機會配對附近嘅行程地標、計算去下一站嘅距離，並以約略座標查詢當地天氣。</div></div>'+
         '<div class="btnrow"><button class="btn ghost" data-act="gpsoff">關閉定位</button></div>'+
         '<button class="btn ghost" data-act="offline" style="margin-top:18px">'+ic('note',15,'inline')+' 離線準備（預載附件）</button>'+
         '<button class="btn ghost" data-act="enrichall" style="margin-top:8px">'+ic('spark',15,'inline')+' 補齊未有 Google 資料的地點</button>'+
@@ -6809,7 +6865,12 @@
       }).catch(function(){});
     }
     addEventListener('load', function(){
-      navigator.serviceWorker.register('sw.js', { updateViaCache:'none' }).then(swUpdate).catch(function(){});
+      navigator.serviceWorker.register('sw.js', { updateViaCache:'none' }).then(function(){
+        swUpdate();
+        return navigator.serviceWorker.ready.then(function(reg){
+          if(reg.active && !navigator.connection?.saveData) reg.active.postMessage({type:'warm-scenes'});
+        });
+      }).catch(function(){});
     });
     addEventListener('visibilitychange', function(){ if(!document.hidden){ swUpdate(); checkBuild(); } });
     addEventListener('focus', swUpdate);

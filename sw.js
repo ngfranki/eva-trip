@@ -2,14 +2,14 @@
 // 目標：出門冇網都開得到 app、睇得返行程、之前睇過嘅地圖照樣有。
 // 注意：唔會批量預載地圖磚 —— OSM 嘅使用條款唔准 bulk download。
 // 只 cache 你自己睇過嘅磚（正常瀏覽行為），所以出門前喺 wifi 慢慢碌一次個地圖就會存低。
-importScripts('./scene-weather.js');
-const V = 'trip-v31';
+importScripts('./scene-keys.js');
+const V = 'trip-v32';
 const SHELL = `${V}-shell`;
 const TILES = `${V}-tiles`;
 const TILE_MAX = 1200;
 
 const SHELL_URLS = [
-  './', './index.html', './manifest.json', './scene-weather.js',
+  './', './index.html', './manifest.json', './scene-keys.js', './trip-scenery.js',
   './icon-180.png', './icon-192.png', './icon-512.png',
   './hero/plush/marker.webp',
   './hero/tokyo.webp', './hero/sapporo.webp', './hero/tokachi.webp',
@@ -28,16 +28,6 @@ self.addEventListener('install', (e) => {
       const res = await fetch(abs, fresh ? { cache: 'no-store', credentials: 'same-origin' } : {});
       if (res.ok) await c.put(u === './' ? './index.html' : u, res);
     }));
-    const scenes = [...Object.keys(TripScenery.places),'default'].flatMap(place =>
-      ['day','night','cover','nightcover','rain','nightrain','snow','nightsnow'].map(kind => './hero/scenes/'+place+'/'+kind+'.webp'));
-    // Limit concurrent downloads on mobile networks.
-    async function cacheScenes(){
-      while(scenes.length){
-        const path=scenes.pop();
-        try { await c.add(path); } catch (_) { /* Fetch on first view when online. */ }
-      }
-    }
-    await Promise.all(Array.from({length:4},cacheScenes));
     await self.skipWaiting();
   })());
 });
@@ -56,6 +46,26 @@ self.addEventListener('activate', (e) => {
       try { client.postMessage({ type: 'reload' }); } catch (err) {}
     });
   })());
+});
+
+// Save the new illustrations in the background so the app update can open immediately.
+let warming;
+self.addEventListener('message', event => {
+  if(event.data?.type!=='warm-scenes') return;
+  warming ||= (async()=>{
+    const cache=await caches.open(SHELL);
+    const keys=await cache.keys();
+    const saved=new Set(keys.map(request=>request.url));
+    const paths=SCENE_KEYS.flatMap(key=>['','-b'].map(part=>new URL('./hero/atlas/'+key+part+'.webp',self.location).href)).filter(url=>!saved.has(url));
+    async function download(){
+      while(paths.length){
+        const url=paths.shift();
+        try { await cache.add(url); } catch (_) { /* Retry on the next online visit. */ }
+      }
+    }
+    await Promise.all(Array.from({length:3},download));
+  })().finally(()=>{warming=null;});
+  event.waitUntil(warming);
 });
 
 async function trimTiles() {
@@ -124,7 +134,7 @@ self.addEventListener('fetch', (e) => {
     e.respondWith((async () => {
       const cached = await caches.match(req, { ignoreSearch: true })
         || (isDoc ? await caches.match('./index.html') : null);
-      if(cached && url.pathname.includes('/hero/scenes/')) return cached;
+      if(cached && (url.pathname.includes('/hero/scenes/') || url.pathname.includes('/hero/atlas/'))) return cached;
       // GitHub Pages 對 index.html 落 max-age=600。navigation 用預設 cache 會攞到舊頁。
       const netReq = isDoc
         ? fetch(url.toString(), { cache: 'no-store', credentials: 'same-origin', redirect: 'follow' })
@@ -142,7 +152,7 @@ self.addEventListener('fetch', (e) => {
       if (!cached) {
         // 第一次攞（cache 都冇），只可以等網絡
         try { return await net; } catch (err) {
-          return (await caches.match('./index.html')) || Response.error();
+          return (isDoc && await caches.match('./index.html')) || Response.error();
         }
       }
       const slow = new Promise((r) => setTimeout(() => r('SLOW'), NET_MS));
