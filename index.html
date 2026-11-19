@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261119-v52">
+<html lang="zh-HK" data-build="20261119-v53">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -928,7 +928,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261119-v52" style="padding-top:0">v52</div>
+        <div id="ver" data-build="20261119-v53" style="padding-top:0">v53</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -989,7 +989,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261119-v52';
+  var APP_VER='20261119-v53';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -997,7 +997,7 @@
     eat:  {i:'eat',    n:'食',    geo:1},
     stay: {i:'stay',   n:'住宿',  geo:1, tl:'Check in'},
     flight:{i:'flight',n:'航班',  geo:0, tl:'起飛'},
-    car:  {i:'car',    n:'交通',  geo:1, tl:'Pick up'},
+    car:  {i:'car',    n:'交通',  geo:1, tl:'交通時間'},
     buy:  {i:'buy',    n:'購物',  geo:1},
     note: {i:'note',   n:'筆記',  geo:0},
     check:{i:'check',  n:'清單',  geo:0}
@@ -1102,7 +1102,7 @@
 
   // ---------- 日出日落：純計算，唔用 API（任何日期都有，包括一年後）----------
   // NOAA 簡化算法。校驗過：東京 2025-12-05 算出 06:37/16:29，實測 06:34/16:29。
-  function lngTz(lng){ return Math.round(+lng/15)*60; }      // 回「分鐘」
+  function lngTz(lng,lat){ return inJapan(lat,lng)? 540 : Math.round(+lng/15)*60; }      // 回「分鐘」
   // 把一個時刻換成「當地時區嘅牆上時間」。tzMin 單位係分鐘（Google utcOffsetMinutes
   // 同 Open-Meteo utc_offset_seconds/60 都係分鐘）。
   // ⚠️ getTimezoneOffset() 係 (UTC − 本機)，UTC+8 回 −480，所以要「加」佢。
@@ -1128,7 +1128,7 @@
     if(cw<-1) return {polar:'day'};           // 極晝
     // tzMin 冇俾就用經度估（每 15° 一個鐘）。旅行嗰陣部機時區係出發地，
     // 用佢算當地日落一定錯，所以寧可用經度估。
-    var w=Math.acos(cw)/RD, tz=(tzMin==null? lngTz(lng) : tzMin)/60;
+    var w=Math.acos(cw)/RD, tz=(tzMin==null? lngTz(lng,lat) : tzMin)/60;
     function hm(J){
       var f=(J-2451545.0)%1; if(f<0) f+=1;
       var h=(f*24+tz)%24; if(h<0) h+=24;
@@ -1347,13 +1347,14 @@
     var org=dayOrigin(d);
     if(org) arr=[org].concat(arr);
     if(arr.length<2) return null;
-    var sec=0, m=0;
+    var sec=0, m=0, flights=flightsOn(d);
     for(var i=1;i<arr.length;i++){
+      if(flightBetween(flights,arr[i-1],arr[i])) continue;
       var km=hav([arr[i-1].lat,arr[i-1].lng],[arr[i].lat,arr[i].lng])*1.3;
       var kmh = km<2?4.5 : (km<15?26 : (km<60?40:55));
       sec+=km/kmh*3600; m+=km*1000;
     }
-    return {sec:sec, m:m, real:false};
+    return sec? {sec:sec, m:m, real:false} : null;
   }
   function dayWx(d){
     var t=curTrip(); if(!t) return '';
@@ -1797,7 +1798,7 @@
         at:Date.now(), sig:sig, lat:+tgt.lat, lng:+tgt.lng,
         place:(tgt.src==='gps' && glancePlace())? glancePlace() : (tgt.place || (prev && prev.sig===sig ? prev.place : '') || ''),
         src:tgt.src||'',
-        tz: j.utc_offset_seconds!=null ? Math.round(j.utc_offset_seconds/60) : lngTz(tgt.lng),
+        tz: j.utc_offset_seconds!=null ? Math.round(j.utc_offset_seconds/60) : lngTz(tgt.lng,tgt.lat),
         temp: cur.temperature_2m!=null ? cur.temperature_2m : null,
         feels: cur.apparent_temperature!=null ? cur.apparent_temperature : null,
         wind: cur.wind_speed_10m!=null ? cur.wind_speed_10m : null,
@@ -1884,7 +1885,7 @@
         fillTenkiDay(wx, tm.hit, 'tmr');
       }
     }
-    var tz=(wx && wx.tz!=null)? wx.tz : (lat!=null? lngTz(lng) : null);
+    var tz=(wx && wx.tz!=null)? wx.tz : (lat!=null? lngTz(lng,lat) : null);
     return {src:src, place:place, lat:lat, lng:lng, wx:wx, tz:tz, denied:denied,
       cachedScene:!myPos && src==='gps' && cache ? cache.sceneKey : null};
   }
@@ -2098,7 +2099,8 @@
       if(solar && solar.rise && solar.set) night=c.loc<solar.rise || c.loc>=solar.set;
     }
     var fresh=w.at && Date.now()-w.at<30*60000;
-    if(fresh && w.isDay!=null) night=w.isDay===0;
+    if(solar && solar.polar) night=solar.polar==='night';
+    else if(!solar && fresh && w.isDay!=null) night=w.isDay===0;
     var lightClass=night?'scene-night':'';
     if(!night && solar && solar.rise && solar.set){
       function clockMinutes(value){var parts=value.split(':');return +parts[0]*60 + +parts[1];}
@@ -2134,7 +2136,10 @@
     var specific={blizzard:'強風伴降雪',wind:'強風',sleet:'雨雪混合',downpour:'大雨',fog:'霧',heavysnow:'大雪',hail:'雷雨伴冰雹',freezingrain:'凍雨'};
     if(specific[scene.kind]) cond=specific[scene.kind];
     if(scene.covered) todayBits.push(span('估算積雪 '+(w.depth<0.01?'不足 1':Math.round(w.depth*100))+' cm'));
-    if(w.at && !fresh) todayBits.push(span('上次更新 '+hhmm(atTz(new Date(w.at),g.tz))));
+    if(w.at && !fresh){
+      var last=atTz(new Date(w.at),g.tz);
+      todayBits.push(span('上次更新 '+(fmtD(last)===fmtD(atTz(new Date(),g.tz))?'':md(fmtD(last))+' ')+hhmm(last)));
+    }
     if(cond) todayBits.push(span(w.code==null?'全日預報 · '+cond:cond));
     else if(w.code==null){
       var sig=lat!=null && lng!=null ? Number(lat).toFixed(2)+','+Number(lng).toFixed(2) : '';
@@ -2162,7 +2167,7 @@
     var wxbit=(w.code!=null || cond || temp)
       ? '<div class="locwx">'+(w.code!=null||cond? ic(wxIcon(w.code, cond),30):'')+
           (temp?'<b class="num">'+esc(temp)+'</b>':'')+
-          (cond?'<span class="loccond">'+esc(cond)+'</span>':'')+'</div>'
+          (cond?'<span class="loccond">'+esc((w.code==null?'全日預報 · ':'')+cond)+'</span>':'')+'</div>'
       : '';
     return '<div class="locblock">'+
       '<div class="lochero '+skyClass+' '+lightClass+'"><div class="locimg" role="img" aria-label="'+esc((name||'旅途')+' · '+(cond||'旅程插畫'))+'" style="'+sceneStyle(art)+'"></div>'+
@@ -3299,6 +3304,8 @@
   function routeSig(pts){ return pts.map(function(p){ return p.lat.toFixed(4)+','+p.lng.toFixed(4); }).join('|'); }
   // 「由昨晚住嘅地方去今日第一站」嗰段
   function legFromPrev(d){
+    var org=dayOrigin(d), first=dayItems(d).find(function(x){ return kd(x.kind).geo && x.lat!=null && x.lng!=null; });
+    if(flightBetween(flightsOn(d),org,first)) return null;
     var r=dayRoute(d);
     if(r && r.fromPrev && r.legs && r.legs[0]){
       var l=r.legs[0], mins=Math.max(1,Math.round(l.sec/60)), km=l.m/1000;
@@ -3307,17 +3314,36 @@
       if(l.m<150) return null;
       return { name:r.fromPrev, t:minsTxt(l.sec)+' · '+(km<10?km.toFixed(1):Math.round(km))+' km', real:1 };
     }
-    var org=dayOrigin(d);
-    if(!org) return null;
-    var first=dayItems(d).filter(function(x){ return kd(x.kind).geo && x.lat!=null; })[0];
-    if(!first) return null;
+    if(!org || !first) return null;
     var e=legTxt(org, first);
     return e? { name:org.name, t:e.t, real:0 } : null;
   }
   function dayRoute(d){
     if(!state.routes) state.routes={};
     var t=curTrip(); if(!t) return null;
-    return state.routes[t.id+'|'+d]||null;
+    var route=state.routes[t.id+'|'+d];
+    if(!route) return null;
+    var flights=flightsOn(d);
+    if(flights.length && !route.flightRouting) return null;
+    return route;
+  }
+  function flightBetween(flights,a,b){
+    if(!a || !b || a.lat==null || b.lat==null) return null;
+    return flights.find(function(f){
+      var leg=f.airLeg;
+      return leg && hav([a.lat,a.lng],leg.from)<4 && hav([b.lat,b.lng],leg.to)<4;
+    });
+  }
+  function flightsOn(d){ return dayItems(d).filter(function(x){return x.kind==='flight' && x.airLeg;}); }
+  function roadGroups(pts,flights){
+    var groups=[], start=0;
+    for(var i=1;i<pts.length;i++){
+      if(flightBetween(flights,pts[i-1],pts[i])){
+        groups.push(pts.slice(start,i)); start=i;
+      }
+    }
+    groups.push(pts.slice(start));
+    return groups;
   }
   function ensureRoute(d){
     if(GOOG===false || MODE!=='cloud') return;
@@ -3334,27 +3360,36 @@
     // 而家未來日期一律用 TRAFFIC_AWARE ＋ 當日出發時間做預測（Routes Pro SKU，
     // 每月 5,000 次免費；一日一個 call，用唔到一成）。過去日期冇得預測，照舊。
     var w0=wxGet(d);
-    var tz0 = (w0&&w0.tz!=null)? w0.tz : (pts[0]? lngTz(pts[0].lng) : null);
+    var tz0 = (w0&&w0.tz!=null)? w0.tz : (pts[0]? lngTz(pts[0].lng,pts[0].lat) : null);
     var firstT=(own.filter(function(x){ return x.time; })[0]||{}).time || '09:00';
     var dep=isoAt(d, firstT, tz0);
     var useTf = Date.parse(dep) > Date.now()+5*60000;
     var sig=routeSig(pts)+(org?'|o':'')+(useTf?'|t'+firstT:''), k=t.id+'|'+d;
     if(!state.routes) state.routes={};
     var cur2=state.routes[k];
+    var flights=flightsOn(d), groups=roadGroups(pts,flights);
+    if(flights.length) sig+='|air:'+JSON.stringify(flights.map(function(f){return f.airLeg;}));
     if(cur2 && cur2.sig===sig) return;
     if(routeBusy[k]) return;
     routeBusy[k]=1;
-    gCall({op:'route',points:pts,mode:'DRIVE',
-           traffic:useTf, departureTime:useTf? dep : undefined},function(j,err){
-      delete routeBusy[k];
-      if(err||!j||!j.legs){ return; }
-      // totalSec／totalM 係 Google 計好一併回嚟嘅，舊版只存 legs 就掉咗佢哋。
-      state.routes[k]={sig:sig, legs:j.legs, mode:j.mode,
-                       totalSec:j.totalSec||0, totalM:j.totalM||0,
-                       traffic:!!j.traffic, dep:useTf? dep : '',
-                       fromPrev: org? org.name : '', at:Date.now()};
-      save(true); render();
-    });
+    Promise.all(groups.map(function(points){
+      if(points.length<2) return Promise.resolve([]);
+      return new Promise(function(resolve,reject){
+        gCall({op:'route',points:points,mode:'DRIVE',traffic:useTf,departureTime:useTf?dep:undefined},function(j,err){
+          if(err || !j || !j.legs || j.legs.length!==points.length-1) return reject();
+          resolve(j.legs);
+        });
+      });
+    })).then(function(parts){
+      var legs=[], sec=0, metres=0;
+      parts.forEach(function(part,i){
+        if(i) legs.push({air:true,sec:0,m:0});
+        part.forEach(function(l){legs.push(l); sec+=l.sec; metres+=l.m;});
+      });
+      state.routes[k]={sig:sig,legs:legs,mode:'DRIVE',totalSec:sec,totalM:metres,flightRouting:true,
+        traffic:useTf,dep:useTf?dep:'',fromPrev:org?org.name:'',at:Date.now()};
+      delete routeBusy[k]; save(true); render();
+    },function(){delete routeBusy[k];});
   }
   var routeBusy={};
   function legReal(d, i){
@@ -3843,7 +3878,9 @@
           // 都食一格。Google 只會回有座標嗰啲之間嘅 legs，所以一行備註夾喺中間，
           // 之後每一段車程都會錯位一格（顯示嘅係下一段嘅時間）。只有兩邊都有座標才算一段。
           if(prev && isGeo){
-            var lt = legReal(d, legIdx) || legTxt(prev,x);
+            var air=flightBetween(flightsOn(d),prev,x);
+            if(air) h+='<div class="leg"><em>'+ic('flight',15)+'</em>航班 '+esc(air.fno||air.name)+'</div>';
+            var lt = !air && (legReal(d, legIdx) || legTxt(prev,x));
             if(lt) h+='<div class="leg"><em>'+lt.ic+'</em>'+esc(lt.t)+(lt.real?'':'<span class="est">估算</span>')+
               '<a href="#" data-act="legnav" data-a="'+prev.id+'" data-b="'+x.id+'">路線</a></div>';
             legIdx++;
@@ -4733,7 +4770,7 @@
     })(root);
     return root.innerHTML.replace(/(<br\s*\/?>\s*){3,}/gi,'<br><br>');
   }
-  function isHtmlMemo(m){ return /^\s*</.test(String(m||'')); }
+  function isHtmlMemo(m){ return /^\s*<|<(?:br\s*\/?|a\s+href=[^>]+|\/(?:b|i|u|s|strong|em|a|div|p|ul|ol|li))>/i.test(String(m||'')); }
   // 顯示用：新嘅係 HTML，舊嘅（markdown）照舊用 mdText 渲染
   function memoHtml(m){
     if(!m) return '';
@@ -5174,9 +5211,9 @@
     return m>=60? Math.floor(m/60)+' 小時'+(m%60? ' '+(m%60)+' 分':'') : m+' 分鐘';
   }
   // 當地時間（用當日天氣記錄嘅時區，冇就用經度估 —— 部機時區喺旅行時係錯嘅）
-  function localNow(d, lng){
+  function localNow(d, lng, lat){
     var w=d? wxGet(d) : null;
-    var tz = (w&&w.tz!=null)? w.tz : (lng!=null? lngTz(lng) : null);
+    var tz = (w&&w.tz!=null)? w.tz : (lng!=null? lngTz(lng,lat) : null);
     var n=new Date();
     if(tz==null) return n;
     return atTz(n, tz);
@@ -5189,6 +5226,8 @@
   // 兩站之間幾多分鐘。有 Google 真數就用真數（同行程頁、同地圖一致），
   // 冇就用 legTxt 同一條 haversine 公式，唔好兩個地方兩套估法。
   function legMins(d, gi, a, b){
+    var air=flightBetween(flightsOn(d),a,b);
+    if(air) return air.airLeg.minutes;
     var r=dayRoute(d);
     if(r && r.legs){
       var off = r.fromPrev? 1 : 0;
@@ -5565,7 +5604,7 @@
     var td=today(), inTrip=days().indexOf(td)>=0;
     var d = inTrip? td : null;
     var pt = ns? {lat:ns.x.lat,lng:ns.x.lng} : (d? dayPt(d) : tripCentre());
-    var lnow = localNow(d, myPos? myPos.lng : (pt? pt.lng : null));
+    var lnow = localNow(d, myPos? myPos.lng : (pt? pt.lng : null), myPos? myPos.lat : (pt? pt.lat : null));
 
     // 天黑（當日、當地）
     var setTxt='', setMin=null;
@@ -5652,7 +5691,7 @@
     h+='<div class="hint">吹雪和封路資訊會開啟政府官方頁面。App 不會自行快取或代你判斷 —— '+
        '一個停止更新的資料來源顯示「通行可」會害死人。</div>';
     if(myPos){
-      var upd=localNow(d, myPos.lng);                    // 同上面個鐘同一個時區，唔好兩個並排
+      var upd=localNow(d, myPos.lng, myPos.lat);                    // 同上面個鐘同一個時區，唔好兩個並排
       upd=new Date(upd.getTime() - (Date.now()-myPos.at));
       h+='<div class="hint">位置精度 ±'+Math.round(myPos.acc)+'m · '+hhmm(upd)+' 更新</div>';
     }
@@ -5753,15 +5792,17 @@
     if(org) pts=[org].concat(pts);
     if(pts.length<2) return [];
     var out=[], MAX=10;
-    for(var i=0; i<pts.length-1; i+=MAX-1){
-      var seg=pts.slice(i, i+MAX);
-      if(seg.length<2) break;
-      var u='https://www.google.com/maps/dir/?api=1&travelmode=driving'+
-        '&origin='+seg[0].lat+','+seg[0].lng+
-        '&destination='+seg[seg.length-1].lat+','+seg[seg.length-1].lng;
-      if(seg.length>2) u+='&waypoints='+seg.slice(1,-1).map(function(p){ return p.lat+','+p.lng; }).join('|');
-      out.push({ url:u, n:seg.length, from:seg[0].name, to:seg[seg.length-1].name });
-    }
+    roadGroups(pts,flightsOn(d)).forEach(function(points){
+      for(var i=0; i<points.length-1; i+=MAX-1){
+        var seg=points.slice(i, i+MAX);
+        if(seg.length<2) break;
+        var u='https://www.google.com/maps/dir/?api=1&travelmode=driving'+
+          '&origin='+seg[0].lat+','+seg[0].lng+
+          '&destination='+seg[seg.length-1].lat+','+seg[seg.length-1].lng;
+        if(seg.length>2) u+='&waypoints='+seg.slice(1,-1).map(function(p){ return p.lat+','+p.lng; }).join('|');
+        out.push({ url:u, n:seg.length, from:seg[0].name, to:seg[seg.length-1].name });
+      }
+    });
     return out;
   }
   function gmapSheet(){
@@ -6907,7 +6948,7 @@
       var dropCache=function(){
         if(!window.caches) return Promise.resolve();
         return caches.keys().then(function(keys){
-          return Promise.all(keys.filter(function(k){ return !isTileCache(k); }).map(function(k){ return caches.delete(k); }));
+          return Promise.all(keys.filter(function(k){ return !isTileCache(k) && k!==ATTC; }).map(function(k){ return caches.delete(k); }));
         });
       };
       dropSW().catch(function(){}).then(dropCache).catch(function(){}).then(next, next);
