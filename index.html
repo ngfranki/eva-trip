@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261119-v53">
+<html lang="zh-HK" data-build="20261119-v54">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -903,6 +903,10 @@
     .here{margin-left:0; margin-right:0}
   }
   @media (min-width:821px){ .mapclose{display:none} .mapbar{right:12px} }
+  .overviewActions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.overviewActions button,.dayBack{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:9px;padding:8px 12px;font-weight:650;background:var(--card,#fff)}
+  .overviewActions button{font-size:14px;padding:7px 10px}.overviewActions button:first-child{background:var(--ink);color:var(--bg)}.daySummary{display:grid;grid-template-columns:65px minmax(0,1fr) auto 12px;align-items:center;gap:10px;width:100%;min-height:47px;padding:8px 4px;text-align:left;border-bottom:1px solid var(--line)}.daySummary b{color:var(--muted);font-size:13px}.daySummary strong{font-size:16px}.daySummary small,.stopRead>small,.docFile small{color:var(--muted)}.daySummary i,.stopButton i{color:var(--muted);font-style:normal}.daySummary[aria-expanded=true]{border-bottom-color:var(--link);background:var(--soft)}.daySumWrap{margin:0!important}
+  .timedStop{display:flex;align-items:center;padding:0;border-bottom:1px solid var(--line)}.stopButton{flex:1;min-width:0;display:flex;align-items:center;gap:9px;text-align:left;padding:13px 2px}.stopButton time{flex:0 0 67px;color:var(--link);font-size:14px;font-variant-numeric:tabular-nums;font-weight:700}.stopButton span{flex:1;min-width:0;overflow-wrap:anywhere;font-size:15px;font-weight:620}.stopButton small{display:inline-flex;gap:3px;align-items:center;white-space:nowrap;color:var(--muted)}.stopButton small svg{vertical-align:middle}.timedStop .kebab{opacity:1}
+  .hourPair{margin:10px 0 16px;min-width:0}.hourRow{padding:7px 0;min-width:0}.hourRow h4,.docGroup h4,.stopRead h4{margin:0 0 7px;font-size:14px}.hourRow small{color:var(--muted)}.hourRail{max-width:100%;display:flex;overflow-x:auto;gap:5px;overscroll-behavior-x:contain}.hourRail>div{flex:none;display:grid;gap:2px;min-width:61px;text-align:center;padding:7px 5px;border:1px solid var(--line);border-radius:7px;background:var(--soft)}.hourRail time,.hourRail span{font-size:12px}.hourRail strong{font-size:16px}.docGroup{margin:22px 0}.docGroup h4{border-bottom:1px solid var(--line);padding-bottom:6px}.docGroup h5{margin:12px 0 3px;font-size:13px;color:var(--muted)}.docFile{display:flex;align-items:center;gap:8px;text-align:left;width:100%;padding:10px 6px;border-bottom:1px solid var(--line)}.docFile span{flex:1;min-width:0;overflow-wrap:anywhere}.stopRead{line-height:1.55}.stopRead h3{padding-right:24px}.stopRead dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:8px 0}.stopRead dt{color:var(--muted)}.stopRead dd{margin:0;overflow-wrap:anywhere}.stopRead section{margin:18px 0}.readText{overflow-wrap:anywhere;line-height:1.7}.readText a{color:var(--link)}.readText p{margin:.45em 0}.fileReturn{margin:0 0 10px;color:var(--link)}.hourRow .hourRail{scrollbar-width:thin}
 </style>
 </head>
 <body>
@@ -928,7 +932,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261119-v53" style="padding-top:0">v53</div>
+        <div id="ver" data-build="20261119-v54" style="padding-top:0">v54</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -989,7 +993,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261119-v53';
+  var APP_VER='20261119-v54';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1524,22 +1528,6 @@
     }
     return h+'</div>';
   }
-  function tenkiHTML(d){
-    var ps=tenkiPlaces(d);
-    if(!ps.length) return '';
-    var h='';
-    ps.forEach(function(p){
-      var m=tenkiLoad(p);
-      if(!m){
-        if(tenkiBusy[p.key]) h+='<div class="tenki load"><span class="spin"></span>取得 tenki.jp…</div>';
-        return;
-      }
-      if(!m.ok) return;
-      h+=tenkiBox(m, d);
-    });
-    return h;
-  }
-
   // 目前位置：開 app 問一次 GPS。日本用 tenki 最近市區；其他地方用 Open-Meteo。
   // 拒絕、日本以外 tenki 失敗、或者對唔到市區 → 呢張卡唔霸位，當日行程照用站點，再退 Open-Meteo。
   // 座標只留喺記憶（同「而家」卡一樣），唔寫入會同步嘅 state。
@@ -2126,12 +2114,8 @@
       }).join('')+'</select></label>';
     }
     var tag=g.src==='stop'? '<i class="loctag">行程推算</i>' : '';
-    function pair(lo,hi){
-      if(lo==null && hi==null) return '';
-      return (lo==null?'—':Math.round(lo)+'°')+' / '+(hi==null?'—':Math.round(hi)+'°');
-    }
-    function span(t){ return '<span>'+esc(t)+'</span>'; }
     var todayBits=[];
+    function span(t){return '<span>'+esc(t)+'</span>';}
     if(g.src==='gps' && myPos && myPos.acc>100) todayBits.push(span('定位約 ±'+Math.round(myPos.acc)+' 米'));
     var specific={blizzard:'強風伴降雪',wind:'強風',sleet:'雨雪混合',downpour:'大雨',fog:'霧',heavysnow:'大雪',hail:'雷雨伴冰雹',freezingrain:'凍雨'};
     if(specific[scene.kind]) cond=specific[scene.kind];
@@ -2140,30 +2124,9 @@
       var last=atTz(new Date(w.at),g.tz);
       todayBits.push(span('上次更新 '+(fmtD(last)===fmtD(atTz(new Date(),g.tz))?'':md(fmtD(last))+' ')+hhmm(last)));
     }
-    if(cond) todayBits.push(span(w.code==null?'全日預報 · '+cond:cond));
-    else if(w.code==null){
-      var sig=lat!=null && lng!=null ? Number(lat).toFixed(2)+','+Number(lng).toFixed(2) : '';
-      var unavailable=navigator.onLine===false || (glanceFail && glanceFail.sig===sig);
-      todayBits.push(span(unavailable?'暫時未有當地天氣':'等緊當地天氣'));
-    }
-    if(pair(w.low,w.high)) todayBits.push(span(pair(w.low,w.high)));
-    if(typeof w.rain==='number') todayBits.push(span('降水 '+Math.round(w.rain)+'%'));
-    if(w.feels!=null) todayBits.push(span('體感 '+Math.round(w.feels)+'°'));
-    if(w.wind!=null) todayBits.push(span('風 '+Math.round(w.wind)+'km/h'));
-    if(w.hum!=null) todayBits.push(span('濕 '+Math.round(w.hum)+'%'));
-    if(w.uv!=null) todayBits.push(span('紫外 '+Math.round(w.uv)));
-    var tmrBits=[];
-    if(w.tmrLabel || w.tmrHigh!=null || w.tmrLow!=null || typeof w.tmrRain==='number'){
-      if(w.tmrCode!=null || w.tmrLabel) tmrBits.push(ic(wxIcon(w.tmrCode, w.tmrLabel),18));
-      if(w.tmrLabel) tmrBits.push(span(w.tmrLabel));
-      if(pair(w.tmrLow,w.tmrHigh)) tmrBits.push(span(pair(w.tmrLow,w.tmrHigh)));
-      if(typeof w.tmrRain==='number') tmrBits.push(span('降水 '+Math.round(w.tmrRain)+'%'));
-    }
-    var strip=(todayBits.length||tmrBits.length)
-      ? '<div class="wxstrip">'+
-          (todayBits.length?'<div class="wxrow"><b>今日</b>'+todayBits.join('')+'</div>':'')+
-          (tmrBits.length?'<div class="wxrow"><b>聽日</b>'+tmrBits.join('')+'</div>':'')+
-        '</div>' : '';
+    var localDay=fmtD(atTz(new Date(),g.tz));
+    var strip=(todayBits.length?'<div class="wxstrip">'+todayBits.join(' · ')+'</div>':'')+
+      hourPair(localDay,{name:name||g.place||'所在地',lat:lat,lng:lng});
     var wxbit=(w.code!=null || cond || temp)
       ? '<div class="locwx">'+(w.code!=null||cond? ic(wxIcon(w.code, cond),30):'')+
           (temp?'<b class="num">'+esc(temp)+'</b>':'')+
@@ -3417,10 +3380,10 @@
     if(MODE==='cloud') wxFetch();      // 自己有守衛，唔會每次 render 都打
     fxFetch();                          // 自動匯率，同樣有守衛
     var h='<div class="page">';
-    h+=locHeroHTML();
     h+=tripHead(t);
-    h+=quickRow();
     h+=itinSec();
+    h+='<section id="s-location"><h2>定位與天氣</h2>'+locHeroHTML()+'</section>';
+    h+=quickRow();
     tLists().forEach(function(l){ h+=listSec(l); });
     h+='<div class="morebar"><button class="pill bare" data-act="newlist">＋ 新清單</button></div>';
     h+=exploreSec();
@@ -3561,34 +3524,14 @@
 
   // 2026-09-15 修：舊版揀「評分最高」→ 4.8 分但只有 6 個人評嘅 Airbnb 房相做咗封面。
   // 行程格仍然用 tripPhoto()。總覽頂部唔再用封面，改為而家所在嘅相片。
-  function dayChips(){
-    var ds=days();
-    if(!ds.length) return '';
-    var td=today();
-    var h='<div class="daychips">';
-    ds.forEach(function(d,i){
-      h+='<button class="dchip'+(d===td?' today':'')+'" data-act="go" data-s="s-d'+i+'">'+
-        '<b>第'+(i+1)+'日</b><small>'+md(d)+'</small></button>';
-    });
-    return h+'</div>';
-  }
   function tripHead(t){
-    var it=tItems(), done=it.filter(function(x){return x.done;}).length, n=days().length;
-    var un=it.filter(function(x){return !x.date;}).length;
+    var n=days().length;
     var when=t.start? (md(t.start)+'–'+md(t.end)+' · '+n+'日') : '未定日期';
     return '<div class="triphead">'+
       '<div class="tripid"><button class="kebab hedit" data-act="edittrip" title="改旅程">⋯</button>'+
       '<h1><button class="h1back" data-act="home" title="所有旅程">'+ic('chev',16,'rot90')+'</button>'+esc(t.name)+'</h1>'+
-      (t.dest?'<div class="sub">'+esc(t.dest)+'</div>':'')+
       '<div class="sub when">'+esc(when)+'</div>'+
-      dayChips()+
-      '<div class="quiet">'+
-      '<span><b class="num">'+it.length+'</b> 項</span>'+
-      '<span><b class="num">'+done+'</b> 已完成</span>'+
-      '<span><b class="num">'+un+'</b> 未排期</span>'+
-      '<button data-act="go" data-s="s-bud"><b class="num">'+Math.round(homeTotal()).toLocaleString()+'</b> '+esc(cur())+'</button>'+
-      '<button data-act="fxsheet" title="現在位置、今日行程、換算">工具</button>'+
-      '</div></div></div>';
+      '<div class="overviewActions"><button data-act="doclibrary">'+ic('copy',16)+'全部附件</button><button data-act="go" data-s="s-location">'+ic('pin',16)+'定位與天氣</button><button data-act="fxsheet">工具</button></div></div></div>';
   }
   function quickRow(){
     var counts={}; tItems().forEach(function(x){ counts[x.kind]=(counts[x.kind]||0)+1; });
@@ -3693,8 +3636,9 @@
              '<div class="hint" style="margin:-6px 0 12px">'+fmtSize(f.s)+' · '+esc(x.name)+'</div>';
     openSheet(head+'<div id="fv" class="fview"><span class="spin"></span>正在取得檔案…</div>');
     $('pan').__reopen=function(){ viewFile(itemById(x.id), i); };
+    var viewer=$('fv');
     getFileBlob(f, function(u, err){
-      var box=$('fv'); if(!box) return;
+      var box=$('fv'); if(!box || box!==viewer) return;
       if(err){ box.innerHTML='<div class="empty">無法開啟：'+esc(err)+'</div>'; return; }
       var h='';
       if(kind==='img') h='<img src="'+esc(u)+'" alt="'+esc(f.n)+'">';
@@ -3710,10 +3654,16 @@
   }
   function delFile(x, i){
     var f=(x.files||[])[i]; if(!f) return;
+    var shared=state.items.some(function(owner){return (owner.files||[]).some(function(other,j){return other.p===f.p && (owner.id!==x.id || j!==i);});});
+    if(shared){
+      if(confirm('從這項行程移除「'+f.n+'」？其他行程仍可開啟。')){snap();x.files.splice(i,1);save();reopenSheet(x.id);}
+      return;
+    }
     if(!confirm('\u522a\u5497\u300c'+f.n+'\u300d\uff1f\u96f2\u7aef\u6a94\u6848\u6703\u6c38\u4e45\u79fb\u9664\u3002')) return;
     fetch(stUrl(f.p), {method:'DELETE', headers:stHdr()})
       .then(function(r){
         if(r.status===401){ forceLogin('登入已過期，請再入一次暗號'); return; }
+        if(!r.ok) throw Error();
         snap(); x.files.splice(i,1); save(); setSync('ok','\u522a\u5497 '+f.n);
       })
       .catch(function(){ setSync('err','\u522a\u5514\u5230'); });
@@ -3848,19 +3798,164 @@
                  : '<div class="empty">還沒有內容。輸入名稱，或從行程拖過來。</div>')+
       addHTML('list:'+l.id)+'</div>'+foldEnd();
   }
+  var expandedDay='', printDays=false;
+  function dayDestination(d){
+    var trip=curTrip(), spec=trip && (trip.dayDestinations||{})[d];
+    var stop=spec && itemById(spec.itemId);
+    if(stop && stop.date===d && stop.tripId===trip.id){
+      var coords=stop.kind==='flight' && stop.airLeg ? stop.airLeg.to : [stop.lat,stop.lng];
+      return {name:spec.name,lat:coords[0],lng:coords[1]};
+    }
+    var x=dayItems(d).find(function(x){return x.lat!=null && x.lng!=null && x.kind!=='car';});
+    return x? {name:x.name,lat:x.lat,lng:x.lng} : {name:'待定地點'};
+  }
+  var hourlyCache=new Map();
+  document.addEventListener('scroll',function(e){
+    var rail=e.target;
+    if(!rail.classList || !rail.classList.contains('hourRail')) return;
+    var record=hourlyCache.get(rail.parentNode.dataset.hourKey);
+    if(record) record.scroll=rail.scrollLeft;
+  },true);
+  function positionHours(key,rec){
+    requestAnimationFrame(function(){
+      document.querySelectorAll('[data-hour-key]').forEach(function(box){
+        if(box.dataset.hourKey!==key) return;
+        var rail=box.querySelector('.hourRail');
+        if(!rail || rail.dataset.positioned) return;
+        rail.dataset.positioned='1';
+        var col=rail.children[rec.startHour||0];
+        rail.scrollLeft=rec.scroll!=null?rec.scroll:col?col.offsetLeft-rail.firstElementChild.offsetLeft:0;
+      });
+    });
+  }
+  function hourCells(rec){
+    if(!rec.hours) return '<small>'+esc(rec.message||'正在讀取逐小時預報…')+'</small>';
+    return '<div class="hourRail" tabindex="0" aria-label="逐小時天氣">'+rec.hours.map(function(h){
+      var cond=WXI[h[2]]||'未有資料';
+      return '<div><time>'+esc(h[0])+'</time><strong>'+Math.round(h[1])+'°</strong><span>'+esc(cond)+'</span></div>';
+    }).join('')+'</div>'+(rec.failed?'<small>上次下載 '+esc(new Date(rec.at).toLocaleString('zh-HK'))+'</small>':'');
+  }
+  function hourlyRow(label,d,point){
+    var title=label+' · '+md(d)+(point?' · '+point.name:'');
+    var head='<section class="hourRow"><h4>'+esc(title)+'</h4>';
+    if(!point || point.lat==null || point.lng==null) return head+'<small>當日未有目的地</small></section>';
+    var local=fmtD(atTz(new Date(),lngTz(point.lng,point.lat)));
+    if(d>shift(local,15)) return head+'<small>尚未到逐小時預報範圍</small></section>';
+    var key=[d,(+point.lat).toFixed(2),(+point.lng).toFixed(2)].join('|');
+    var rec=hourlyCache.get(key);
+    if(!rec){
+      try{rec=JSON.parse(localStorage.getItem('tripHourly2|'+key));}catch(e){}
+      if(!rec || !Array.isArray(rec.hours)) rec={};
+      hourlyCache.set(key,rec);
+    }
+    rec.startHour=d===local?atTz(new Date(),lngTz(point.lng,point.lat)).getHours():0;
+    if(rec.hours) positionHours(key,rec);
+    if(!rec.loading && (!rec.at || Date.now()-rec.at>3600000) && (!rec.tried || Date.now()-rec.tried>120000) && d>=shift(local,-1)){
+      rec.loading=true;rec.tried=Date.now();
+      var u='https://api.open-meteo.com/v1/forecast?latitude='+key.split('|')[1]+'&longitude='+key.split('|')[2]+'&timezone=auto&hourly=temperature_2m,weather_code&start_date='+d+'&end_date='+d;
+      fetch(u).then(function(r){if(!r.ok) throw Error();return r.json();}).then(function(j){
+        var a=j.hourly;
+        var hours=a.time.flatMap(function(t,i){return t.slice(0,10)===d && a.temperature_2m[i]!=null && a.weather_code[i]!=null ? [[t.slice(11,16),a.temperature_2m[i],a.weather_code[i]]] : [];});
+        if(!hours.length) throw Error();
+        rec.hours=hours;rec.at=Date.now();rec.failed=false;
+        try{localStorage.setItem('tripHourly2|'+key,JSON.stringify({hours:hours,at:rec.at}));}catch(e){}
+      }).catch(function(){rec.failed=true;rec.message='暫時未能取得逐小時預報';}).finally(function(){
+        rec.loading=false;
+        document.querySelectorAll('[data-hour-key]').forEach(function(box){if(box.dataset.hourKey===key) box.innerHTML=hourCells(rec);});
+        positionHours(key,rec);
+      });
+    }
+    if(d<shift(local,-1) && !rec.hours) rec.message='這天已過，未有已儲存預報';
+    return head+'<div data-hour-key="'+esc(key)+'">'+hourCells(rec)+'</div></section>';
+  }
+  function hourPair(d,here){
+    var next=shift(d,1), ds=days();
+    return '<div class="hourPair">'+hourlyRow(here?'今日':'當日',d,here||dayDestination(d))+
+      hourlyRow('翌日',next,ds.includes(next)?dayDestination(next):null)+'</div>';
+  }
+  function fileEntries(x){
+    var seen=new Map();
+    (x.files||[]).forEach(function(f,i){
+      var k=f.contentHash||f.p;
+      if(seen.has(k)){seen.get(k).copies++;return;}
+      seen.set(k,{f:f,i:i,copies:1});
+    });
+    return Array.from(seen.values());
+  }
+  function fileButton(x,entry,back){
+    var f=entry.f, name=f.n||'附件';
+    if(/^[a-f\d]{8}-[a-f\d-]{27}\./i.test(name)) name='參考圖片 '+(entry.i+1);
+    return '<button type="button" class="docFile" data-act="readfile" data-from="'+back+'" data-id="'+esc(x.id)+'" data-i="'+entry.i+'">'+
+      ic(fileIcon(f.t),16)+'<span>'+esc(name)+(entry.copies>1?' <small>相同檔案 ×'+entry.copies+'</small>':'')+'</span><small>'+esc(fmtSize(f.s))+'</small></button>';
+  }
+  function readFiles(x,back){
+    return fileEntries(x).map(function(entry){return fileButton(x,entry,back);}).join('');
+  }
+  function documentLibrary(){
+    var items=tItems().filter(function(x){return x.files && x.files.length;}).sort(byOrd);
+    var grouped=new Map(), dated=new Set(), list=[];
+    items.filter(function(x){return x.date;}).forEach(function(x){x.files.forEach(function(f){dated.add(f.p);});});
+    items.forEach(function(x){
+      var fs=fileEntries(x).filter(function(a){return x.date || !dated.has(a.f.p);});
+      if(!fs.length)return;
+      var k=x.date||'';
+      if(!grouped.has(k))grouped.set(k,[]);
+      grouped.get(k).push({x:x,files:fs});
+    });
+    Array.from(grouped.keys()).sort(function(a,b){return !a?1:!b?-1:a.localeCompare(b);}).forEach(function(d){
+      var i=days().indexOf(d);
+      list.push('<section class="docGroup"><h4>'+esc(d?(i<0?'':'Day '+(i+1)+' · ')+md(d)+' '+dow(d):'旅程共用及備份')+'</h4>');
+      grouped.get(d).forEach(function(row){
+        list.push('<h5>'+esc(row.x.name)+'</h5>');
+        row.files.forEach(function(a){
+          list.push(fileButton(row.x,a,'library'));
+        });
+      });
+      list.push('</section>');
+    });
+    openSheet('<h3>全部附件</h3>'+(list.join('')||'<p>這個旅程暫時未有附件。</p>'));
+    $('pan').__reopen=documentLibrary;
+  }
+  function stopDetails(x){
+    if(!x)return;
+    var time=dayPlan(x.date).find(function(r){return r.x.id===x.id;});
+    var memo=memoPlain(x.memo).trim(), hasMemo=memo && !/^旅客[：:]?\s*$/.test(memo);
+    var fields=[];
+    function field(label,value){if(value) fields.push('<dt>'+label+'</dt><dd>'+esc(value)+'</dd>');}
+    field('日期',x.date);
+    field(x.kind==='flight'?'起飛':'時間',x.time || (time?(time.est?'約 ':'')+minHM(time.at):''));
+    if(x.kind==='flight')field('抵達',x.arrivalLocal && (x.arrivalDate+' '+x.arrivalLocal));
+    field('地址',x.addr);field('確認編號',x.conf);field('費用',x.cost?fmtCcy(itemCcy(x),x.cost):'');
+    var h='<div class="stopRead"><small>'+esc(kd(x.kind).n)+'</small><h3>'+esc(x.name)+'</h3><dl>'+fields.join('')+'</dl>';
+    if(x.files && x.files.length)h+='<section><h4>所需文件</h4>'+readFiles(x,'stop')+'</section>';
+    if(x.note)h+='<section><h4>行程資料</h4><div class="readText">'+noteHtml(x)+'</div></section>';
+    if(hasMemo)h+='<section><h4>筆記</h4><div class="readText">'+memoHtml(x.memo)+'</div></section>';
+    if(x.kind==='check' && x.checks && x.checks.length)h+='<section><h4>清單</h4>'+x.checks.map(function(c,i){return '<label><input type="checkbox" data-act="chk" data-id="'+esc(x.id)+'" data-i="'+i+'"'+(c.done?' checked':'')+'> '+esc(c.t)+'</label>';}).join('<br>')+'</section>';
+    h+='<div class="btnrow"><button class="btn ghost" data-act="focus" data-id="'+esc(x.id)+'">地點資料及編輯</button><button class="btn ghost" data-act="qfile" data-id="'+esc(x.id)+'">管理附件</button></div></div>';
+    openSheet(h);$('pan').__reopen=function(){stopDetails(itemById(x.id));};
+  }
+  function timedStop(x,r){
+    var files=fileEntries(x).length, id=esc(x.id);
+    return '<div class="row timedStop'+(x.done?' done':'')+'" data-id="'+id+'" draggable="true"><button class="stopButton" data-act="readstop" data-id="'+id+'"><time>'+esc((r.est?'約 ':'')+minHM(r.at))+'</time><span>'+esc(x.name)+'</span>'+(files?'<small>'+ic('copy',13)+' '+files+'</small>':'')+'<i>›</i></button><button class="kebab" data-act="rowmenu" data-id="'+id+'" aria-label="項目選單">⋯</button></div>';
+  }
+
   function itinSec(){
     var ds=days();
     if(!ds.length) return '<div class="sec" id="s-itin"><div class="sech"><h2>行程</h2></div><div class="empty">未定日期。按右上角 ⋯ 輸入出發同返程日。</div></div>';
     var h='<div class="sec" id="s-itin"><div class="sech"><h2>行程</h2><span class="n">'+ds.length+' 日</span></div>';
     ds.forEach(function(d,i){
+      var dest=dayDestination(d), opened=expandedDay===curTrip().id+'|'+d || printDays;
+      h+='<div class="day daySumWrap" id="s-d'+i+'"><button class="daySummary" data-act="showday" data-d="'+d+'" aria-expanded="'+opened+'"><b>Day '+(i+1)+'</b><strong>'+esc(dest.name)+'</strong><small>'+md(d)+' '+dow(d)+'</small><i>'+(opened?'⌄':'›')+'</i></button>';
+      if(!opened){h+='</div>';return;}
       var arr=dayItems(d), c=dayColor(i), tot=sumHome(arr);
+      var schedule=new Map(dayPlan(d).map(function(r){return [r.x.id,r];}));
       var wxl=dayWx(d);
-      h+='<div class="day" id="s-d'+i+'"><div class="dayh"><span class="dot" style="background:'+c+'"></span>'+
+      h+='<div class="dayh"><span class="dot" style="background:'+c+'"></span>'+
          '<h3>第'+(i+1)+'日</h3><span class="dd">'+longD(d)+'</span><span class="sp"></span>'+
          (tot?'<span class="tot">'+money(tot)+'</span>':'')+
          '<button class="kebab" data-act="daymenu" data-d="'+d+'">⋯</button></div>'+
          (wxl?'<div class="dayw">'+esc(wxl)+'</div>':'')+
-         tenkiHTML(d);
+         (printDays?'':hourPair(d));
       h+='<div class="panel" data-drop="day:'+d+'">';
       if(arr.length){
         h+='<div class="rows">';
@@ -3885,7 +3980,7 @@
               '<a href="#" data-act="legnav" data-a="'+prev.id+'" data-b="'+x.id+'">路線</a></div>';
             legIdx++;
           }
-          h+=rowHTML(x,idx);
+          h+=printDays?rowHTML(x,idx):timedStop(x,schedule.get(x.id));
           if(isGeo) prev=x;
         });
         h+='</div>';
@@ -4033,8 +4128,7 @@
     h+='<button data-act="go" data-s="s-bud">預算<i>'+money(sumHome(tItems()))+'</i></button>';
     h+='</nav></div><div class="sgrp"><h4>'+ic('chev',12,'chev')+'行程</h4><nav>';
     days().forEach(function(d,i){
-      var a=dayItems(d);
-      h+='<button data-act="go" data-s="s-d'+i+'">'+md(d)+'（'+dow(d)+'）'+(a.length?'<i>'+esc(a[0].name)+'</i>':'<i>—</i>')+'</button>';
+      h+='<button data-act="go" data-s="s-d'+i+'">Day '+(i+1)+' · '+md(d)+'<i>'+esc(dayDestination(d).name)+'</i></button>';
     });
     return h+'</nav></div>';
   }
@@ -4384,7 +4478,7 @@
     if(gState==='on' && gmap){ gmap.panTo({lat:x.lat,lng:x.lng}); if(gmap.getZoom()<15) gmap.setZoom(15); return; }
     if(map) map.flyTo([x.lat,x.lng], Math.max(map.getZoom(),15), {duration:.6});
   }
-  function scrollTo(id){ var el=document.querySelector('.row[data-id="'+id+'"]'); if(el) el.scrollIntoView({block:'center',behavior:'smooth'}); }
+  function scrollTo(id){ var target=itemById(id);if(target && target.date && curTrip() && expandedDay!==curTrip().id+'|'+target.date){expandedDay=curTrip().id+'|'+target.date;render();} var el=document.querySelector('.row[data-id="'+id+'"]'); if(el) el.scrollIntoView({block:'center',behavior:'smooth'}); }
 
   // ---------- geocode ----------
   function destToken(){
@@ -4624,6 +4718,7 @@
     var pan=$('pan');
     // 開新內容即係離開「而家／今日」卡：唔清 __now，30 秒個 timer 會一直空轉。
     if(pan.__now){ pan.__now=0; if(nowTimer){ clearInterval(nowTimer); nowTimer=null; } }
+    pan.scrollTop=0;pan.__reopen=null;
     pan.innerHTML='<button class="close" data-act="closesheet" title="關閉">'+ic('x',18)+'</button>'+h;
     $('sheet').className='sheet show';
   }
@@ -5241,14 +5336,19 @@
     }
     return 0;
   }
+  window.addEventListener('beforeprint',function(){printDays=true;render();});
+  window.addEventListener('afterprint',function(){printDays=false;render();});
   function dayPlan(d){
     var arr=dayItems(d);
-    var clock=9*60, gi=0, out=[], prevGeo=null, seeded=false;
+    var clock=9*60, gi=0, out=[], prevGeo=null, seeded=false, pendingArrival=null;
     arr.forEach(function(x){
       var isGeo = kd(x.kind).geo && x.lat!=null && x.lng!=null;
       var travel = (prevGeo && isGeo)? legMins(d, gi-1, prevGeo, x) : 0;
-      if(x.time){
-        var hard=hm2m(x.time);
+      var arrival=pendingArrival && isGeo && hav([x.lat,x.lng],pendingArrival.airLeg.to)<4 ? pendingArrival.arrivalLocal : '';
+      if(arrival) pendingArrival=null;
+      var known=x.time || arrival;
+      if(known){
+        var hard=hm2m(known);
         // 第一個硬時間之前嗰啲係由 09:00 順推嘅；如果順推到嚟已經遲過硬時間，
         // 就整段推早 —— 唔係嘅話會出現「約 10:30 去 A，然後 09:30 硬時間到 B」。
         if(!seeded){
@@ -5258,7 +5358,8 @@
         }
         clock=hard;
       } else clock += travel;
-      out.push({ x:x, at:clock, est:!x.time });
+      out.push({ x:x, at:clock, est:!known });
+      if(x.kind==='flight' && x.airLeg && x.arrivalLocal && x.arrivalDate===d) pendingArrival=x;
       clock += (DWELL[x.kind]!=null? DWELL[x.kind] : 30);
       if(isGeo){ prevGeo=x; gi++; }
     });
@@ -5283,7 +5384,7 @@
     if(d===today()) h+=hereHTML();
     var wl=dayWx(d);
     if(wl) h+='<div class="tdwx">'+esc(wl)+'</div>';
-    h+=tenkiHTML(d);
+    h+=hourPair(d);
     var jp=dayPt(d);
     if(jp) h+=jmaHTML(jp.lat, jp.lng, function(){ if($('pan').__now && nowTab==='today') nowRender(); });
     var lp=legFromPrev(d);
@@ -6344,7 +6445,7 @@
     else if(act==='tdday'){ var nd=el.getAttribute('data-d'); if(nd){ tdDay=nd; nowRender(); } }
     else if(act==='rowmenu'){
       var x3=itemById(id); if(!x3) return;
-      openMenu(ev,'<button data-act="edititem" data-id="'+id+'">改</button>'+
+      openMenu(ev,'<button data-act="tick" data-id="'+id+'">'+(x3.done?'取消完成':'標記完成')+'</button><button data-act="edititem" data-id="'+id+'">改</button>'+
         (x3.lat?'<button data-act="nav" data-id="'+id+'">Google 導航</button>':'<button data-act="geo1" data-id="'+id+'">定位</button>')+
         (x3.photoUrl? '<button data-act="setcover" data-id="'+id+'">用這張相片做封面</button>':'')+
         '<button data-act="dup" data-id="'+id+'">複製一份</button><hr>'+
@@ -6545,8 +6646,27 @@
       if(foldOpen[fs]) delete foldOpen[fs]; else foldOpen[fs]=1;
       var box=$(fs); if(box) box.classList.toggle('shut', !foldOpen[fs]);
     }
+    else if(act==='showday'){
+      var date=el.dataset.d, key=curTrip().id+'|'+date;
+      expandedDay=expandedDay===key?'':key;render();
+      var summary=$('s-d'+days().indexOf(date)).querySelector('.daySummary');
+      summary.focus({preventScroll:true});summary.scrollIntoView({block:expandedDay?'start':'nearest'});
+    }
+    else if(act==='readstop'){stopDetails(itemById(id));}
+    else if(act==='doclibrary'){documentLibrary();}
+    else if(act==='readfile'){
+      var origin=el.dataset.from, fileOwner=itemById(id), returnY=$('pan').scrollTop;
+      viewFile(fileOwner,+el.dataset.i);
+      var back=document.createElement('button');back.className='fileReturn';
+      back.textContent=origin==='library'?'‹ 全部附件':'‹ 行程詳情';
+      back.onclick=function(){if(origin==='library') documentLibrary();else stopDetails(fileOwner);$('pan').scrollTop=returnY;};
+      $('pan').insertBefore(back,$('pan').querySelector('h3'));
+    }
     else if(act==='go'){
       var sid=el.getAttribute('data-s');
+      if(/^s-d\d+$/.test(sid)){
+        expandedDay=curTrip().id+'|'+days()[+sid.slice(3)];view='trip';render();
+      }
       function jumpTo(){
         var s3=sid? $(sid) : null;
         if(!s3) return;
