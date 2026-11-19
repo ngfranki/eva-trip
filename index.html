@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261119-v54">
+<html lang="zh-HK" data-build="20261119-v55">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -907,6 +907,47 @@
   .overviewActions button{font-size:14px;padding:7px 10px}.overviewActions button:first-child{background:var(--ink);color:var(--bg)}.daySummary{display:grid;grid-template-columns:65px minmax(0,1fr) auto 12px;align-items:center;gap:10px;width:100%;min-height:47px;padding:8px 4px;text-align:left;border-bottom:1px solid var(--line)}.daySummary b{color:var(--muted);font-size:13px}.daySummary strong{font-size:16px}.daySummary small,.stopRead>small,.docFile small{color:var(--muted)}.daySummary i,.stopButton i{color:var(--muted);font-style:normal}.daySummary[aria-expanded=true]{border-bottom-color:var(--link);background:var(--soft)}.daySumWrap{margin:0!important}
   .timedStop{display:flex;align-items:center;padding:0;border-bottom:1px solid var(--line)}.stopButton{flex:1;min-width:0;display:flex;align-items:center;gap:9px;text-align:left;padding:13px 2px}.stopButton time{flex:0 0 67px;color:var(--link);font-size:14px;font-variant-numeric:tabular-nums;font-weight:700}.stopButton span{flex:1;min-width:0;overflow-wrap:anywhere;font-size:15px;font-weight:620}.stopButton small{display:inline-flex;gap:3px;align-items:center;white-space:nowrap;color:var(--muted)}.stopButton small svg{vertical-align:middle}.timedStop .kebab{opacity:1}
   .hourPair{margin:10px 0 16px;min-width:0}.hourRow{padding:7px 0;min-width:0}.hourRow h4,.docGroup h4,.stopRead h4{margin:0 0 7px;font-size:14px}.hourRow small{color:var(--muted)}.hourRail{max-width:100%;display:flex;overflow-x:auto;gap:5px;overscroll-behavior-x:contain}.hourRail>div{flex:none;display:grid;gap:2px;min-width:61px;text-align:center;padding:7px 5px;border:1px solid var(--line);border-radius:7px;background:var(--soft)}.hourRail time,.hourRail span{font-size:12px}.hourRail strong{font-size:16px}.docGroup{margin:22px 0}.docGroup h4{border-bottom:1px solid var(--line);padding-bottom:6px}.docGroup h5{margin:12px 0 3px;font-size:13px;color:var(--muted)}.docFile{display:flex;align-items:center;gap:8px;text-align:left;width:100%;padding:10px 6px;border-bottom:1px solid var(--line)}.docFile span{flex:1;min-width:0;overflow-wrap:anywhere}.stopRead{line-height:1.55}.stopRead h3{padding-right:24px}.stopRead dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:8px 0}.stopRead dt{color:var(--muted)}.stopRead dd{margin:0;overflow-wrap:anywhere}.stopRead section{margin:18px 0}.readText{overflow-wrap:anywhere;line-height:1.7}.readText a{color:var(--link)}.readText p{margin:.45em 0}.fileReturn{margin:0 0 10px;color:var(--link)}.hourRow .hourRail{scrollbar-width:thin}
+  @media screen{
+    .tripPage{--moss:#416559;--leaf:#edf3ef;--rule:#dce5df;max-width:760px;padding-top:14px}
+    #s-location .locblock{margin:0;overflow:hidden;border:1px solid var(--rule);border-radius:20px;background:var(--surf)}
+    #s-location .hourPair{margin:0;padding:0 16px}
+    #s-location .hourRow{padding:13px 0}
+    #s-location .hourRow+.hourRow{border-top:1px solid var(--rule)}
+    #s-location .hourRail{gap:0}
+    #s-location .hourRail>div{border:none;border-radius:0;border-right:1px solid var(--rule);background:none;min-width:59px}
+    #s-location .hourRail time,#s-location .hourRail span{color:var(--muted)}
+    #s-location .hourRail strong{color:var(--moss)}
+    .tripPage .triphead{margin:28px 0 26px}
+    .tripPage .tripid .when{margin-top:7px}
+    .tripPage .overviewActions{margin:15px 0 0}
+    .tripPage .overviewActions button{min-height:38px;border-radius:24px;padding:7px 14px}
+    .tripPage .overviewActions button:first-child{background:var(--moss);border-color:transparent;color:var(--surf)}
+    #s-itin>.sech,.tripResources>h2{margin:0 0 14px}
+    #s-itin>.sech .n{margin-left:auto}
+    .daySummary{min-height:56px;grid-template-columns:56px minmax(0,1fr) auto 14px;padding:8px 5px;gap:10px;border-color:var(--rule)}
+    .daySummary b{background:var(--leaf);color:var(--moss);font-size:12px;border-radius:6px;padding:4px 0;text-align:center;font-variant-numeric:tabular-nums}
+    .daySummary strong{font-size:17px;font-weight:650}.daySummary i{color:var(--moss)}
+    .daySummary[aria-expanded=true]{background:var(--leaf);border-color:var(--rule)}
+    .tripResources{margin:38px 0 0}
+    .tripResources>h2{font-size:23px;letter-spacing:-.025em}
+    .resourceGroup{background:var(--soft2);border:1px solid var(--line2);border-radius:16px;padding:16px 15px 6px;margin:12px 0}
+    .resourceGroup>h3{margin:0 0 6px;color:var(--moss);font-size:13px;font-weight:700;letter-spacing:.06em}
+    .resourceGroup .sec,.resourceGroup .sec.shut{margin:0;border-top:1px solid var(--rule)}
+    .resourceGroup h3+.sec{border-top:0}
+    .resourceGroup .sech,.resourceGroup .sec.shut .sech{padding:0;margin:0}
+    .resourceGroup .foldbtn{gap:10px;min-height:55px}
+    .resourceIcon{display:grid;place-items:center;color:var(--moss);flex:none}
+    .resourceLabel{font-size:15px;font-weight:650;overflow-wrap:anywhere}
+    .resourceGroup .foldbtn .n{margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .resourceGroup .foldbtn .chev{margin-left:auto;flex:none}.resourceGroup .foldbtn .n+.chev{margin-left:0}
+    .resourceGroup .sec .chev{transform:rotate(180deg)}.resourceGroup .sec.shut .chev{transform:none}
+    .resourceGroup .secbody{padding:3px 0 15px}
+    .resourceGroup .kebab{flex:none}.resourceNew{display:flex;align-items:center;gap:7px;min-height:44px;color:var(--moss);font-weight:650}
+    .resourceGroup .qrow{margin:0;flex-wrap:wrap;justify-content:flex-start}
+  }
+  @media screen and (prefers-color-scheme:dark){.tripPage{--moss:#a6d0bc;--leaf:#273c34;--rule:#38483f}}
+  @media print{#s-location,.overviewActions,.resourceIcon,.resourceNew{display:none}}
+
 </style>
 </head>
 <body>
@@ -932,7 +973,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261119-v54" style="padding-top:0">v54</div>
+        <div id="ver" data-build="20261119-v55" style="padding-top:0">v55</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -993,7 +1034,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261119-v54';
+  var APP_VER='20261119-v55';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2150,10 +2191,10 @@
       '</div>';
   }
   function secShut(id){ return id!=='s-itin' && !foldOpen[id]; }
-  function foldHead(id, title, extra, right){
+  function foldHead(id, title, extra, right, icon){
     return '<div class="sec'+(secShut(id)?' shut':'')+'" id="'+id+'"><div class="sech">'+
-      '<button class="foldbtn" data-act="fold" data-s="'+id+'">'+ic('chev',13,'chev')+
-      '<h2>'+title+'</h2>'+(extra||'')+'</button>'+(right||'')+'</div><div class="secbody">';
+      '<button class="foldbtn" data-act="fold" aria-expanded="'+!secShut(id)+'" data-s="'+id+'">'+(icon?'<span class="resourceIcon">'+ic(icon,18)+'</span>':'')+
+      '<span class="resourceLabel">'+title+'</span>'+(extra||'')+ic('chev',13,'chev')+'</button>'+(right||'')+'</div><div class="secbody">';
   }
   function foldEnd(){ return '</div></div>'; }
 
@@ -3379,16 +3420,11 @@
     ensureList();
     if(MODE==='cloud') wxFetch();      // 自己有守衛，唔會每次 render 都打
     fxFetch();                          // 自動匯率，同樣有守衛
-    var h='<div class="page">';
+    var h='<div class="page tripPage">';
+    h+='<section id="s-location" aria-label="定位與天氣">'+locHeroHTML()+'</section>';
     h+=tripHead(t);
     h+=itinSec();
-    h+='<section id="s-location"><h2>定位與天氣</h2>'+locHeroHTML()+'</section>';
-    h+=quickRow();
-    tLists().forEach(function(l){ h+=listSec(l); });
-    h+='<div class="morebar"><button class="pill bare" data-act="newlist">＋ 新清單</button></div>';
-    h+=exploreSec();
-    h+=notesSec(t);
-    h+=budgetSec();
+    h+=resourcesSec(t);
     h+='</div>';
     $('main').innerHTML=h;
     $('toc').innerHTML=toc();
@@ -3531,7 +3567,7 @@
       '<div class="tripid"><button class="kebab hedit" data-act="edittrip" title="改旅程">⋯</button>'+
       '<h1><button class="h1back" data-act="home" title="所有旅程">'+ic('chev',16,'rot90')+'</button>'+esc(t.name)+'</h1>'+
       '<div class="sub when">'+esc(when)+'</div>'+
-      '<div class="overviewActions"><button data-act="doclibrary">'+ic('copy',16)+'全部附件</button><button data-act="go" data-s="s-location">'+ic('pin',16)+'定位與天氣</button><button data-act="fxsheet">工具</button></div></div></div>';
+      '<div class="overviewActions"><button data-act="doclibrary">'+ic('copy',16)+'全部附件</button><button data-act="fxsheet">'+ic('money',16)+'貨幣換算</button></div></div></div>';
   }
   function quickRow(){
     var counts={}; tItems().forEach(function(x){ counts[x.kind]=(counts[x.kind]||0)+1; });
@@ -3711,7 +3747,7 @@
     var t=curTrip(); if(!t) return '';
     var ex=exList();
     var busy=!!exBusy;
-    var h=foldHead('s-explore','探索', ex&&ex.items?'<span class="n">'+ex.items.length+'</span>':'');
+    var h=foldHead('s-explore','目的地推介', ex&&ex.items?'<span class="n">'+ex.items.length+' 個推介</span>':'','','compass');
     h+='<div class="foldact"><button class="pill acc" data-act="explore"'+(busy?' disabled':'')+'>'+ic('spark',15,'inline')+' '+
       (busy?'搜尋中…':(ex?'換一批':'看看有什麼好去處'))+'</button></div>';
     if(!ex || !ex.items || !ex.items.length){
@@ -3782,17 +3818,34 @@
       })(0);
     });
   }
+  function listLabel(l){
+    if(l.name==='想去') return '想去的地點';
+    if(l.name==='筆記') return '參考資料與清單';
+    if(l.name==='舊行程（同步前保留）') return '同步前的行程存檔';
+    return l.name;
+  }
+  function resourcesSec(t){
+    var lists=tLists();
+    var archive=lists.filter(function(l){return l.name==='舊行程（同步前保留）';});
+    var h='<section class="tripResources"><h2>旅程手冊</h2>';
+    h+='<div class="resourceGroup"><h3>收藏與筆記</h3>';
+    lists.filter(function(l){return !archive.includes(l);}).forEach(function(l){h+=listSec(l);});
+    h+=notesSec(t)+exploreSec();
+    h+='<button class="resourceNew" data-act="newlist">'+ic('plus',15)+'新增自己的清單</button></div>';
+    h+='<div class="resourceGroup"><h3>行程管理</h3>'+budgetSec();
+    h+=foldHead('s-add','新增行程項目','','','plus')+quickRow()+foldEnd();
+    archive.forEach(function(l){h+=listSec(l);});
+    return h+'</div></section>';
+  }
   function notesSec(t){
-    var prev=String(t.note||'').replace(/\s+/g,' ').trim();
-    if(prev.length>22) prev=prev.slice(0,22)+'…';
-    return foldHead('s-note','筆記', prev?'<span class="n prev">'+esc(prev)+'</span>':'')+
+    return foldHead('s-note','旅程記事簿','','','book')+
       '<textarea class="inp" id="tripNote" placeholder="簽證、匯率、想吃的東西、朋友介紹…">'+esc(t.note||'')+'</textarea>'+
       foldEnd();
   }
   function listSec(l){
     var arr=listItems(l.id);
-    return foldHead('s-'+l.id, esc(l.name), '<span class="n">'+arr.length+'</span>',
-      '<button class="kebab" data-act="listmenu" data-id="'+l.id+'" style="opacity:1">⋯</button>')+
+    return foldHead('s-'+l.id, esc(listLabel(l)), '<span class="n">'+arr.length+' 項</span>',
+      '<button class="kebab" data-act="listmenu" data-id="'+l.id+'" style="opacity:1" aria-label="清單選單">⋯</button>',l.name==='想去'?'pin':l.name==='舊行程（同步前保留）'?'clock':'note')+
       '<div class="panel" data-drop="list:'+l.id+'">'+
       (arr.length? '<div class="rows">'+arr.map(function(x,i){return rowHTML(x,null);}).join('')+'</div>'
                  : '<div class="empty">還沒有內容。輸入名稱，或從行程拖過來。</div>')+
@@ -3942,7 +3995,7 @@
   function itinSec(){
     var ds=days();
     if(!ds.length) return '<div class="sec" id="s-itin"><div class="sech"><h2>行程</h2></div><div class="empty">未定日期。按右上角 ⋯ 輸入出發同返程日。</div></div>';
-    var h='<div class="sec" id="s-itin"><div class="sech"><h2>行程</h2><span class="n">'+ds.length+' 日</span></div>';
+    var h='<div class="sec" id="s-itin"><div class="sech"><h2>每日行程</h2><span class="n">'+ds.length+' 日</span></div>';
     ds.forEach(function(d,i){
       var dest=dayDestination(d), opened=expandedDay===curTrip().id+'|'+d || printDays;
       h+='<div class="day daySumWrap" id="s-d'+i+'"><button class="daySummary" data-act="showday" data-d="'+d+'" aria-expanded="'+opened+'"><b>Day '+(i+1)+'</b><strong>'+esc(dest.name)+'</strong><small>'+md(d)+' '+dow(d)+'</small><i>'+(opened?'⌄':'›')+'</i></button>';
@@ -4077,7 +4130,7 @@
   }
   function budgetSec(){
     var it=tItems().filter(function(x){ return +x.cost>0; });
-    var h=foldHead('s-bud','預算','<span class="n">'+esc(fmtCcy(cur(),homeTotal()))+'</span>');
+    var h=foldHead('s-bud','旅程開支','<span class="n">'+esc(fmtCcy(cur(),homeTotal()))+'</span>','','money');
     var tot=homeTotal(), n=days().length;
     h+='<div class="exptot"><div class="amt">'+esc(fmtCcy(cur(),tot))+
        '<small>'+it.length+' 筆'+(n?' · 平均每日 '+esc(fmtCcy(cur(),tot/n)):'')+'</small></div>'+
@@ -4122,10 +4175,10 @@
   function tocBody(){
     var t=curTrip(); if(!t) return '';
     var h='<div class="sgrp"><h4>'+ic('chev',12,'chev')+'概覽</h4><nav>';
-    h+='<button data-act="go" data-s="s-explore">探索'+(exList()&&exList().items?'<i>'+exList().items.length+' 個推介</i>':'')+'</button>';
-    h+='<button data-act="go" data-s="s-note">筆記</button>';
-    tLists().forEach(function(l){ h+='<button data-act="go" data-s="s-'+l.id+'">'+esc(l.name)+'<i>'+listItems(l.id).length+' 項</i></button>'; });
-    h+='<button data-act="go" data-s="s-bud">預算<i>'+money(sumHome(tItems()))+'</i></button>';
+    h+='<button data-act="go" data-s="s-explore">目的地推介'+(exList()&&exList().items?'<i>'+exList().items.length+' 個推介</i>':'')+'</button>';
+    h+='<button data-act="go" data-s="s-note">旅程記事簿</button>';
+    tLists().forEach(function(l){ h+='<button data-act="go" data-s="s-'+l.id+'">'+esc(listLabel(l))+'<i>'+listItems(l.id).length+' 項</i></button>'; });
+    h+='<button data-act="go" data-s="s-bud">旅程開支<i>'+money(sumHome(tItems()))+'</i></button>';
     h+='</nav></div><div class="sgrp"><h4>'+ic('chev',12,'chev')+'行程</h4><nav>';
     days().forEach(function(d,i){
       h+='<button data-act="go" data-s="s-d'+i+'">Day '+(i+1)+' · '+md(d)+'<i>'+esc(dayDestination(d).name)+'</i></button>';
@@ -6644,7 +6697,7 @@
     else if(act==='fold'){
       var fs=el.getAttribute('data-s'); if(!fs) return;
       if(foldOpen[fs]) delete foldOpen[fs]; else foldOpen[fs]=1;
-      var box=$(fs); if(box) box.classList.toggle('shut', !foldOpen[fs]);
+      var box=$(fs); if(box){box.classList.toggle('shut', !foldOpen[fs]);el.setAttribute('aria-expanded',String(!!foldOpen[fs]));}
     }
     else if(act==='showday'){
       var date=el.dataset.d, key=curTrip().id+'|'+date;
@@ -6671,7 +6724,7 @@
         var s3=sid? $(sid) : null;
         if(!s3) return;
         var sec=s3.classList.contains('sec')? s3 : s3.closest('.sec');
-        if(sec && sec.id){ foldOpen[sec.id]=1; sec.classList.remove('shut'); }
+        if(sec && sec.id){ foldOpen[sec.id]=1; sec.classList.remove('shut'); var toggle=sec.querySelector('.foldbtn'); if(toggle) toggle.setAttribute('aria-expanded','true'); }
         var docEl=document.querySelector('.doc');
         if(docEl){
           var top=s3.getBoundingClientRect().top - docEl.getBoundingClientRect().top + docEl.scrollTop - 64;
