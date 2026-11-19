@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261107-v45">
+<html lang="zh-HK" data-build="20261119-v47">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -153,7 +153,9 @@
   .locblock{margin:8px -22px 22px}
   .lochero{position:relative; aspect-ratio:16/9; overflow:hidden; background:#e7eef3}
   .locimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center top; display:block}
-  .locsky{position:absolute; top:0; left:0; right:0; display:flex; align-items:flex-start;
+  .wxportrait{width:45px;height:32px;border-radius:8px;object-fit:cover;border:1px solid #fff9}
+  .lochero::after{content:"";position:absolute;inset:0 0 auto;height:44%;background:linear-gradient(#fffaeddf,transparent);pointer-events:none}
+  .locsky{z-index:1;position:absolute; top:0; left:0; right:0; display:flex; align-items:flex-start;
     justify-content:space-between; gap:14px; padding:11px 14px 0; pointer-events:none}
   .locleft{flex:1 1 auto; min-width:0; max-width:54%}
   .locright{flex:0 0 auto; max-width:46%; text-align:right}
@@ -912,7 +914,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261107-v45" style="padding-top:0">v45</div>
+        <div id="ver" data-build="20261119-v47" style="padding-top:0">v47</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -971,7 +973,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261107-v45';
+  var APP_VER='20261119-v47';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2025,7 +2027,8 @@
       var st=currentStop();
       if(st && st.lat!=null){ lat=st.lat; lng=st.lng; }
     }
-    var art='hero/'+heroRegion(lat, lng, sub.hint)+'.webp';
+    var region=heroRegion(lat, lng, sub.hint);
+    var art='hero/plush/'+region+'.webp';
     var cache=heroRead();
     var show=cache && sub.key && cache.key===sub.key ? cache : null;
     var name=(show && show.name) || sub.name || '';
@@ -2035,6 +2038,9 @@
     var w=g.wx||{}, c=glanceClocks(g);
     var temp=w.temp!=null? Math.round(w.temp)+'°' : '';
     var cond=w.label||'';
+    var weatherScenes={wxsun:'sunny',wxpart:'cloudy',wxcloud:'cloudy',wxrain:'rain',wxsnow:'snow',wxstorm:'storm'};
+    var weatherScene=weatherScenes[wxIcon(w.code,cond)] || 'sunny';
+    if(region==='default') art='hero/plush/'+(w.code!=null || cond ? weatherScene : 'sunny')+'.webp';
     var tag=g.src==='stop'? '<i class="loctag">行程</i>' : '';
     function pair(lo,hi){
       if(lo==null && hi==null) return '';
@@ -2062,7 +2068,7 @@
           (tmrBits.length?'<div class="wxrow"><b>聽日</b>'+tmrBits.join('')+'</div>':'')+
         '</div>' : '';
     var wxbit=(w.code!=null || cond || temp)
-      ? '<div class="locwx">'+(w.code!=null||cond? ic(wxIcon(w.code, cond),30):'')+
+      ? '<div class="locwx"><img class="wxportrait" alt="" src="hero/plush/'+weatherScene+'.webp">'+(w.code!=null||cond? ic(wxIcon(w.code, cond),30):'')+
           (temp?'<b class="num">'+esc(temp)+'</b>':'')+
           (cond?'<span class="loccond">'+esc(cond)+'</span>':'')+'</div>'
       : '';
@@ -4210,6 +4216,7 @@
     markers.forEach(function(m){ map.removeLayer(m); }); markers=[];
     mapBar();
     var pts=mapPoints();
+    meMarker();
     if(!pts.length){ return; }
     var lines={}, ll=[];
     pts.forEach(function(p){
@@ -4945,7 +4952,7 @@
       gpsErr='';
       if(moved){ hereFix={lat:lat, lng:lng}; tenkiPaint(); }
       else if($('pan') && $('pan').__now) nowRender();
-      if(gmap) meMarker();
+      meMarker();
       if(cb){ var f=cb; cb=null; f(true); }
     }, function(e){
       gpsErr = e.code===1? '你拒絕了定位權限（Safari 設定 → 位置）'
@@ -4959,16 +4966,23 @@
     gpsPaused=true; hereFix=null;
     if(gpsWatch!==null){ try{ navigator.geolocation.clearWatch(gpsWatch); }catch(e){} gpsWatch=null; }
     myPos=null;
+    if(plushPin){ plushPin.remove(); plushPin=null; }
     if(gMe){ try{ gMe.setMap(null); }catch(e){} gMe=null; }
   }
+  var plushPin=null;
   function meMarker(){
+    if(map && myPos && window.L){
+      var point=[myPos.lat,myPos.lng];
+      if(!plushPin) plushPin=L.marker(point,{title:'我的位置',zIndexOffset:9999,
+        icon:L.icon({iconUrl:'hero/plush/marker.webp',iconSize:[54,34],iconAnchor:[27,34]})});
+      plushPin.setLatLng(point).addTo(map);
+    }
     if(!gmap || !myPos || !window.google) return;
     var p={lat:myPos.lat,lng:myPos.lng};
-    if(gMe){ gMe.setPosition(p); return; }
+    if(gMe){ gMe.setPosition(p); gMe.setMap(gmap); return; }
     try{
       gMe=new google.maps.Marker({map:gmap, position:p, zIndex:9999, title:'我的位置',
-        icon:{ path:google.maps.SymbolPath.CIRCLE, scale:7,
-               fillColor:'#1A73E8', fillOpacity:1, strokeColor:'#fff', strokeWeight:3 }});
+        icon:{url:'hero/plush/marker.webp',scaledSize:new google.maps.Size(54,34),anchor:new google.maps.Point(27,34)}});
     }catch(e){}
   }
 
