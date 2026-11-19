@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261107-v45">
+<html lang="zh-HK" data-build="20261119-v46">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -153,6 +153,9 @@
   .locblock{margin:8px -22px 22px}
   .lochero{position:relative; aspect-ratio:16/9; overflow:hidden; background:#e7eef3}
   .locimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center top; display:block}
+  .locfriends{position:absolute;bottom:3%;left:7%;width:38%;height:49%;pointer-events:none}
+  .locfriends img{width:100%;height:100%;object-fit:contain;object-position:bottom}
+  .locfriends .weatherprop{position:absolute;right:-8%;top:4%;font-size:clamp(17px,3vw,34px)}
   .locsky{position:absolute; top:0; left:0; right:0; display:flex; align-items:flex-start;
     justify-content:space-between; gap:14px; padding:11px 14px 0; pointer-events:none}
   .locleft{flex:1 1 auto; min-width:0; max-width:54%}
@@ -912,7 +915,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261107-v45" style="padding-top:0">v45</div>
+        <div id="ver" data-build="20261119-v46" style="padding-top:0">v46</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -971,7 +974,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261107-v45';
+  var APP_VER='20261119-v46';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2068,6 +2071,8 @@
       : '';
     return '<div class="locblock">'+
       '<div class="lochero"><img class="locimg" alt="" src="'+esc(art)+'">'+
+        '<div class="locfriends"><img src="hero/friends.webp" alt="Miffy、Boris 同鯨頭鸛一齊去旅行">'+
+          (/雪/.test(cond)?'<span class="weatherprop" aria-hidden="true">❄️</span>':/雨/.test(cond)?'<span class="weatherprop" aria-hidden="true">☂️</span>':'')+'</div>'+
         '<div class="locsky">'+
           '<div class="locleft">'+
             (name?'<div class="locname">'+esc(name)+tag+'</div>':'')+
@@ -4210,6 +4215,7 @@
     markers.forEach(function(m){ map.removeLayer(m); }); markers=[];
     mapBar();
     var pts=mapPoints();
+    meMarker();
     if(!pts.length){ return; }
     var lines={}, ll=[];
     pts.forEach(function(p){
@@ -4945,7 +4951,7 @@
       gpsErr='';
       if(moved){ hereFix={lat:lat, lng:lng}; tenkiPaint(); }
       else if($('pan') && $('pan').__now) nowRender();
-      if(gmap) meMarker();
+      meMarker();
       if(cb){ var f=cb; cb=null; f(true); }
     }, function(e){
       gpsErr = e.code===1? '你拒絕了定位權限（Safari 設定 → 位置）'
@@ -4959,16 +4965,24 @@
     gpsPaused=true; hereFix=null;
     if(gpsWatch!==null){ try{ navigator.geolocation.clearWatch(gpsWatch); }catch(e){} gpsWatch=null; }
     myPos=null;
+    if(friendPin){ friendPin.remove(); friendPin=null; }
     if(gMe){ try{ gMe.setMap(null); }catch(e){} gMe=null; }
   }
+  var friendPin=null;
   function meMarker(){
+    if(myPos && map && window.L){
+      var point=[myPos.lat,myPos.lng];
+      if(friendPin) friendPin.setLatLng(point);
+      else friendPin=L.marker(point,{title:'我的位置',zIndexOffset:9999,
+        icon:L.icon({iconUrl:'hero/friends.webp',iconSize:[62,42],iconAnchor:[31,42]})
+      }).addTo(map);
+    }
     if(!gmap || !myPos || !window.google) return;
     var p={lat:myPos.lat,lng:myPos.lng};
     if(gMe){ gMe.setPosition(p); return; }
     try{
       gMe=new google.maps.Marker({map:gmap, position:p, zIndex:9999, title:'我的位置',
-        icon:{ path:google.maps.SymbolPath.CIRCLE, scale:7,
-               fillColor:'#1A73E8', fillOpacity:1, strokeColor:'#fff', strokeWeight:3 }});
+        icon:{url:'hero/friends.webp',scaledSize:new google.maps.Size(62,42),anchor:new google.maps.Point(31,42)}});
     }catch(e){}
   }
 
