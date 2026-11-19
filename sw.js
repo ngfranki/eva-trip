@@ -2,15 +2,16 @@
 // 目標：出門冇網都開得到 app、睇得返行程、之前睇過嘅地圖照樣有。
 // 注意：唔會批量預載地圖磚 —— OSM 嘅使用條款唔准 bulk download。
 // 只 cache 你自己睇過嘅磚（正常瀏覽行為），所以出門前喺 wifi 慢慢碌一次個地圖就會存低。
-const V = 'trip-v30';
+importScripts('./scene-weather.js');
+const V = 'trip-v31';
 const SHELL = `${V}-shell`;
 const TILES = `${V}-tiles`;
 const TILE_MAX = 1200;
 
 const SHELL_URLS = [
-  './', './index.html', './manifest.json',
+  './', './index.html', './manifest.json', './scene-weather.js',
   './icon-180.png', './icon-192.png', './icon-512.png',
-  './hero/landscapes/tokyo.webp', './hero/landscapes/sapporo.webp', './hero/landscapes/tokachi.webp', './hero/landscapes/akan.webp', './hero/landscapes/hongkong.webp', './hero/landscapes/default.webp', './hero/plush/marker.webp',
+  './hero/plush/marker.webp',
   './hero/tokyo.webp', './hero/sapporo.webp', './hero/tokachi.webp',
   './hero/akan.webp', './hero/hongkong.webp', './hero/default.webp',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
@@ -27,6 +28,16 @@ self.addEventListener('install', (e) => {
       const res = await fetch(abs, fresh ? { cache: 'no-store', credentials: 'same-origin' } : {});
       if (res.ok) await c.put(u === './' ? './index.html' : u, res);
     }));
+    const scenes = [...Object.keys(TripScenery.places),'default'].flatMap(place =>
+      ['day','night','cover','nightcover','rain','nightrain','snow','nightsnow'].map(kind => './hero/scenes/'+place+'/'+kind+'.webp'));
+    // Limit concurrent downloads on mobile networks.
+    async function cacheScenes(){
+      while(scenes.length){
+        const path=scenes.pop();
+        try { await c.add(path); } catch (_) { /* Fetch on first view when online. */ }
+      }
+    }
+    await Promise.all(Array.from({length:4},cacheScenes));
     await self.skipWaiting();
   })());
 });
@@ -113,6 +124,7 @@ self.addEventListener('fetch', (e) => {
     e.respondWith((async () => {
       const cached = await caches.match(req, { ignoreSearch: true })
         || (isDoc ? await caches.match('./index.html') : null);
+      if(cached && url.pathname.includes('/hero/scenes/')) return cached;
       // GitHub Pages 對 index.html 落 max-age=600。navigation 用預設 cache 會攞到舊頁。
       const netReq = isDoc
         ? fetch(url.toString(), { cache: 'no-store', credentials: 'same-origin', redirect: 'follow' })

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261119-v50">
+<html lang="zh-HK" data-build="20261119-v51">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -151,13 +151,23 @@
 
   /* 插畫頂部係天空。地名靠左、時間天氣靠右，只佔天空一條，唔遮風景。 */
   .locblock{margin:8px -22px 22px}
-  .lochero{position:relative; aspect-ratio:16/9; overflow:hidden; background:#e7eef3}
-  .locimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center top; display:block}
+  .lochero{position:relative; aspect-ratio:2.1; overflow:hidden; background:#e7eef3}
+  .locimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:24% 86%; display:block}
   .lochero.wxcloud .locimg,.lochero.wxpart .locimg{filter:saturate(.8)}
   .lochero.wxrain .locimg,.lochero.wxstorm .locimg{filter:saturate(.62) brightness(.84)}
   .lochero.wxsnow .locimg{filter:saturate(.68) brightness(1.06)}
   .lochero .locwx .num{font-size:clamp(25px,4vw,38px)}
   .lochero::after{content:"";position:absolute;inset:0 0 auto;height:44%;background:linear-gradient(#fffaeddf,transparent);pointer-events:none}
+  .precip{position:absolute;inset:0;pointer-events:none;background-repeat:repeat}
+  .precip.snow{background-image:radial-gradient(ellipse at 18px 17px,#fffffff0 1.4px,transparent 2px),radial-gradient(ellipse at 52px 41px,#ffffffc0 1px,transparent 2px);background-size:69px 59px;animation:scenesnow 4s linear infinite}
+  .precip.rain{background-image:linear-gradient(110deg,transparent 46%,#d5e5f496 50%,transparent 54%);background-size:47px 21px;animation:scenerain .7s linear infinite}
+  @keyframes scenesnow{to{background-position:69px 118px}}
+  @keyframes scenerain{to{background-position:-47px 84px}}
+  @media(prefers-reduced-motion:reduce){.precip{animation:none!important}}
+  .scene-morning::after{height:100%;background:linear-gradient(120deg,#fff1ca47,transparent 65%);pointer-events:none}
+  .scene-evening::after{height:100%;background:linear-gradient(245deg,#f2a76950,transparent 65%);pointer-events:none}
+  .scene-night::after{background:linear-gradient(#0b162593,transparent)}
+  .scene-night .locsky *{color:#fff;text-shadow:0 1px 4px #16202e}
   .locsky{z-index:1;position:absolute; top:0; left:0; right:0; display:flex; align-items:flex-start;
     justify-content:space-between; gap:14px; padding:11px 14px 0; pointer-events:none}
   .locleft{flex:1 1 auto; min-width:0; max-width:54%}
@@ -917,7 +927,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261119-v50" style="padding-top:0">v50</div>
+        <div id="ver" data-build="20261119-v51" style="padding-top:0">v51</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -966,6 +976,7 @@
 </section>
 <div id="menuHost"></div>
 
+<script src="./scene-weather.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
@@ -976,7 +987,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261119-v50';
+  var APP_VER='20261119-v51';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1454,6 +1465,10 @@
   function tenkiPaint(){
     var doc=$('doc'), y=doc? doc.scrollTop : 0;
     if(view!=='home') render();
+    else {
+      var hero=document.querySelector('.home .locblock');
+      if(hero) hero.outerHTML=locHeroHTML();
+    }
     if(doc) doc.scrollTop=y;
     if($('pan') && $('pan').__now) nowRender();
   }
@@ -1639,6 +1654,7 @@
         low:g.low==null?null:g.low, rain:typeof g.rain==='number'?g.rain:null,
         feels:g.feels==null?null:g.feels, wind:g.wind==null?null:g.wind,
         hum:g.hum==null?null:g.hum, uv:g.uv==null?null:g.uv,
+        isDay:g.isDay, snowfall:g.snowfall, depth:g.depth, rainNow:g.rainNow,
         code:g.code==null?null:g.code, label:g.label||'',
         tmrCode:g.tmrCode==null?null:g.tmrCode, tmrLabel:g.tmrLabel||'',
         tmrHigh:g.tmrHigh==null?null:g.tmrHigh, tmrLow:g.tmrLow==null?null:g.tmrLow,
@@ -1652,7 +1668,7 @@
   }
   function glanceNear(a, lat, lng){
     if(!a || a.lat==null || lat==null || lng==null) return false;
-    return Math.abs(+a.lat-lat)<0.4 && Math.abs(+a.lng-lng)<0.4;
+    return hav([a.lat,a.lng],[lat,lng])<3;
   }
   function wxIcon(code, text){
     var t=String(text||'');
@@ -1678,6 +1694,8 @@
   }
   function currentStop(){
     var t=curTrip(); if(!t) return null;
+    var schedule=TripScenery.planned(t,new Date());
+    if(schedule) return schedule;
     var ds=days(), pick=null, d='';
     if(ds.length){
       var td=today();
@@ -1710,7 +1728,7 @@
     }
     if(!glanceDenied() && !myPos){
       var c=glanceRead();
-      if(c && c.src!=='stop') return {lat:+c.lat, lng:+c.lng, place:c.place||'', src:c.src||'gps', q:''};
+      if(c && c.src!=='stop' && Date.now()-c.at<20*60000) return {lat:+c.lat, lng:+c.lng, place:c.place||'', src:c.src||'gps', q:''};
     }
     return currentStop();
   }
@@ -1732,7 +1750,7 @@
     if(hit.high!=null) rec[hi]=hit.high;
     if(hit.low!=null) rec[lo]=hit.low;
     if(typeof hit.rain==='number') rec[rn]=hit.rain;
-    if(hit.weather) rec[lb]=hit.weather;
+    if(hit.weather && (prefix || rec.code==null)) rec[lb]=hit.weather;
   }
   function glanceAbsorbTenki(key){
     if(!glanceMem || ('glance|'+glanceMem.sig)!==key) return;
@@ -1750,7 +1768,7 @@
     glanceBusy=sig;
     var u='https://api.open-meteo.com/v1/forecast?latitude='+sig.split(',')[0]+
       '&longitude='+sig.split(',')[1]+
-      '&current=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,wind_speed_10m'+
+      '&current=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,wind_speed_10m,is_day,snowfall,rain,showers&hourly=snow_depth'+
       '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max'+
       '&timezone=auto&forecast_days=2';
     fetch(u).then(function(r){ return r.ok? r.json():null; }).then(function(j){
@@ -1758,10 +1776,16 @@
       if(!j){ glanceFail={sig:sig, at:Date.now()}; return; }
       var cur=j.current||{}, dly=j.daily||{};
       function at(key, i){ var a=dly[key]; return (a && a[i]!=null)? a[i] : null; }
-      var code=cur.weather_code!=null? cur.weather_code : at('weather_code', 0);
+      var code=cur.weather_code;
       var tmrCode=at('weather_code', 1);
       var prev=glanceRead();
+      var target=glanceTarget();
+      if(!target || sig!==Number(target.lat).toFixed(2)+','+Number(target.lng).toFixed(2)) return;
+      var hourly=j.hourly||{}, hour=(cur.time||'').slice(0,13)+':00';
+      var depthIndex=(hourly.time||[]).indexOf(hour);
       var rec={
+        isDay:cur.is_day, snowfall:cur.snowfall, rainNow:(cur.rain||0)+(cur.showers||0),
+        depth:depthIndex>=0 && hourly.snow_depth ? hourly.snow_depth[depthIndex] : null,
         at:Date.now(), sig:sig, lat:+tgt.lat, lng:+tgt.lng,
         place:(tgt.src==='gps' && glancePlace())? glancePlace() : (tgt.place || (prev && prev.sig===sig ? prev.place : '') || ''),
         src:tgt.src||'',
@@ -1803,7 +1827,7 @@
     }
     var cur=glanceRead();
     // 成功攞過就當新鮮，就算個別欄係 null。否則每次 render 都會再打。
-    var fresh=cur && cur.sig===sig && cur.feels!==undefined && (Date.now()-(cur.at||0))<20*60*1000;
+    var fresh=cur && cur.sig===sig && cur.isDay!=null && (Date.now()-(cur.at||0))<10*60*1000;
     if(fresh || glanceBusy===sig) return;
     if(glanceFail && glanceFail.sig===sig && (Date.now()-glanceFail.at)<2*60*1000) return;
     glanceFetch(tgt);
@@ -1825,7 +1849,7 @@
       if(!place && cache && glanceNear(cache,lat,lng)) place=cache.place||'';
       if(cache && glanceNear(cache,lat,lng)) wx=cache;
       if(glanceMem && glanceMem.sig===lat.toFixed(2)+','+lng.toFixed(2)) wx=glanceMem;
-    } else if(!denied && !myPos && cache){
+    } else if(!denied && !myPos && cache && cache.src!=='stop' && Date.now()-cache.at<20*60000){
       src=cache.src||'gps'; lat=+cache.lat; lng=+cache.lng; place=cache.place||''; wx=cache;
     } else {
       var stop=currentStop();
@@ -1842,7 +1866,7 @@
         if(tk.hit.high!=null) wx.high=tk.hit.high;
         if(tk.hit.low!=null) wx.low=tk.hit.low;
         if(typeof tk.hit.rain==='number') wx.rain=tk.hit.rain;
-        if(tk.hit.weather) wx.label=tk.hit.weather;
+        if(tk.hit.weather && wx.code==null) wx.label=tk.hit.weather;
         if(src==='gps' && !place && tk.m.place) place=tk.m.place;
         if(wx.tz==null && cache && cache.tz!=null && glanceNear(cache,lat,lng)) wx.tz=cache.tz;
       }
@@ -1886,7 +1910,7 @@
   }
 
   // ---------- 而家所在：地名、一句介紹、本地卡通插畫 ----------
-  // 插畫按最近地區揀（東京、札幌、十勝、阿寒、香港，其餘用海邊小鎮）。
+  // 首頁使用地標場景，旅程清單封面仍使用地區插畫。
   // GPS 冇開就用行程而家嗰一站嘅座標。唔再打 Wikimedia 攞實物相。
   // 一句介紹仍係中文維基，寺、神社、宮、廟、亭、教堂等字就唔顯示。
   var HERO_KEY='tripHero';
@@ -2030,8 +2054,7 @@
       var st=currentStop();
       if(st && st.lat!=null){ lat=st.lat; lng=st.lng; }
     }
-    var region=heroRegion(lat, lng, sub.hint);
-    var art='hero/landscapes/'+region+'.webp';
+    var landmark=TripScenery.nearest(lat,lng,hav);
     var cache=heroRead();
     var show=cache && sub.key && cache.key===sub.key ? cache : null;
     var name=(show && show.name) || sub.name || '';
@@ -2042,6 +2065,28 @@
     var temp=w.temp!=null? Math.round(w.temp)+'°' : '';
     var cond=w.label||'';
     var skyClass=w.code!=null || cond ? wxIcon(w.code,cond) : '';
+    var night=c.loc<'06:00' || c.loc>='18:00';
+    if(lat!=null){
+      var solar=sunTimes(lat,lng,fmtD(atTz(new Date(),g.tz)),g.tz);
+      if(solar && solar.rise && solar.set) night=c.loc<solar.rise || c.loc>=solar.set;
+    }
+    var fresh=w.at && Date.now()-w.at<30*60000;
+    if(fresh && w.isDay!=null) night=w.isDay===0;
+    var scene=TripScenery.condition(w,night);
+    var lightClass=night?'scene-night':'';
+    if(!night && solar && solar.rise && solar.set){
+      function clockMinutes(value){var parts=value.split(':');return +parts[0]*60 + +parts[1];}
+      var minutes=clockMinutes(c.loc);
+      if(minutes<clockMinutes(solar.rise)+120) lightClass='scene-morning';
+      else if(minutes>clockMinutes(solar.set)-90) lightClass='scene-evening';
+    }
+    var art='hero/scenes/'+(landmark||'default')+'/'+scene.image+'.webp';
+    if(landmark){
+      var landmarkName=TripScenery.places[landmark][0];
+      if(name!==landmarkName) fact='';
+      name=name && name!==landmarkName ? name+' · '+landmarkName : landmarkName;
+    }
+
     var tag=g.src==='stop'? '<i class="loctag">行程</i>' : '';
     function pair(lo,hi){
       if(lo==null && hi==null) return '';
@@ -2049,6 +2094,8 @@
     }
     function span(t){ return '<span>'+esc(t)+'</span>'; }
     var todayBits=[];
+    if(scene.covered) todayBits.push(span('估算積雪 '+(w.depth<0.01?'不足 1':Math.round(w.depth*100))+' cm'));
+    if(w.at && !fresh) todayBits.push(span('上次更新 '+hhmm(atTz(new Date(w.at),g.tz))));
     if(cond) todayBits.push(span(cond));
     if(pair(w.low,w.high)) todayBits.push(span(pair(w.low,w.high)));
     if(typeof w.rain==='number') todayBits.push(span('降水 '+Math.round(w.rain)+'%'));
@@ -2074,7 +2121,8 @@
           (cond?'<span class="loccond">'+esc(cond)+'</span>':'')+'</div>'
       : '';
     return '<div class="locblock">'+
-      '<div class="lochero '+skyClass+'"><img class="locimg" alt="" src="'+esc(art)+'">'+
+      '<div class="lochero '+skyClass+' '+lightClass+'"><img class="locimg" alt="" src="'+esc(art)+'">'+
+        (scene.covered && scene.sky?'<div aria-hidden="true" class="precip '+scene.sky+'"></div>':'')+
         '<div class="locsky">'+
           '<div class="locleft">'+
             (name?'<div class="locname">'+esc(name)+tag+'</div>':'')+
@@ -3385,6 +3433,7 @@
          '<button class="btn acc" data-act="newtrip">＋ 開新旅程</button></div></div>';
       return h;
     }
+    if(curTrip()) h+=locHeroHTML();
     h+='<div class="tgrid">';
     ts.forEach(function(t,i){
       var art=tripCardArt(t), w=tripWhen(t);
@@ -6692,7 +6741,12 @@
   setInterval(refreshIfChanged,45000);
   setInterval(function(){
     var a=document.querySelector('[data-clk="loc"]'); if(!a) return;
+    glanceKick();
     var c=glanceClocks(glanceShown());
+    if(a.textContent && a.textContent!==c.loc){
+      var currentHero=a.closest('.locblock');
+      if(currentHero){ currentHero.outerHTML=locHeroHTML(); return; }
+    }
     if(a.textContent!==c.loc) a.textContent=c.loc;
     var b=document.querySelector('[data-clk="hk"]');
     if(b){
