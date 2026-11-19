@@ -2,7 +2,7 @@
 // 目標：出門冇網都開得到 app、睇得返行程、之前睇過嘅地圖照樣有。
 // 注意：唔會批量預載地圖磚 —— OSM 嘅使用條款唔准 bulk download。
 // 只 cache 你自己睇過嘅磚（正常瀏覽行為），所以出門前喺 wifi 慢慢碌一次個地圖就會存低。
-const V = 'trip-v27';
+const V = 'trip-v28';
 const SHELL = `${V}-shell`;
 const TILES = `${V}-tiles`;
 const TILE_MAX = 1200;
@@ -10,7 +10,7 @@ const TILE_MAX = 1200;
 const SHELL_URLS = [
   './', './index.html', './manifest.json',
   './icon-180.png', './icon-192.png', './icon-512.png',
-  './hero/plush/sunny.webp', './hero/plush/cloudy.webp', './hero/plush/rain.webp', './hero/plush/snow.webp', './hero/plush/storm.webp', './hero/plush/marker.webp', './hero/plush/tokyo.webp', './hero/plush/sapporo.webp', './hero/plush/tokachi.webp', './hero/plush/akan.webp', './hero/plush/hongkong.webp',
+  './hero/plush/bench.webp', './hero/plush/marker.webp',
   './hero/tokyo.webp', './hero/sapporo.webp', './hero/tokachi.webp',
   './hero/akan.webp', './hero/hongkong.webp', './hero/default.webp',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',

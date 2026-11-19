@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261119-v47">
+<html lang="zh-HK" data-build="20261119-v48">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -153,7 +153,11 @@
   .locblock{margin:8px -22px 22px}
   .lochero{position:relative; aspect-ratio:16/9; overflow:hidden; background:#e7eef3}
   .locimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center top; display:block}
-  .wxportrait{width:45px;height:32px;border-radius:8px;object-fit:cover;border:1px solid #fff9}
+  .loctrio{position:absolute;left:4%;bottom:5%;width:24%;max-width:170px;height:auto;pointer-events:none}
+  .lochero.wxcloud .locimg,.lochero.wxpart .locimg{filter:saturate(.8)}
+  .lochero.wxrain .locimg,.lochero.wxstorm .locimg{filter:saturate(.62) brightness(.84)}
+  .lochero.wxsnow .locimg{filter:saturate(.68) brightness(1.06)}
+  .lochero .locwx .num{font-size:clamp(25px,4vw,38px)}
   .lochero::after{content:"";position:absolute;inset:0 0 auto;height:44%;background:linear-gradient(#fffaeddf,transparent);pointer-events:none}
   .locsky{z-index:1;position:absolute; top:0; left:0; right:0; display:flex; align-items:flex-start;
     justify-content:space-between; gap:14px; padding:11px 14px 0; pointer-events:none}
@@ -914,7 +918,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261119-v47" style="padding-top:0">v47</div>
+        <div id="ver" data-build="20261119-v48" style="padding-top:0">v48</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -973,7 +977,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261119-v47';
+  var APP_VER='20261119-v48';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2028,7 +2032,7 @@
       if(st && st.lat!=null){ lat=st.lat; lng=st.lng; }
     }
     var region=heroRegion(lat, lng, sub.hint);
-    var art='hero/plush/'+region+'.webp';
+    var art='hero/'+region+'.webp';
     var cache=heroRead();
     var show=cache && sub.key && cache.key===sub.key ? cache : null;
     var name=(show && show.name) || sub.name || '';
@@ -2038,9 +2042,7 @@
     var w=g.wx||{}, c=glanceClocks(g);
     var temp=w.temp!=null? Math.round(w.temp)+'°' : '';
     var cond=w.label||'';
-    var weatherScenes={wxsun:'sunny',wxpart:'cloudy',wxcloud:'cloudy',wxrain:'rain',wxsnow:'snow',wxstorm:'storm'};
-    var weatherScene=weatherScenes[wxIcon(w.code,cond)] || 'sunny';
-    if(region==='default') art='hero/plush/'+(w.code!=null || cond ? weatherScene : 'sunny')+'.webp';
+    var skyClass=w.code!=null || cond ? wxIcon(w.code,cond) : '';
     var tag=g.src==='stop'? '<i class="loctag">行程</i>' : '';
     function pair(lo,hi){
       if(lo==null && hi==null) return '';
@@ -2068,12 +2070,13 @@
           (tmrBits.length?'<div class="wxrow"><b>聽日</b>'+tmrBits.join('')+'</div>':'')+
         '</div>' : '';
     var wxbit=(w.code!=null || cond || temp)
-      ? '<div class="locwx"><img class="wxportrait" alt="" src="hero/plush/'+weatherScene+'.webp">'+(w.code!=null||cond? ic(wxIcon(w.code, cond),30):'')+
+      ? '<div class="locwx">'+(w.code!=null||cond? ic(wxIcon(w.code, cond),30):'')+
           (temp?'<b class="num">'+esc(temp)+'</b>':'')+
           (cond?'<span class="loccond">'+esc(cond)+'</span>':'')+'</div>'
       : '';
     return '<div class="locblock">'+
-      '<div class="lochero"><img class="locimg" alt="" src="'+esc(art)+'">'+
+      '<div class="lochero '+skyClass+'"><img class="locimg" alt="" src="'+esc(art)+'">'+
+        '<img class="loctrio" src="hero/plush/bench.webp" alt="三個旅行小伙伴">'+
         '<div class="locsky">'+
           '<div class="locleft">'+
             (name?'<div class="locname">'+esc(name)+tag+'</div>':'')+
