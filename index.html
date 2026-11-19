@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261119-v57">
+<html lang="zh-HK" data-build="20261119-v58">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -966,6 +966,7 @@
     .tripPage .tripid .hedit{right:3px;top:4px}
     .tripPage .overviewActions{border-top:1px dashed var(--thread);padding-top:11px;margin-top:12px}
     .tripPage .overviewActions button:not(:first-child){color:var(--ink2);background:var(--paper);border-color:var(--thread)}
+    #s-itin{container-type:inline-size;container-name:itinerary}
     #s-itin>.sech{gap:8px;margin-bottom:6px}
     .daySummary{border-bottom:1px dashed var(--rule)}
     .daySummary b{background:var(--leaf);color:var(--moss)}
@@ -990,8 +991,7 @@
 
   .tripDock{display:none}
   @media screen{
-    .tripPage{width:100%;max-width:488px;padding-inline:clamp(18px,5vw,30px)}
-    .tripPage .triphead{margin-block:18px 25px}
+    #s-itin{container-type:inline-size;container-name:itinerary}
     #s-itin>.sech{gap:8px;margin:0 0 11px;padding-left:3px}
     #s-itin>.sech>.friendStamp{width:39px;height:39px}
     #s-itin>.sech>.n{margin-left:2px;padding-left:9px;border-left:1px solid var(--rule)}
@@ -1009,6 +1009,17 @@
     .dayPages .day:has(>.daySummary[aria-expanded=true]){padding-bottom:12px}
     .dayPages .daySummary:focus-visible{outline:2px solid var(--moss);outline-offset:1px;border-radius:5px}
   }
+  @media screen{
+    @container itinerary (min-width:500px){
+      .dayPages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px;border:0;background:none;padding:0}
+      .dayPages>.day,.dayPages>.day+.day{min-width:0;padding-inline:12px;border:1px solid var(--rule);border-radius:11px;background:color-mix(in srgb,var(--paper) 88%,var(--surf))}
+      .dayPages .daySummary{gap:9px;min-height:54px}
+      .dayPages .dayPlace{gap:1px 8px}
+      .dayPages>.day:has(>.daySummary[aria-expanded=true]){grid-column:1/-1}
+      .dayPages>.day:nth-child(odd):has(+.day>.daySummary[aria-expanded=true]){grid-column:1/-1}
+      .dayPages>.day:has(>.daySummary[aria-expanded=true])>.daySummary{border-bottom:1px solid var(--rule);margin-bottom:10px}
+    }
+  }
   @media screen and (max-width:820px){
     .doc:has(.tripPage){margin-bottom:calc(50px + env(safe-area-inset-bottom))}
     .doc:has(.tripPage) .tripPage{padding-bottom:36px}
@@ -1017,7 +1028,6 @@
     .tripDock span{display:flex}.tripDock #dockTop{transform:rotate(180deg)}
     .tripDock button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding-inline:6px;gap:6px;font-size:13px;font-weight:650;color:var(--moss)}
     body:has(.tripPage) .chatfab,body:has(.tripPage) .totop{display:none}
-    .doc:has(.tripPage) .top{padding-inline:max(8px,calc((100% - 460px)/2))}
   }
   @media screen and (prefers-color-scheme:dark){.tripDock button{color:#b8cfaa}}
 
@@ -1046,7 +1056,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261119-v57" style="padding-top:0">v57</div>
+        <div id="ver" data-build="20261119-v58" style="padding-top:0">v58</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1112,7 +1122,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261119-v57';
+  var APP_VER='20261119-v58';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
