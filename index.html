@@ -4972,14 +4972,14 @@
   function meMarker(){
     if(myPos && map && window.L){
       var point=[myPos.lat,myPos.lng];
-      if(friendPin) friendPin.setLatLng(point).addTo(map);
+      if(friendPin) friendPin.setLatLng(point);
       else friendPin=L.marker(point,{title:'我的位置',zIndexOffset:9999,
         icon:L.icon({iconUrl:'hero/friends.webp',iconSize:[62,42],iconAnchor:[31,42]})
       }).addTo(map);
     }
     if(!gmap || !myPos || !window.google) return;
     var p={lat:myPos.lat,lng:myPos.lng};
-    if(gMe){ gMe.setPosition(p); if(gMe.getMap()!==gmap) gMe.setMap(gmap); return; }
+    if(gMe){ gMe.setPosition(p); return; }
     try{
       gMe=new google.maps.Marker({map:gmap, position:p, zIndex:9999, title:'我的位置',
         icon:{url:'hero/friends.webp',scaledSize:new google.maps.Size(62,42),anchor:new google.maps.Point(31,42)}});
