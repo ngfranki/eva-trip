@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261119-v55">
+<html lang="zh-HK" data-build="20261119-v56">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -948,6 +948,46 @@
   @media screen and (prefers-color-scheme:dark){.tripPage{--moss:#a6d0bc;--leaf:#273c34;--rule:#38483f}}
   @media print{#s-location,.overviewActions,.resourceIcon,.resourceNew{display:none}}
 
+  /* Felt travel journal. All three character crops share one small asset. */
+  .travelFriends,.friendStamp{background-image:url('./hero/plush/travel-companions.webp');background-repeat:no-repeat;pointer-events:none}
+  .travelFriends{width:clamp(116px,25vw,162px);aspect-ratio:3;flex:none;background-size:contain;background-position:center}
+  .friendStamp{display:inline-block;width:50px;height:50px;flex:none;background-size:300% 100%;background-position:left center}
+  .friendBoris{background-position:50% center}.friendBird{background-position:right center}
+  @media screen{
+    .doc:has(.tripPage){--paper:#fffaf1;--cover:#f2e7d6;--thread:#ddd0b9;--leaf:#e7edda;--moss:#485f40;--rust:#925237;--print:#43382e;
+      background:var(--paper)}
+    .tripPage{--rule:var(--thread);--leaf:#e7edda;--moss:#485f40;--ink:var(--print);--ink2:#645849;--muted:#74685b;color:var(--ink)}
+    .doc:has(.tripPage) .top{background:var(--paper);border-color:var(--thread)}
+    #s-location .locblock{background:var(--paper);box-shadow:0 3px 12px #5036140b}
+    .tripPage .triphead{margin:22px 0 27px}
+    .tripPage .tripid{padding:17px clamp(12px,3vw,22px);margin:0;border:1px solid var(--thread);border-radius:6px 17px 17px 6px;background:var(--cover);box-shadow:inset 5px 0 0 var(--thread)}
+    .titleSpread{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-right:16px}
+    .titleSpread>div{min-width:0}.titleSpread h1{font-size:clamp(20px,3.8vw,27px);line-height:1.3;overflow-wrap:anywhere}
+    .tripPage .tripid .hedit{right:3px;top:4px}
+    .tripPage .overviewActions{border-top:1px dashed var(--thread);padding-top:11px;margin-top:12px}
+    .tripPage .overviewActions button:not(:first-child){color:var(--ink2);background:var(--paper);border-color:var(--thread)}
+    #s-itin>.sech{gap:8px;margin-bottom:6px}
+    .daySummary{border-bottom:1px dashed var(--rule)}
+    .daySummary b{background:var(--leaf);color:var(--moss)}
+    .daySumWrap:nth-of-type(3n) .daySummary b{background:#f5e2cc;color:#805137}
+    .daySumWrap:nth-of-type(3n+1) .daySummary b{background:#e3e9e6;color:#4e6261}
+    .tripResources>h2{margin-bottom:14px}
+    .resourceGroup{background:var(--paper);border-color:var(--thread)}
+    .resourceGroup>h3{display:flex;align-items:center;gap:8px;font-size:16px;letter-spacing:0;border-bottom:1px dashed var(--thread);padding-bottom:5px}
+    .resourceGroup:first-of-type>h3{color:var(--rust)}
+    .resourceGroup .sec{border-color:var(--thread)}
+    .sheet .handbookTitle{display:flex;align-items:center;gap:8px}
+  }
+  @media screen and (max-width:370px){.travelFriends{width:97px}.titleSpread{padding-right:9px}.tripPage .tripid{padding-left:10px;padding-right:10px}}
+  @media screen and (prefers-color-scheme:dark){
+    .doc:has(.tripPage){--paper:#22231e;--cover:#383229;--thread:#554e41;--print:#f1e7d6;--rust:#e1a27d}
+    .tripPage{--leaf:#354535;--moss:#b8cfaa;--ink2:#d5c8b7;--muted:#b8ac9a}
+    .tripPage .overviewActions button:first-child{color:#223023}
+    .daySumWrap:nth-of-type(3n) .daySummary b{background:#49392d;color:#e3c1a0}
+    .daySumWrap:nth-of-type(3n+1) .daySummary b{background:#30403d;color:#c0d0ca}
+  }
+  @media print{.travelFriends,.friendStamp{display:none}}
+
 </style>
 </head>
 <body>
@@ -973,7 +1013,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261119-v55" style="padding-top:0">v55</div>
+        <div id="ver" data-build="20261119-v56" style="padding-top:0">v56</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1034,7 +1074,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261119-v55';
+  var APP_VER='20261119-v56';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -3565,8 +3605,8 @@
     var when=t.start? (md(t.start)+'–'+md(t.end)+' · '+n+'日') : '未定日期';
     return '<div class="triphead">'+
       '<div class="tripid"><button class="kebab hedit" data-act="edittrip" title="改旅程">⋯</button>'+
-      '<h1><button class="h1back" data-act="home" title="所有旅程">'+ic('chev',16,'rot90')+'</button>'+esc(t.name)+'</h1>'+
-      '<div class="sub when">'+esc(when)+'</div>'+
+      '<div class="titleSpread"><div><h1><button class="h1back" data-act="home" title="所有旅程">'+ic('chev',16,'rot90')+'</button>'+esc(t.name)+'</h1>'+
+      '<div class="sub when">'+esc(when)+'</div></div><span class="travelFriends" aria-hidden="true"></span></div>'+
       '<div class="overviewActions"><button data-act="doclibrary">'+ic('copy',16)+'全部附件</button><button data-act="fxsheet">'+ic('money',16)+'貨幣換算</button></div></div></div>';
   }
   function quickRow(){
@@ -3828,11 +3868,11 @@
     var lists=tLists();
     var archive=lists.filter(function(l){return l.name==='舊行程（同步前保留）';});
     var h='<section class="tripResources"><h2>旅程手冊</h2>';
-    h+='<div class="resourceGroup"><h3>收藏與筆記</h3>';
+    h+='<div class="resourceGroup"><h3><span class="friendStamp friendBoris" aria-hidden="true"></span>收藏與筆記</h3>';
     lists.filter(function(l){return !archive.includes(l);}).forEach(function(l){h+=listSec(l);});
     h+=notesSec(t)+exploreSec();
     h+='<button class="resourceNew" data-act="newlist">'+ic('plus',15)+'新增自己的清單</button></div>';
-    h+='<div class="resourceGroup"><h3>行程管理</h3>'+budgetSec();
+    h+='<div class="resourceGroup"><h3><span class="friendStamp friendBird" aria-hidden="true"></span>行程管理</h3>'+budgetSec();
     h+=foldHead('s-add','新增行程項目','','','plus')+quickRow()+foldEnd();
     archive.forEach(function(l){h+=listSec(l);});
     return h+'</div></section>';
@@ -3966,7 +4006,7 @@
       });
       list.push('</section>');
     });
-    openSheet('<h3>全部附件</h3>'+(list.join('')||'<p>這個旅程暫時未有附件。</p>'));
+    openSheet('<h3 class="handbookTitle"><span class="friendStamp friendBird" aria-hidden="true"></span>全部附件</h3>'+(list.join('')||'<p>這個旅程暫時未有附件。</p>'));
     $('pan').__reopen=documentLibrary;
   }
   function stopDetails(x){
@@ -3995,7 +4035,7 @@
   function itinSec(){
     var ds=days();
     if(!ds.length) return '<div class="sec" id="s-itin"><div class="sech"><h2>行程</h2></div><div class="empty">未定日期。按右上角 ⋯ 輸入出發同返程日。</div></div>';
-    var h='<div class="sec" id="s-itin"><div class="sech"><h2>每日行程</h2><span class="n">'+ds.length+' 日</span></div>';
+    var h='<div class="sec" id="s-itin"><div class="sech"><span class="friendStamp" aria-hidden="true"></span><h2>每日行程</h2><span class="n">'+ds.length+' 日</span></div>';
     ds.forEach(function(d,i){
       var dest=dayDestination(d), opened=expandedDay===curTrip().id+'|'+d || printDays;
       h+='<div class="day daySumWrap" id="s-d'+i+'"><button class="daySummary" data-act="showday" data-d="'+d+'" aria-expanded="'+opened+'"><b>Day '+(i+1)+'</b><strong>'+esc(dest.name)+'</strong><small>'+md(d)+' '+dow(d)+'</small><i>'+(opened?'⌄':'›')+'</i></button>';
