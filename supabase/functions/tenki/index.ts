@@ -14,18 +14,18 @@
 //      否則網關會要求 Authorization JWT，頁面會 401。）
 //   env: 冇。唔好設 TRIP_KEY / MEAL_KEY / 任何 secret。
 //
-// 快取: 同一個預報頁 2 小時（記憶體，熱 instance 先有效）。鍵係 tenki 路徑，
+// 快取: 同一個預報頁 30 分鐘（記憶體，熱 instance 先有效）。鍵係 tenki 路徑，
 // 唔係用家座標。座標只喺呢一個 request 入面用嚟揀最近市區，唔寫 log、唔入庫、
 // 唔放進回覆。請用 POST body 傳 lat/lng，唔好放 query string（網關 access log 會記 URL）。
 // 另外回應帶 Cache-Control，瀏覽器同邊緣快取可以少打。
 // 只會請求 https://tenki.jp/forecast/… 同（目錄對唔到先）/search/。
 // User-Agent 寫明係 eva-trip 個人行程，唔係匿名爬蟲。
 
-import { assemble, pickSearch, resolvePlace, type PlaceHit } from "./parse.ts";
+import { assemble, parseHours, pickSearch, resolvePlace, type PlaceHit } from "./parse.ts";
 
 const ORIGIN = "https://tenki.jp";
 const UA = "eva-trip/1.0 (+https://github.com/ngfranki/eva-trip; personal forecast cache)";
-const TTL_OK = 2 * 60 * 60 * 1000;
+const TTL_OK = 30 * 60 * 1000;
 const TTL_SEARCH = 6 * 60 * 60 * 1000;
 const TTL_FAIL = 15 * 60 * 1000;
 
@@ -77,6 +77,7 @@ async function tenkiGet(pathAndQuery: string): Promise<string> {
   const r = await fetch(ORIGIN + pathAndQuery, {
     headers: { "User-Agent": UA, "Accept": "text/html", "Accept-Language": "ja,zh-Hant;q=0.5" },
     redirect: "follow",
+    signal: AbortSignal.timeout(8000),
   });
   if (!r.ok) throw new Error("tenki " + r.status);
   let host = "";
@@ -103,16 +104,22 @@ async function load(hit: PlaceHit): Promise<{ status: number; body: unknown }> {
     try {
       const path = hit.path.endsWith("/") ? hit.path : hit.path + "/";
       const [daily, outlook] = await Promise.all([
-        tenkiGet(path),
+        tenkiGet(path).catch((e) => { if (e.message === "rate") throw e; return ""; }),
         tenkiGet(path + "10days.html").catch(() => ""),
       ]);
       const forecast = assemble(daily, outlook, hit);
-      if (!forecast) {
+      let hours = parseHours(daily);
+      if (!Object.keys(hours).length) hours = parseHours(await tenkiGet(path + "1hour.html").catch(() => ""));
+      if (!forecast && !Object.keys(hours).length) {
         const body = { ok: false, reason: "parse" };
         cache.set(key, { at: Date.now(), status: 502, body });
         return { status: 502, body };
       }
-      const body = { ...forecast, fetchedAt: new Date().toISOString() };
+      const metadata = forecast ?? {
+        ok: true, source: "tenki.jp", place: hit.name, pref: hit.pref, url: ORIGIN + path,
+        outlookUrl: ORIGIN + path + "10days.html", today: null, tomorrow: null, days: [],
+      };
+      const body = { ...metadata, hours, fetchedAt: new Date().toISOString() };
       cache.set(key, { at: Date.now(), status: 200, body });
       return { status: 200, body };
     } catch (e) {
@@ -135,7 +142,7 @@ async function search(q: string): Promise<PlaceHit | null> {
   if (hitCache && Date.now() - hitCache.at < TTL_SEARCH) {
     const b = hitCache.body as { path?: string; pref?: string; name?: string } | null;
     if (!b || !b.path) return null;
-    return { path: b.path, pref: b.pref || "", name: b.name || q };
+    return { path: b.path, pref: b.pref || "", name: b.name || q, lat: 0, lng: 0 };
   }
   try {
     const html = await tenkiGet("/search/?keyword=" + encodeURIComponent(q));
@@ -188,7 +195,7 @@ Deno.serve(async (req) => {
 
   const out = await load(place);
   const cacheCtl = out.status === 200
-    ? "public, max-age=1800, s-maxage=7200"
+    ? "public, max-age=1800, s-maxage=1800"
     : "no-store";
   return json(out.body, out.status, cacheCtl);
 });

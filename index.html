@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261119-v58">
+<html lang="zh-HK" data-build="20261120-v59">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1031,6 +1031,8 @@
   }
   @media screen and (prefers-color-scheme:dark){.tripDock button{color:#b8cfaa}}
 
+  .heroWxSource{display:inline-block;margin-top:4px;padding:2px 6px;border-radius:6px;background:#fffaf2eb;color:#362f29!important;text-shadow:none!important;font-size:11px;font-weight:650}
+  .rowWxSource{display:block;margin:-3px 0 6px;font-size:12px}
 </style>
 </head>
 <body>
@@ -1056,7 +1058,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261119-v58" style="padding-top:0">v58</div>
+        <div id="ver" data-build="20261120-v59" style="padding-top:0">v59</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1122,7 +1124,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261119-v58';
+  var APP_VER='20261120-v59';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1610,19 +1612,25 @@
   }
   function tenkiLoad(p){
     var m=tenkiMem[p.key];
-    var ttl=m ? (m.ok? 2*3600*1000 : 15*60*1000) : 0;
+    var primary=p.key.startsWith('glance|');
+    if(!m && primary){
+      try{var saved=JSON.parse(localStorage.getItem('tripTenkiHour|'+p.key));if(saved && saved.ok && saved.hours)m=tenkiMem[p.key]=saved;}catch(e){}
+    }
+    var ttl=m ? (m.ok? 30*60000 : 5*60000) : 0;
     if(m && (Date.now()-m.at)<ttl) return m;
     if(tenkiBusy[p.key]) return null;
     tenkiBusy[p.key]=1;
-    var u=TENKI_URL+'?q='+encodeURIComponent(p.q||'')+'&lat='+encodeURIComponent(p.lat)+'&lng='+encodeURIComponent(p.lng);
-    // POST body，唔放 query。座標只係呢一個 request，唔寫入行程、唔入 localStorage。
-    fetch(TENKI_URL,{method:'POST', headers:{apikey:SBK, 'Accept':'application/json', 'Content-Type':'application/json'},
+    // POST body，唔放 query。座標用嚟揀預報區；本機按區域暫存預報。
+    fetch(TENKI_URL,{method:'POST', signal:typeof AbortSignal!=='undefined' && AbortSignal.timeout ? AbortSignal.timeout(12000) : undefined, headers:{apikey:SBK, 'Accept':'application/json', 'Content-Type':'application/json'},
       body:JSON.stringify({q:p.q||'', lat:p.lat, lng:p.lng})})
       .then(function(r){ return r.ok? r.json() : null; })
       .then(function(j){
         delete tenkiBusy[p.key];
         if(!j||j.ok!==true||!j.days) tenkiMem[p.key]={at:Date.now(), ok:false};
-        else { j.at=Date.now(); j.ok=true; tenkiMem[p.key]=j; }
+        else {
+          j.at=Date.now(); j.ok=true; tenkiMem[p.key]=j;
+          if(primary && j.hours){try{localStorage.setItem('tripTenkiHour|'+p.key,JSON.stringify(j));}catch(e){}}
+        }
         if(String(p.key).indexOf('glance|')===0) glanceAbsorbTenki(p.key);
         tenkiPaint();
       })
@@ -1632,6 +1640,10 @@
         tenkiPaint();
       });
     return null;
+  }
+  function preferredTenki(point){
+    var sig=(+point.lat).toFixed(2)+','+(+point.lng).toFixed(2);
+    return tenkiLoad({key:'glance|'+sig,lat:+point.lat,lng:+point.lng});
   }
   function tenkiTemp(x){
     if(!x || (x.high==null && x.low==null)) return '';
@@ -1944,13 +1956,7 @@
     var tgt=glanceTarget();
     if(!tgt || tgt.lat==null || tgt.lng==null) return;
     var sig=(+tgt.lat).toFixed(2)+','+(+tgt.lng).toFixed(2);
-    if(inJapan(+tgt.lat,+tgt.lng)){
-      var tk=tenkiMem['glance|'+sig];
-      var tkTtl=tk ? (tk.ok? 2*3600*1000 : 15*60*1000) : 0;
-      if((!tk || (Date.now()-tk.at)>=tkTtl) && !tenkiBusy['glance|'+sig]){
-        tenkiLoad({key:'glance|'+sig, q:tgt.q||'', lat:+(+tgt.lat).toFixed(3), lng:+(+tgt.lng).toFixed(3)});
-      }
-    }
+    if(inJapan(tgt.lat,tgt.lng) && !preferredTenki(tgt)) return;
     var cur=glanceRead();
     // 成功攞過就當新鮮，就算個別欄係 null。否則每次 render 都會再打。
     var fresh=cur && cur.sig===sig && cur.isDay!=null && (Date.now()-(cur.at||0))<10*60*1000;
@@ -2207,6 +2213,25 @@
     if(sacred(name)){ name=''; fact=''; }
     glanceKick();
     var w=g.wx||{}, c=glanceClocks(g);
+    var heroSource='', useTenki=false;
+    if(inJapan(lat,lng)){
+      var bulletin=preferredTenki({lat:lat,lng:lng}), jpNow=atTz(new Date(),540);
+      var stamp=fmtD(jpNow)+'T'+hhmm(jpNow).slice(0,2)+':00';
+      var slot=bulletin && bulletin.hours && bulletin.hours[stamp];
+      if(slot){
+        useTenki=true;
+        heroSource='tenki.jp · 本小時預報';
+        w=Object.assign({},w,{temp:slot[0],label:slot[1],code:null,rainNow:0,snowfall:0,visibility:null,
+          at:Date.parse(bulletin.fetchedAt)||bulletin.at});
+        // Only use the secondary provider for fresh ground snow and wind, never its conflicting sky.
+        if(!g.wx || Date.now()-g.wx.at>30*60000){w.depth=null;w.gust=null;w.wind=null;}
+        if(/雨夾雪/.test(slot[1])){w.snowfall=0.1;w.rainNow=0.1;}
+      }else if(!bulletin){w={};}
+    }
+    if(!useTenki){
+      if(w.code==null) w=Object.assign({},w,{label:''});
+      if(w.temp!=null || w.code!=null) heroSource='Open-Meteo'+(inJapan(lat,lng)?' · 後備':'');
+    }
     var temp=w.temp!=null? Math.round(w.temp)+'°' : '';
     var cond=w.label||'';
     var skyClass=w.code!=null || cond ? wxIcon(w.code,cond) : '';
@@ -2247,7 +2272,8 @@
     function span(t){return '<span>'+esc(t)+'</span>';}
     if(g.src==='gps' && myPos && myPos.acc>100) todayBits.push(span('定位約 ±'+Math.round(myPos.acc)+' 米'));
     var specific={blizzard:'強風伴降雪',wind:'強風',sleet:'雨雪混合',downpour:'大雨',fog:'霧',heavysnow:'大雪',hail:'雷雨伴冰雹',freezingrain:'凍雨'};
-    if(specific[scene.kind]) cond=specific[scene.kind];
+    if(!useTenki && specific[scene.kind]) cond=specific[scene.kind];
+    if(useTenki && (scene.covered || scene.kind==='wind' || scene.kind==='blizzard')) todayBits.push(span('風勢／積雪資料：Open-Meteo'));
     if(scene.covered) todayBits.push(span('估算積雪 '+(w.depth<0.01?'不足 1':Math.round(w.depth*100))+' cm'));
     if(w.at && !fresh){
       var last=atTz(new Date(w.at),g.tz);
@@ -2259,7 +2285,7 @@
     var wxbit=(w.code!=null || cond || temp)
       ? '<div class="locwx">'+(w.code!=null||cond? ic(wxIcon(w.code, cond),30):'')+
           (temp?'<b class="num">'+esc(temp)+'</b>':'')+
-          (cond?'<span class="loccond">'+esc((w.code==null?'全日預報 · ':'')+cond)+'</span>':'')+'</div>'
+          (cond?'<span class="loccond">'+esc(cond)+'</span>':'')+'</div>'
       : '';
     return '<div class="locblock">'+
       '<div class="lochero '+skyClass+' '+lightClass+'"><div class="locimg" role="img" aria-label="'+esc((name||'旅途')+' · '+(cond||'旅程插畫'))+'" style="'+sceneStyle(art)+'"></div>'+
@@ -2271,7 +2297,7 @@
           '</div>'+
           '<div class="locright">'+
             '<b class="loctime num" data-clk="loc">'+esc(c.loc)+'</b>'+
-            wxbit+
+            wxbit+(heroSource?'<small class="heroWxSource">'+esc(heroSource)+'</small>':'')+
             '<span class="lochk" data-clk="hk"'+(c.hk?'':' style="display:none"')+'>'+esc(c.hk)+'</span>'+
           '</div>'+
         '</div></div>'+
@@ -3964,17 +3990,26 @@
         var rail=box.querySelector('.hourRail');
         if(!rail || rail.dataset.positioned) return;
         rail.dataset.positioned='1';
-        var col=rail.children[rec.startHour||0];
+        var col=Array.from(rail.children).find(function(c){return parseInt(c.querySelector('time').textContent,10)>=(rec.startHour||0);});
         rail.scrollLeft=rec.scroll!=null?rec.scroll:col?col.offsetLeft-rail.firstElementChild.offsetLeft:0;
       });
     });
   }
   function hourCells(rec){
-    if(!rec.hours) return '<small>'+esc(rec.message||'正在讀取逐小時預報…')+'</small>';
-    return '<div class="hourRail" tabindex="0" aria-label="逐小時天氣">'+rec.hours.map(function(h){
-      var cond=WXI[h[2]]||'未有資料';
-      return '<div><time>'+esc(h[0])+'</time><strong>'+Math.round(h[1])+'°</strong><span>'+esc(cond)+'</span></div>';
-    }).join('')+'</div>'+(rec.failed?'<small>上次下載 '+esc(new Date(rec.at).toLocaleString('zh-HK'))+'</small>':'');
+    var slots=[],primaryCount=0,backupCount=0;
+    var backup=new Map((rec.hours||[]).map(function(h){return [h[0],h];}));
+    for(var i=0;i<24;i++){
+      var time=String(i).padStart(2,'0')+':00', tk=rec.primary && rec.primary[rec.date+'T'+time], om=backup.get(time);
+      if(tk){slots.push([time,tk[0],tk[1],true]);primaryCount++;}
+      else if(om){slots.push([time,om[1],WXI[om[2]]||'未有資料',false]);backupCount++;}
+    }
+    if(!slots.length)return '<small>'+esc(rec.message||'正在讀取逐小時預報…')+'</small>';
+    var mixed=primaryCount && backupCount;
+    var source=mixed?'tenki.jp · 缺少時段用 Open-Meteo':primaryCount?'tenki.jp':'Open-Meteo'+(rec.japan?' · 後備':'');
+    return '<small class="rowWxSource">'+esc(source)+'</small><div class="hourRail" tabindex="0" aria-label="逐小時天氣">'+slots.map(function(h){
+      return '<div><time>'+esc(h[0])+'</time><strong>'+Math.round(h[1])+'°</strong><span>'+esc(h[2])+'</span>'+
+        (mixed && !h[3]?'<small>Open-Meteo</small>':'')+'</div>';
+    }).join('')+'</div>'+(rec.failed && backupCount?'<small>上次下載 '+esc(new Date(rec.at).toLocaleString('zh-HK'))+'</small>':'');
   }
   function hourlyRow(label,d,point){
     var title=label+' · '+md(d)+(point?' · '+point.name:'');
@@ -3989,9 +4024,13 @@
       if(!rec || !Array.isArray(rec.hours)) rec={};
       hourlyCache.set(key,rec);
     }
+    rec.date=d;rec.japan=inJapan(point.lat,point.lng);
+    var tk=rec.japan?preferredTenki(point):null;
+    rec.primary=tk && tk.hours;
+    var missing=!rec.primary || Array.from({length:24},function(_,h){return !rec.primary[d+'T'+String(h).padStart(2,'0')+':00'];}).some(Boolean);
     rec.startHour=d===local?atTz(new Date(),lngTz(point.lng,point.lat)).getHours():0;
-    if(rec.hours) positionHours(key,rec);
-    if(!rec.loading && (!rec.at || Date.now()-rec.at>3600000) && (!rec.tried || Date.now()-rec.tried>120000) && d>=shift(local,-1)){
+    if(rec.hours || rec.primary) positionHours(key,rec);
+    if(missing && (!rec.japan || tk) && !rec.loading && (!rec.at || Date.now()-rec.at>3600000) && (!rec.tried || Date.now()-rec.tried>120000) && d>=shift(local,-1)){
       rec.loading=true;rec.tried=Date.now();
       var u='https://api.open-meteo.com/v1/forecast?latitude='+key.split('|')[1]+'&longitude='+key.split('|')[2]+'&timezone=auto&hourly=temperature_2m,weather_code&start_date='+d+'&end_date='+d;
       fetch(u).then(function(r){if(!r.ok) throw Error();return r.json();}).then(function(j){

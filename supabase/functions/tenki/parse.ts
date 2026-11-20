@@ -469,3 +469,28 @@ export function assemble(dailyHtml: string, outlookHtml: string, hit: PlaceHit):
     days,
   };
 }
+
+// tenki.jp labels the final column 24:00 JST (midnight on the following date).
+export function parseHours(html: string) {
+  const hours: Record<string, [number, string]> = {};
+  for (const match of html.matchAll(/<table\b[^>]*\bid="forecast-point-1h-[^"]+"[^>]*>([\s\S]*?)<\/table>/gi)) {
+    const table = match[1];
+    const day = table.match(/class="day-box"[^>]*>[^<]*?(\d{4})年(\d{1,2})月(\d{1,2})日/);
+    if (!day) continue;
+    const date = day.slice(1).map((s) => s.padStart(2, "0")).join("-");
+    const cells = (name: string) => {
+      const row = table.match(new RegExp('<tr class="' + name + '">([\\s\\S]*?)</tr>'));
+      return Array.from((row?.[1] || "").matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi), (m) => m[1]);
+    };
+    const times = cells("hour"), temps = cells("temperature"), weather = cells("weather");
+    if (times.length !== 24 || temps.length !== 24 || weather.length !== 24) continue;
+    times.forEach((cell, i) => {
+      const hour = num(cell), temp = num(temps[i]);
+      const label = wxZh((weather[i].match(/\balt="([^"]+)"/)?.[1] || "").replace(/晴れ/g, "晴").replace(/小雨/g,"微雨"));
+      if (hour !== i+1 || temp === null || !label) return;
+      const stamp = new Date(Date.parse(date + "T00:00:00Z") + hour * 3600000);
+      if (Number.isFinite(stamp.getTime())) hours[stamp.toISOString().slice(0,16)] = [temp,label];
+    });
+  }
+  return hours;
+}
