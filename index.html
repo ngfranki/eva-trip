@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261122-v60">
+<html lang="zh-HK" data-build="20261122-v61">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -50,7 +50,7 @@
   html,body{margin:0; height:100%; background:var(--bg); color:var(--ink);
     overflow-x:hidden; overscroll-behavior-x:none}
   body{font-family:"Source Sans 3","Source Sans Pro","PingFang HK",-apple-system,"Helvetica Neue",sans-serif;
-       font-size:16px; line-height:1.45; overflow:hidden; -webkit-font-smoothing:antialiased}
+       font-size:1rem; line-height:1.45; overflow:hidden; -webkit-font-smoothing:antialiased}
   button,input,select,textarea{font:inherit; color:inherit}
   button{cursor:pointer; border:0; background:none; padding:0; color:inherit}
   input,textarea{background:none; border:0; outline:none}
@@ -88,40 +88,40 @@
   #map{position:absolute; inset:0; z-index:1}
 
   /* ============ sidebar ============ */
-  .brand{display:flex; align-items:center; gap:7px; padding:13px 14px 11px; font-weight:700; font-size:15px; letter-spacing:-.02em}
-  .brand em{font-style:normal; font-size:18px}
+  .brand{display:flex; align-items:center; gap:7px; padding:13px 14px 11px; font-weight:700; font-size:0.9375rem; letter-spacing:-.02em}
+  .brand em{font-style:normal; font-size:1.125rem}
   .aibtn{display:flex; align-items:center; gap:9px; width:100%; padding:13px 16px; margin:0 0 10px;
-         background:linear-gradient(90deg,#F7714A 0%,#EE5A8C 55%,#B455C8 100%); color:#fff; font-weight:700; font-size:15px}
-  .aibtn em{font-style:normal; font-size:16px}
+         background:linear-gradient(90deg,#F7714A 0%,#EE5A8C 55%,#B455C8 100%); color:#fff; font-weight:700; font-size:0.9375rem}
+  .aibtn em{font-style:normal; font-size:1rem}
   .sgrp{padding:0 8px 4px}
   .sgrp h4{display:flex; align-items:center; gap:6px; margin:6px 0 3px; padding:8px 10px; border-radius:7px;
-           background:var(--ink); color:var(--surf); font-size:14.5px; font-weight:700; letter-spacing:-.01em}
-  .sgrp h4 i{font-style:normal; font-size:10px; opacity:.75}
-  .side nav button{display:block; width:100%; text-align:left; padding:6px 10px; border-radius:6px; font-size:14px;
+           background:var(--ink); color:var(--surf); font-size:0.90625rem; font-weight:700; letter-spacing:-.01em}
+  .sgrp h4 i{font-style:normal; font-size:0.625rem; opacity:.75}
+  .side nav button{display:block; width:100%; text-align:left; padding:6px 10px; border-radius:6px; font-size:0.875rem;
                    color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .side nav button:hover{background:var(--soft)}
   .side nav button.on{background:var(--soft); font-weight:700}
-  .side nav button i{font-style:normal; display:block; font-size:12px; color:var(--muted); font-weight:400; margin-top:-1px;
+  .side nav button i{font-style:normal; display:block; font-size:0.75rem; color:var(--muted); font-weight:400; margin-top:-1px;
                      white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .sfoot{margin-top:auto; padding:10px 16px 0; font-size:11px; color:var(--muted2)}
-  .sfoot button{color:var(--muted); font-size:13px; display:block; padding:4px 0}
+  .sfoot{margin-top:auto; padding:10px 16px 0; font-size:0.6875rem; color:var(--muted2)}
+  .sfoot button{color:var(--muted); font-size:0.8125rem; display:block; padding:4px 0}
   .verrow{display:flex; align-items:center; justify-content:space-between; gap:8px; padding-top:8px}
   .verrow #ver{padding-top:0}
-  .sfoot .forceup{display:inline; color:var(--link); font-weight:700; font-size:13px; padding:6px 0}
+  .sfoot .forceup{display:inline; color:var(--link); font-weight:700; font-size:0.8125rem; padding:6px 0}
   #uptoast{position:fixed; z-index:200; left:50%; bottom:calc(18px + env(safe-area-inset-bottom));
     transform:translateX(-50%); background:rgba(33,37,41,.9); color:#fff;
-    font-size:13px; font-weight:650; padding:8px 14px; border-radius:99px; pointer-events:none}
+    font-size:0.8125rem; font-weight:650; padding:8px 14px; border-radius:99px; pointer-events:none}
   #uptoast[hidden]{display:none}
 
   /* ============ topbar ============ */
   .top{position:sticky; top:0; z-index:12; background:var(--surf); border-bottom:1px solid var(--line);
        display:flex; align-items:center; gap:6px; padding:9px 16px}
   .top{overflow:hidden}
-  .top .sync{font-size:12px; color:var(--muted); margin-right:auto; white-space:nowrap;
+  .top .sync{font-size:0.75rem; color:var(--muted); margin-right:auto; white-space:nowrap;
     overflow:hidden; text-overflow:ellipsis; min-width:0}
   .tbtn{flex:0 0 auto}
   .top .sync.err{color:var(--warn)}
-  .tbtn{display:flex; align-items:center; gap:5px; padding:6px 13px; border-radius:99px; font-size:14px; font-weight:600; color:var(--ink2)}
+  .tbtn{display:flex; align-items:center; gap:5px; padding:6px 13px; border-radius:99px; font-size:0.875rem; font-weight:600; color:var(--ink2)}
   .tbtn:hover{background:var(--soft)}
   .tbtn:disabled{opacity:.3; background:none}
   .tbtn.solid{background:var(--ink); color:var(--surf)}
@@ -137,26 +137,26 @@
   .nowstrip{margin:18px 0 32px; padding:18px 18px 16px; background:var(--soft2); border-radius:18px;
     display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:16px; row-gap:2px; align-items:center}
   .ns-time{display:flex; flex-direction:column; align-items:flex-start; min-width:0}
-  .ns-time b{font-size:28px; font-weight:700; letter-spacing:-.04em; line-height:1}
-  .ns-hk{margin-top:6px; font-size:12px; font-weight:650; color:var(--muted); line-height:1.25}
-  .ns-place{text-align:right; font-size:16px; font-weight:750; letter-spacing:-.02em; line-height:1.3;
+  .ns-time b{font-size:1.75rem; font-weight:700; letter-spacing:-.04em; line-height:1}
+  .ns-hk{margin-top:6px; font-size:0.75rem; font-weight:650; color:var(--muted); line-height:1.25}
+  .ns-place{text-align:right; font-size:1rem; font-weight:750; letter-spacing:-.02em; line-height:1.3;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .ns-tag{font-style:normal; margin-left:6px; font-size:10px; font-weight:800; color:var(--muted);
+  .ns-tag{font-style:normal; margin-left:6px; font-size:0.625rem; font-weight:800; color:var(--muted);
     border:1px solid var(--line); border-radius:99px; padding:1px 6px; vertical-align:1px}
   .ns-wx{grid-column:1 / -1; display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px;
-    margin-top:14px; min-height:28px; font-size:14px; font-weight:700; color:var(--ink)}
-  .ns-wx b{font-size:18px; letter-spacing:-.03em}
-  .ns-wx .dim{color:var(--muted); font-weight:650; font-size:13.5px}
+    margin-top:14px; min-height:28px; font-size:0.875rem; font-weight:700; color:var(--ink)}
+  .ns-wx b{font-size:1.125rem; letter-spacing:-.03em}
+  .ns-wx .dim{color:var(--muted); font-weight:650; font-size:0.84375rem}
   .ns-wx .ico{color:var(--ink2)}
 
   /* 插畫頂部係天空。地名靠左、時間天氣靠右，只佔天空一條，唔遮風景。 */
   .locblock{margin:8px -22px 22px}
   .lochero{position:relative; aspect-ratio:2.1; overflow:hidden; background:#e7eef3}
   .locimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:24% 86%; display:block}
-  .nearbyplaces{display:flex;gap:8px;align-items:center;padding:6px 14px;font-size:13px;color:var(--muted)}
+  .nearbyplaces{display:flex;gap:8px;align-items:center;padding:6px 14px;font-size:0.8125rem;color:var(--muted)}
   .nearbyplaces select{min-width:0;max-width:75%;border:1px solid var(--line);border-radius:8px;padding:4px;font:inherit;background:var(--paper);color:var(--ink)}
   .locimg{background-repeat:no-repeat}
-  .lochero .locwx .num{font-size:clamp(25px,4vw,38px)}
+  .lochero .locwx .num{font-size:clamp(1.5625rem,4.500vw,2.375rem)}
   .lochero::after{content:"";position:absolute;inset:0 0 auto;height:44%;background:linear-gradient(#fffaeddf,transparent);pointer-events:none}
   .precip{position:absolute;inset:0;pointer-events:none;background-repeat:repeat}
   .precip.snow{background-image:radial-gradient(ellipse at 18px 17px,#fffffff0 1.4px,transparent 2px),radial-gradient(ellipse at 52px 41px,#ffffffc0 1px,transparent 2px);background-size:69px 59px;animation:scenesnow 4s linear infinite}
@@ -174,26 +174,26 @@
   .locright{flex:0 0 auto; max-width:46%; text-align:right}
   .locname,.loctime,.locwx,.locnote,.lochk,.loccond{
     text-shadow:0 1px 0 rgba(255,255,255,.92), 0 0 10px rgba(255,255,255,.8)}
-  .locname{font-size:22px; font-weight:600; letter-spacing:-.02em; line-height:1.15; color:#2a3844}
+  .locname{font-size:1.375rem; font-weight:600; letter-spacing:-.02em; line-height:1.15; color:#2a3844}
   .locname{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
-  .loctag{font-style:normal; margin-left:6px; font-size:11px; font-weight:600; color:#5c6b78;
+  .loctag{font-style:normal; margin-left:6px; font-size:0.6875rem; font-weight:600; color:#5c6b78;
     border:1px solid rgba(90,105,120,.28); border-radius:99px; padding:0 5px; vertical-align:2px}
-  .locnote{margin-top:3px; font-size:12.5px; font-weight:600; line-height:1.3; color:#5a6976;
+  .locnote{margin-top:3px; font-size:0.78125rem; font-weight:600; line-height:1.3; color:#5a6976;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .loctime{display:block; font-size:28px; font-weight:600; letter-spacing:-.03em; line-height:1; color:#2a3844}
+  .loctime{display:block; font-size:1.75rem; font-weight:600; letter-spacing:-.03em; line-height:1; color:#2a3844}
   .locwx{display:flex; align-items:center; justify-content:flex-end; gap:5px; margin-top:4px;
-    font-size:22px; font-weight:600; line-height:1; color:#2a3844}
+    font-size:1.375rem; font-weight:600; line-height:1; color:#2a3844}
   .locwx .ico{color:#3d4c59}
-  .loccond{font-size:15px; font-weight:600; max-width:4.2em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  .lochk{display:block; margin-top:3px; font-size:12px; font-weight:600; line-height:1.2; color:#5a6976}
+  .loccond{font-size:0.9375rem; font-weight:600; max-width:4.2em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .lochk{display:block; margin-top:3px; font-size:0.75rem; font-weight:600; line-height:1.2; color:#5a6976}
   .wxstrip{margin:16px 22px 0; display:flex; flex-direction:column; gap:8px}
   .wxrow{display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px;
-    font-size:14px; font-weight:600; color:var(--ink2); line-height:1.35}
+    font-size:0.875rem; font-weight:600; color:var(--ink2); line-height:1.35}
   .wxrow b{color:var(--ink); font-weight:650; margin-right:2px}
   .wxrow .ico{color:var(--ink2)}
   .tripid{position:relative; padding:2px 44px 0 0; margin-bottom:6px}
-  .tripid h1{margin:0; font-size:26px; font-weight:750; letter-spacing:-.03em; line-height:1.2}
-  .tripid .sub{margin-top:10px; font-size:14px; color:var(--muted); font-weight:600; line-height:1.4}
+  .tripid h1{margin:0; font-size:1.625rem; font-weight:750; letter-spacing:-.03em; line-height:1.2}
+  .tripid .sub{margin-top:10px; font-size:0.875rem; color:var(--muted); font-weight:600; line-height:1.4}
   .tripid .sub.when{margin-top:4px}
   .daychips{display:flex; gap:8px; overflow-x:auto; margin:14px 0 2px; padding:2px 2px 8px;
     scrollbar-width:none; -webkit-overflow-scrolling:touch}
@@ -201,25 +201,25 @@
   .dchip{flex:0 0 auto; display:flex; flex-direction:column; align-items:center; justify-content:center;
     min-width:62px; min-height:48px; padding:7px 10px; border:1px solid var(--line); border-radius:14px;
     background:var(--soft2); color:var(--ink2)}
-  .dchip b{font-size:13.5px; font-weight:650; letter-spacing:-.01em; line-height:1.2}
-  .dchip small{margin-top:2px; font-size:11px; font-weight:600; color:var(--muted)}
+  .dchip b{font-size:0.84375rem; font-weight:650; letter-spacing:-.01em; line-height:1.2}
+  .dchip small{margin-top:2px; font-size:0.6875rem; font-weight:600; color:var(--muted)}
   .dchip.today{background:var(--acc-soft); border-color:var(--acc); color:var(--acc)}
   .dchip.today small{color:var(--acc)}
-  .quiet{display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:16px; font-size:13px; color:var(--muted); font-weight:650}
+  .quiet{display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:16px; font-size:0.8125rem; color:var(--muted); font-weight:650}
   .quiet b{color:var(--ink); font-weight:750}
-  .quiet button{color:var(--link); font-size:13px; font-weight:700}
+  .quiet button{color:var(--link); font-size:0.8125rem; font-weight:700}
   /* 🔴 .kebab 預設 opacity:0（行程格 hover 先出），而且嗰條 rule 寫喺後面會蓋過呢度
      —— 所以用 .kebab.hedit 加特異性，唔係嘅話三粒點永遠睇唔到 */
   .kebab.hedit{position:absolute; top:0; right:0; z-index:3; opacity:1; width:36px; height:36px;
-    font-size:20px; line-height:1; color:var(--ink2); background:transparent; border-radius:99px}
+    font-size:1.25rem; line-height:1; color:var(--ink2); background:transparent; border-radius:99px}
   .kebab.hedit:active{background:var(--soft)}
 
   .qrow{display:flex; justify-content:space-between; margin:22px 0 40px}
   .qrow button{flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:6px;
     padding:10px 0; color:var(--ink2); border-radius:12px}
   .qrow button:active{background:var(--soft)}
-  .qrow button b{font-size:11px; font-weight:750; color:var(--ink); height:13px; line-height:13px}
-  .qrow button span{font-size:11px; font-weight:650; color:var(--muted)}
+  .qrow button b{font-size:0.6875rem; font-weight:750; color:var(--ink); height:13px; line-height:13px}
+  .qrow button span{font-size:0.6875rem; font-weight:650; color:var(--muted)}
 
   .foldbtn{display:flex; align-items:center; gap:8px; min-height:44px; min-width:0; flex:1; text-align:left}
   .foldbtn h2{margin:0}
@@ -234,55 +234,55 @@
 
   .sec{margin:0 0 40px; scroll-margin-top:62px}
   .sech{display:flex; align-items:center; gap:8px; margin:0 0 16px}
-  .sech .chev{color:var(--muted); font-size:11px}
-  .sech h2{margin:0; font-size:24px; font-weight:700; letter-spacing:-.03em}
-  .sech .n{font-size:13px; color:var(--muted); font-weight:600}
+  .sech .chev{color:var(--muted); font-size:0.6875rem}
+  .sech h2{margin:0; font-size:1.5rem; font-weight:700; letter-spacing:-.03em}
+  .sech .n{font-size:0.8125rem; color:var(--muted); font-weight:600}
   .sech .sp{flex:1}
   .panel{padding:0}
   .panel.pad{background:var(--soft); border-radius:16px; padding:16px}
-  .sech h2{font-size:22px}
-  .sech.big h2{font-size:32px}
-  .pill{background:var(--line2); color:var(--ink2); border-radius:24px; padding:7px 16px; font-size:14px; font-weight:600; display:inline-flex; align-items:center; gap:6px}
+  .sech h2{font-size:1.375rem}
+  .sech.big h2{font-size:2rem}
+  .pill{background:var(--line2); color:var(--ink2); border-radius:24px; padding:7px 16px; font-size:0.875rem; font-weight:600; display:inline-flex; align-items:center; gap:6px}
   .pill:hover{background:var(--line)}
   .pill.acc{background:var(--acc); color:#fff; font-weight:700}
   .pill.acc:hover{background:var(--acc-d)}
-  .pill.bare{background:none; border-radius:20px; color:var(--muted); font-size:13.5px; padding:6px 12px}
+  .pill.bare{background:none; border-radius:20px; color:var(--muted); font-size:0.84375rem; padding:6px 12px}
   .pill.bare:hover{background:var(--soft)}
 
   /* 概覽兩格卡 */
   .twoup{display:flex; gap:16px; margin-bottom:26px; flex-wrap:wrap}
   .bkcard{flex:2 1 330px; background:var(--soft); border-radius:16px; padding:16px}
   .sumcard{flex:1 1 170px; background:var(--soft); border-radius:16px; padding:16px}
-  .cardlbl{font-size:16px; font-weight:700; display:block; margin-bottom:8px}
+  .cardlbl{font-size:1rem; font-weight:700; display:block; margin-bottom:8px}
   .bkrow{display:flex; gap:0; flex-wrap:wrap}
   .bkrow button{width:58px; display:flex; flex-direction:column; align-items:center; gap:1px; padding:2px 0}
-  .bkrow button b{font-size:13px; font-weight:700; height:16px; color:var(--ink)}
-  .bkrow button em{font-style:normal; font-size:17px}
-  .bkrow button span{font-size:11.5px; color:var(--muted)}
+  .bkrow button b{font-size:0.8125rem; font-weight:700; height:16px; color:var(--ink)}
+  .bkrow button em{font-style:normal; font-size:1.0625rem}
+  .bkrow button span{font-size:0.71875rem; color:var(--muted)}
   .bkrow button:hover em{transform:scale(1.14)}
-  .bigno{font-size:24px; font-weight:400; color:var(--muted); letter-spacing:-.02em; line-height:1.2}
-  .sumcard a{display:block; margin-top:8px; font-size:13.5px; color:var(--link); font-weight:700; cursor:pointer}
+  .bigno{font-size:1.5rem; font-weight:400; color:var(--muted); letter-spacing:-.02em; line-height:1.2}
+  .sumcard a{display:block; margin-top:8px; font-size:0.84375rem; color:var(--link); font-weight:700; cursor:pointer}
 
   /* 附件 */
   .files{display:flex; flex-direction:column; gap:6px}
   .fitem{display:flex; align-items:center; gap:8px; background:var(--soft); border-radius:9px; padding:8px 10px}
   .fitem .fic{display:flex; color:var(--muted); flex:0 0 auto}
-  .fitem .fn{flex:1; min-width:0; text-align:left; font-size:13.5px; font-weight:600; color:var(--link);
+  .fitem .fn{flex:1; min-width:0; text-align:left; font-size:0.84375rem; font-weight:600; color:var(--link);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .fitem.open{cursor:pointer}
   .fitem.open:hover{background:var(--link-soft)}
   .fitem.open:hover .fn{text-decoration:underline}
   .fitem.open:active{transform:scale(.995)}
-  .fitem .fsz{font-size:11.5px; color:var(--muted); flex:0 0 auto}
+  .fitem .fsz{font-size:0.71875rem; color:var(--muted); flex:0 0 auto}
   /* 個 file input 自己蓋住粒掣（透明），唔靠 label 轉發 —— iOS Safari 對
      display:none 嘅 file input 唔會由 label 轉發點擊，係出名嘅 bug */
   .fadd{position:relative; display:flex; align-items:center; gap:7px; padding:9px 11px;
-    border:1px dashed var(--line); border-radius:9px; font-size:13px; color:var(--muted); cursor:pointer;
+    border:1px dashed var(--line); border-radius:9px; font-size:0.8125rem; color:var(--muted); cursor:pointer;
     overflow:hidden; min-height:44px}
   .fadd:hover{border-color:var(--acc); color:var(--acc)}
   .fadd .fadd-t{display:flex; align-items:center; gap:7px; pointer-events:none}
   .fadd .fadd-in{position:absolute; inset:0; width:100%; height:100%; opacity:0;
-    cursor:pointer; font-size:16px; z-index:2}
+    cursor:pointer; font-size:1rem; z-index:2}
   .chip.file{background:var(--soft2); color:var(--ink2); border:1px solid var(--line)}
   /* 撳得嘅 chip 要一眼睇得出撳得 */
   .chip.tap{cursor:pointer; border:1px solid transparent}
@@ -299,9 +299,9 @@
   .excard .ph img{width:100%; height:100%; object-fit:cover; display:block}
   .excard .ph .ld{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted2)}
   .excard .bd{padding:10px 11px 12px}
-  .excard .nm{font-size:14px; font-weight:700; line-height:1.3; letter-spacing:-.01em}
-  .excard .rt{font-size:12px; color:#C9700A; font-weight:700; margin-top:3px; display:flex; align-items:center; gap:3px}
-  .excard .wy{font-size:12.5px; color:var(--muted); margin-top:5px; line-height:1.45}
+  .excard .nm{font-size:0.875rem; font-weight:700; line-height:1.3; letter-spacing:-.01em}
+  .excard .rt{font-size:0.75rem; color:#C9700A; font-weight:700; margin-top:3px; display:flex; align-items:center; gap:3px}
+  .excard .wy{font-size:0.78125rem; color:var(--muted); margin-top:5px; line-height:1.45}
   .excard .add{position:absolute; top:8px; right:8px; width:30px; height:30px; border-radius:50%;
     background:rgba(255,255,255,.94); box-shadow:var(--sh2); display:flex; align-items:center; justify-content:center; color:var(--ink); padding:0}
   .excard .add:hover{background:var(--acc); color:#fff}
@@ -309,20 +309,20 @@
 
   /* 開支帳 */
   .exptot{background:var(--soft); border-radius:16px; padding:16px 24px; display:flex; align-items:flex-start; gap:18px; flex-wrap:wrap}
-  .exptot .amt{font-size:36px; font-weight:400; letter-spacing:-.03em; line-height:1.1; flex:1 1 180px}
-  .exptot .amt small{display:block; font-size:13px; color:var(--muted); font-weight:600; letter-spacing:0; margin-top:3px}
+  .exptot .amt{font-size:2.25rem; font-weight:400; letter-spacing:-.03em; line-height:1.1; flex:1 1 180px}
+  .exptot .amt small{display:block; font-size:0.8125rem; color:var(--muted); font-weight:600; letter-spacing:0; margin-top:3px}
   .exphead{display:flex; align-items:baseline; gap:10px; margin:24px 0 8px}
-  .exphead h3{margin:0; font-size:22px; font-weight:700; letter-spacing:-.02em}
+  .exphead h3{margin:0; font-size:1.375rem; font-weight:700; letter-spacing:-.02em}
   .exphead .sp{flex:1}
   .exp{display:flex; align-items:center; gap:12px; padding:11px 2px; border-bottom:1px solid var(--line2)}
   .exp:last-child{border-bottom:0}
-  .exp .ic{width:30px; height:30px; border-radius:50%; background:var(--soft); display:flex; align-items:center; justify-content:center; font-size:14px; flex:0 0 auto}
+  .exp .ic{width:30px; height:30px; border-radius:50%; background:var(--soft); display:flex; align-items:center; justify-content:center; font-size:0.875rem; flex:0 0 auto}
   .exp .bd{flex:1; min-width:0}
-  .exp .bd b{display:block; font-size:14.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .exp .bd span{font-size:12.5px; color:var(--muted)}
-  .exp .amt{font-weight:700; font-size:14.5px; white-space:nowrap; font-variant-numeric:tabular-nums}
-  .exp .amt i{display:block; font-style:normal; font-size:11.5px; color:var(--muted); font-weight:600}
-  .empty{color:var(--muted); font-size:14px; padding:16px 2px; line-height:1.75}
+  .exp .bd b{display:block; font-size:0.90625rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .exp .bd span{font-size:0.78125rem; color:var(--muted)}
+  .exp .amt{font-weight:700; font-size:0.90625rem; white-space:nowrap; font-variant-numeric:tabular-nums}
+  .exp .amt i{display:block; font-style:normal; font-size:0.71875rem; color:var(--muted); font-weight:600}
+  .empty{color:var(--muted); font-size:0.875rem; padding:16px 2px; line-height:1.75}
 
   /* ============ item rows ============ */
   .rows{display:flex; flex-direction:column; gap:10px}
@@ -330,21 +330,21 @@
   .row.drag{opacity:.3}
   .row.over .rcard{box-shadow:inset 0 2px 0 var(--acc)}
   .idx{position:absolute; left:0; top:11px; z-index:3; width:25px; height:25px; border-radius:50%; padding:0;
-       font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center;
+       font-size:0.78125rem; font-weight:700; display:flex; align-items:center; justify-content:center;
        color:#fff; border:2px solid var(--surf)}
-  .grip{position:absolute; left:-14px; top:16px; width:14px; color:transparent; font-size:12px; cursor:grab}
+  .grip{position:absolute; left:-14px; top:16px; width:14px; color:transparent; font-size:0.75rem; cursor:grab}
   .row:hover .grip{color:var(--muted2)}
   .rcard{flex:1; min-width:0; background:var(--soft); border-radius:9px; padding:11px 14px 11px 20px; margin-left:11px}
   .row.done .rcard{opacity:.62}
-  .rcard .nm{font-size:15px; font-weight:700; letter-spacing:-.01em; word-break:break-word; line-height:1.35}
+  .rcard .nm{font-size:0.9375rem; font-weight:700; letter-spacing:-.01em; word-break:break-word; line-height:1.35}
   .row.done .rcard .nm{text-decoration:line-through; text-decoration-color:var(--muted)}
-  .rcard .kin{font-size:12px; color:var(--muted); font-weight:600; margin-right:5px}
-  .rcard .ad{font-size:13px; color:var(--muted); margin-top:2px; word-break:break-word}
-  .rcard .nt{font-size:14px; color:var(--ink2); margin-top:5px; white-space:pre-wrap; word-break:break-word; line-height:1.5;
+  .rcard .kin{font-size:0.75rem; color:var(--muted); font-weight:600; margin-right:5px}
+  .rcard .ad{font-size:0.8125rem; color:var(--muted); margin-top:2px; word-break:break-word}
+  .rcard .nt{font-size:0.875rem; color:var(--ink2); margin-top:5px; white-space:pre-wrap; word-break:break-word; line-height:1.5;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
   .ntlink,.noteref a,.prow a.ntlink{color:var(--link); text-decoration:underline; text-underline-offset:2px; font-weight:600; word-break:break-all}
   .chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
-  .chip{font-size:12.5px; font-weight:700; border-radius:5px; padding:3px 8px; background:var(--link-soft); color:var(--link); white-space:nowrap}
+  .chip{font-size:0.78125rem; font-weight:700; border-radius:5px; padding:3px 8px; background:var(--link-soft); color:var(--link); white-space:nowrap}
   .chip.cost{background:var(--soft2); color:var(--ink2); border:1px solid var(--line)}
   .chip.warn{background:var(--warn); color:#fff}
   .thumb{width:86px; height:64px; flex:0 0 auto; border-radius:8px; overflow:hidden; background:var(--soft); margin-top:2px}
@@ -358,23 +358,23 @@
   }
   @media (max-width:560px){ .thumb{width:64px; height:52px} }
   .rt{flex:0 0 auto; display:flex; align-items:center; gap:2px; padding-top:11px}
-  .tick{width:24px; height:24px; border-radius:50%; border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:11px; color:transparent}
+  .tick{width:24px; height:24px; border-radius:50%; border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:0.6875rem; color:transparent}
   .row:hover .tick{border-color:var(--muted2); color:var(--muted2)}
   .row.done .tick{background:var(--ok); border-color:var(--ok); color:#fff}
-  .kebab{width:26px; height:26px; border-radius:6px; color:var(--muted2); font-size:16px; display:flex; align-items:center; justify-content:center; opacity:0}
+  .kebab{width:26px; height:26px; border-radius:6px; color:var(--muted2); font-size:1rem; display:flex; align-items:center; justify-content:center; opacity:0}
   .row:hover .kebab{opacity:1}
   @media (hover:none){ .kebab,.tick{opacity:1} .tick{color:var(--muted2)} }
   .kebab:hover{background:var(--soft)}
 
   /* 車程段：虛線接駁 + 交通方式 + 時間距離 */
-  .leg{position:relative; display:flex; align-items:center; gap:6px; padding:5px 0 5px 39px; font-size:13px; color:var(--muted)}
+  .leg{position:relative; display:flex; align-items:center; gap:6px; padding:5px 0 5px 39px; font-size:0.8125rem; color:var(--muted)}
   .leg::before{content:""; position:absolute; left:12px; top:0; bottom:0; border-left:2px dotted var(--line)}
-  .leg em{font-style:normal; font-size:13px}
+  .leg em{font-style:normal; font-size:0.8125rem}
   .leg a{color:var(--link); font-weight:700; text-decoration:none; margin-left:2px}
-  .leg .est{font-size:10.5px; background:var(--soft2); border:1px solid var(--line); color:var(--muted2); border-radius:4px; padding:0 4px; margin-left:2px}
+  .leg .est{font-size:0.65625rem; background:var(--soft2); border:1px solid var(--line); color:var(--muted2); border-radius:4px; padding:0 4px; margin-left:2px}
 
   .checks{margin-top:7px; display:flex; flex-direction:column; gap:4px}
-  .checks label{display:flex; gap:8px; font-size:14px; align-items:flex-start; cursor:pointer}
+  .checks label{display:flex; gap:8px; font-size:0.875rem; align-items:flex-start; cursor:pointer}
   .checks input{margin:3px 0 0; accent-color:var(--ok)}
   .checks label.on span{text-decoration:line-through; color:var(--muted)}
 
@@ -385,42 +385,42 @@
   .addbar .fi{flex:1; display:flex; align-items:center; gap:8px; background:var(--surf); border:1px solid var(--line);
               border-radius:8px; padding:9px 12px}
   .addbar .fi:focus-within{border-color:var(--acc)}
-  .addbar .fi input{flex:1 1 0; min-width:0; width:100%; font-size:14.5px}
+  .addbar .fi input{flex:1 1 0; min-width:0; width:100%; font-size:0.90625rem}
   .addbar .fi input::placeholder{color:var(--muted2)}
   .kinds{display:flex; gap:2px}
-  .kinds button{width:30px; height:30px; border-radius:7px; font-size:14px; display:flex; align-items:center; justify-content:center; color:var(--muted)}
+  .kinds button{width:30px; height:30px; border-radius:7px; font-size:0.875rem; display:flex; align-items:center; justify-content:center; color:var(--muted)}
   .kinds button:hover{background:var(--soft)}
   .kinds button.on{background:var(--acc-soft)}
   .sug{position:absolute; left:25px; right:0; top:100%; z-index:14; background:var(--card); border:1px solid var(--line);
        border-radius:9px; box-shadow:var(--sh2); padding:4px; max-height:290px; overflow-y:auto}
   .sug button{display:flex; gap:9px; width:100%; text-align:left; padding:8px 10px; border-radius:6px; align-items:flex-start}
   .sug button:hover,.sug button.on{background:var(--soft)}
-  .sug .sic{width:24px; flex:0 0 auto; text-align:center; font-size:14px}
-  .sug b{display:block; font-size:14px; font-weight:700}
-  .sug small{display:block; font-size:12.5px; color:var(--muted); margin-top:1px}
-  .sug .hd{font-size:11px; color:var(--muted2); padding:6px 10px 3px; font-weight:700; letter-spacing:.06em; text-transform:uppercase}
+  .sug .sic{width:24px; flex:0 0 auto; text-align:center; font-size:0.875rem}
+  .sug b{display:block; font-size:0.875rem; font-weight:700}
+  .sug small{display:block; font-size:0.78125rem; color:var(--muted); margin-top:1px}
+  .sug .hd{font-size:0.6875rem; color:var(--muted2); padding:6px 10px 3px; font-weight:700; letter-spacing:.06em; text-transform:uppercase}
 
   /* ============ day ============ */
   .day{margin-bottom:28px; scroll-margin-top:72px}
   .dayh{display:flex; align-items:baseline; gap:9px; margin:28px 0 12px}
   .sec .day:first-of-type .dayh{margin-top:4px}
   .dayh .dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto; align-self:center}
-  .dayh h3{margin:0; font-size:17px; font-weight:700; letter-spacing:-.02em}
-  .dayh .dd{font-size:13.5px; color:var(--muted)}
+  .dayh h3{margin:0; font-size:1.0625rem; font-weight:700; letter-spacing:-.02em}
+  .dayh .dd{font-size:0.84375rem; color:var(--muted)}
   .dayh .sp{flex:1}
-  .dayh .tot{font-size:13px; color:var(--muted); font-weight:600}
-  .dayw{font-size:12.5px; color:var(--muted); margin:2px 0 12px 18px; letter-spacing:.01em}
+  .dayh .tot{font-size:0.8125rem; color:var(--muted); font-weight:600}
+  .dayw{font-size:0.78125rem; color:var(--muted); margin:2px 0 12px 18px; letter-spacing:.01em}
   .leg.from{color:var(--ink2); font-weight:600}
 
   /* ============ budget ============ */
   .bud{display:flex; flex-direction:column; gap:9px}
-  .bud .r{display:flex; align-items:center; gap:11px; font-size:14px}
+  .bud .r{display:flex; align-items:center; gap:11px; font-size:0.875rem}
   .bud .r .bar{flex:1; height:6px; border-radius:99px; background:var(--line2); overflow:hidden}
   .bud .r .bar i{display:block; height:100%; border-radius:99px}
   .bud .r b{min-width:84px; text-align:right; font-weight:700; font-variant-numeric:tabular-nums}
   .bud .r span:first-child{min-width:66px; color:var(--ink2)}
   .budtot{display:flex; justify-content:space-between; align-items:baseline; padding-top:13px; margin-top:5px; border-top:1px solid var(--line)}
-  .budtot b{font-size:24px; font-weight:700; letter-spacing:-.02em}
+  .budtot b{font-size:1.5rem; font-weight:700; letter-spacing:-.02em}
 
   /* ============ map ============ */
   .leaflet-container{background:var(--soft); font:inherit}
@@ -428,17 +428,17 @@
   .pin{width:26px; height:26px; border-radius:50% 50% 50% 3px; transform:rotate(-45deg); display:flex; align-items:center;
        justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.28), 0 0 0 .5px rgba(0,0,0,.10);
        border:2.5px solid #fff; color:#fff}
-  .pin b{transform:rotate(45deg); font-size:11.5px; font-weight:700}
+  .pin b{transform:rotate(45deg); font-size:0.71875rem; font-weight:700}
   .pin.big{width:34px; height:34px; z-index:900 !important}
-  .pin.big b{font-size:14px}
+  .pin.big b{font-size:0.875rem}
   .mapbar{position:absolute; top:12px; left:12px; right:86px; z-index:5; display:flex; gap:5px;
     flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px}
   .mapbar::-webkit-scrollbar{display:none}
-  .mapbar button{flex:0 0 auto; background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:6px 12px; font-size:13px; font-weight:700; color:var(--ink2)}
+  .mapbar button{flex:0 0 auto; background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:6px 12px; font-size:0.8125rem; font-weight:700; color:var(--ink2)}
   .mapbar button.on{background:var(--ink); color:var(--surf)}
-  .leaflet-popup-content{margin:11px 13px; font-size:14px}
-  .leaflet-popup-content b{display:block; margin-bottom:3px; font-size:14.5px; font-weight:700}
-  .leaflet-popup-content a{color:var(--link); font-size:13px; font-weight:700}
+  .leaflet-popup-content{margin:11px 13px; font-size:0.875rem}
+  .leaflet-popup-content b{display:block; margin-bottom:3px; font-size:0.90625rem; font-weight:700}
+  .leaflet-popup-content a{color:var(--link); font-size:0.8125rem; font-weight:700}
 
   /* ============ AI chat bubble ============ */
   .chatfab{position:fixed; z-index:55; right:16px; bottom:calc(16px + env(safe-area-inset-bottom));
@@ -467,26 +467,26 @@
   .ai.open{display:flex}
   .aigrip{display:none}
   .aihead{display:flex; align-items:center; gap:8px; padding:14px 14px 12px; border-bottom:1px solid var(--line)}
-  .aihead b{font-size:16px; font-weight:700; flex:1; display:flex; align-items:center; gap:6px}
-  .aihead button{font-size:13px; color:var(--muted); border-radius:99px; padding:6px 12px; font-weight:700}
+  .aihead b{font-size:1rem; font-weight:700; flex:1; display:flex; align-items:center; gap:6px}
+  .aihead button{font-size:0.8125rem; color:var(--muted); border-radius:99px; padding:6px 12px; font-weight:700}
   .aihead button:hover{background:var(--soft); color:var(--ink)}
   .aimsgs{flex:1; overflow-y:auto; padding:18px 16px 8px; display:flex; flex-direction:column; gap:14px}
-  .msg{max-width:86%; padding:11px 14px; border-radius:16px; font-size:15px; line-height:1.6; white-space:pre-wrap; word-break:break-word}
+  .msg{max-width:86%; padding:11px 14px; border-radius:16px; font-size:0.9375rem; line-height:1.6; white-space:pre-wrap; word-break:break-word}
   .msg.u{align-self:flex-end; background:var(--acc); color:#fff; border-bottom-right-radius:5px}
   .msg.a{align-self:flex-start; background:var(--soft); border-bottom-left-radius:5px}
-  .msg.sys{align-self:center; background:var(--acc-soft); font-size:12.5px; color:var(--ink2); padding:6px 13px; border-radius:99px; max-width:100%}
-  .msg .did{display:block; margin-top:8px; font-size:12.5px; color:var(--acc); font-weight:700}
-  .aiwelcome{color:var(--muted); font-size:14.5px; text-align:left; padding:8px 4px 4px; line-height:1.7}
+  .msg.sys{align-self:center; background:var(--acc-soft); font-size:0.78125rem; color:var(--ink2); padding:6px 13px; border-radius:99px; max-width:100%}
+  .msg .did{display:block; margin-top:8px; font-size:0.78125rem; color:var(--acc); font-weight:700}
+  .aiwelcome{color:var(--muted); font-size:0.90625rem; text-align:left; padding:8px 4px 4px; line-height:1.7}
   .aiwelcome p{margin:0 0 12px}
-  .aictx{display:inline-block; background:var(--soft); color:var(--ink2); border-radius:12px; padding:8px 12px; font-size:13px; font-weight:650; line-height:1.45}
+  .aictx{display:inline-block; background:var(--soft); color:var(--ink2); border-radius:12px; padding:8px 12px; font-size:0.8125rem; font-weight:650; line-height:1.45}
   .aichips{display:flex; gap:8px; padding:4px 16px 12px; flex-wrap:wrap}
-  .aichips button{font-size:13px; background:var(--surf); border:1px solid var(--line); border-radius:99px; padding:7px 12px; color:var(--ink2); font-weight:650}
+  .aichips button{font-size:0.8125rem; background:var(--surf); border:1px solid var(--line); border-radius:99px; padding:7px 12px; color:var(--ink2); font-weight:650}
   .aichips button:hover{border-color:var(--acc); color:var(--acc)}
   .aiin{display:flex; gap:8px; padding:12px 14px calc(14px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); align-items:flex-end; background:var(--surf)}
-  .aiin textarea{flex:1; background:var(--soft); border:0; border-radius:14px; padding:11px 13px; resize:none; max-height:120px; font-size:15px; line-height:1.5}
-  .aiin button{width:40px; height:40px; border-radius:50%; background:var(--acc); color:#fff; font-size:16px; display:flex; align-items:center; justify-content:center; flex:0 0 auto}
+  .aiin textarea{flex:1; background:var(--soft); border:0; border-radius:14px; padding:11px 13px; resize:none; max-height:120px; font-size:0.9375rem; line-height:1.5}
+  .aiin button{width:40px; height:40px; border-radius:50%; background:var(--acc); color:#fff; font-size:1rem; display:flex; align-items:center; justify-content:center; flex:0 0 auto}
   .aiin button:disabled{opacity:.4}
-  .warnb{display:inline-block; font-size:11px; font-weight:700; color:#fff; background:var(--warn); border-radius:4px; padding:1px 5px; margin-left:6px; vertical-align:1px}
+  .warnb{display:inline-block; font-size:0.6875rem; font-weight:700; color:#fff; background:var(--warn); border-radius:4px; padding:1px 5px; margin-left:6px; vertical-align:1px}
   @media (max-width:820px){
     .chatbd.show{background:rgba(33,37,41,.32)}
     .ai{left:0; right:0; bottom:0; top:auto; width:auto; height:min(86dvh, 760px);
@@ -500,84 +500,84 @@
   @media print{ .chatfab,.chatbd,.ai,.totop{display:none !important} }
 
   /* ============ optimize / offline ============ */
-  .netbar{display:none; background:var(--warn); color:#fff; font-size:13px; font-weight:700; padding:9px 14px; text-align:center}
+  .netbar{display:none; background:var(--warn); color:#fff; font-size:0.8125rem; font-weight:700; padding:9px 14px; text-align:center}
   .netbar.show{display:block}
   .optbox{background:var(--soft2); border:1px solid var(--line2); border-radius:10px; padding:15px}
-  .optrow{display:flex; justify-content:space-between; align-items:baseline; padding:3px 0; font-size:14px}
-  .optrow b{font-size:20px; font-weight:700}
+  .optrow{display:flex; justify-content:space-between; align-items:baseline; padding:3px 0; font-size:0.875rem}
+  .optrow b{font-size:1.25rem; font-weight:700}
   .optrow.ok b{color:var(--ok)}
-  .optsave{margin-top:10px; padding-top:10px; border-top:1px solid var(--line); font-size:13.5px; font-weight:700; color:var(--acc)}
+  .optsave{margin-top:10px; padding-top:10px; border-top:1px solid var(--line); font-size:0.84375rem; font-weight:700; color:var(--acc)}
   .optseq{background:var(--surf); border:1px solid var(--line); border-radius:9px; padding:9px 13px; max-height:220px; overflow-y:auto}
-  .optseq div{display:flex; gap:10px; padding:4px 0; font-size:14px; align-items:baseline}
-  .optseq b{width:18px; color:var(--muted); font-size:12px; font-weight:700; flex:0 0 auto}
+  .optseq div{display:flex; gap:10px; padding:4px 0; font-size:0.875rem; align-items:baseline}
+  .optseq b{width:18px; color:var(--muted); font-size:0.75rem; font-weight:700; flex:0 0 auto}
 
   /* 地點詳情卡 */
   .pshot{margin:-22px -22px 14px; height:190px; overflow:hidden; border-radius:12px 12px 0 0; background:var(--soft)}
   .pshot img{width:100%; height:100%; object-fit:cover; display:block}
-  .phead h3{font-size:23px; font-weight:700; letter-spacing:-.02em; line-height:1.2}
-  .pmeta{font-size:13.5px; color:var(--muted); margin-top:5px}
+  .phead h3{font-size:1.4375rem; font-weight:700; letter-spacing:-.02em; line-height:1.2}
+  .pmeta{font-size:0.84375rem; color:var(--muted); margin-top:5px}
   .pmeta b{font-weight:700}
   .prate{color:#C9700A} .popen{color:var(--ok)} .pshut{color:var(--muted)}
-  .ohint{color:var(--muted2); font-size:12.5px; margin-left:5px}
+  .ohint{color:var(--muted2); font-size:0.78125rem; margin-left:5px}
   .mapoff{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
           justify-content:center; gap:10px; text-align:center; padding:26px; background:var(--soft);
           color:var(--muted); z-index:3}
   .mapoff .ico{color:var(--muted2)}
-  .mapoff b{font-size:15px; color:var(--ink2)}
-  .mapoff span{font-size:12.5px; line-height:1.55; max-width:320px}
+  .mapoff b{font-size:0.9375rem; color:var(--ink2)}
+  .mapoff span{font-size:0.78125rem; line-height:1.55; max-width:320px}
   /* 我嘅標註：獨立一格，唔同地點描述混做一堆 */
   .rcard .memo{margin-top:8px; background:var(--bg); border:1px solid var(--line);
                border-left:3px solid var(--acc); border-radius:7px; padding:8px 11px;
-               font-size:13.5px; color:var(--ink2); line-height:1.5; white-space:pre-wrap; word-break:break-word}
-  .rcard .memo em{display:flex; align-items:center; gap:5px; font-style:normal; font-size:11px;
+               font-size:0.84375rem; color:var(--ink2); line-height:1.5; white-space:pre-wrap; word-break:break-word}
+  .rcard .memo em{display:flex; align-items:center; gap:5px; font-style:normal; font-size:0.6875rem;
                   font-weight:800; color:var(--acc); letter-spacing:.04em; margin-bottom:4px}
-  .noteref{background:var(--soft); border-radius:8px; padding:10px 12px; font-size:13px;
+  .noteref{background:var(--soft); border-radius:8px; padding:10px 12px; font-size:0.8125rem;
            color:var(--muted); line-height:1.5; white-space:pre-wrap; word-break:break-word;
            max-height:120px; overflow:auto}
   /* 標註排版工具條 */
   .mdbar{display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin-bottom:6px}
   .mdb{width:30px; height:28px; border:1px solid var(--line); border-radius:6px; background:var(--bg);
-       color:var(--ink2); font-size:13px; line-height:1; cursor:pointer; display:flex;
+       color:var(--ink2); font-size:0.8125rem; line-height:1; cursor:pointer; display:flex;
        align-items:center; justify-content:center; padding:0}
   .mdb:hover{border-color:var(--acc); color:var(--acc)}
   .mdb:active{background:var(--soft)}
-  .mdhint{font-size:11px; color:var(--muted2); margin-left:4px}
+  .mdhint{font-size:0.6875rem; color:var(--muted2); margin-left:4px}
   .mdb.on{background:var(--acc); color:#fff; border-color:var(--acc)}
-  .rsrc{font-size:10.5px; font-weight:800; padding:2px 6px; border-radius:4px; margin-left:6px;
+  .rsrc{font-size:0.65625rem; font-weight:800; padding:2px 6px; border-radius:4px; margin-left:6px;
         letter-spacing:.03em; vertical-align:1px}
   .rsrc.auto{background:var(--link-soft); color:var(--link)}
   .rsrc.man{background:var(--soft2); color:var(--muted); border:1px solid var(--line)}
   /* ── 氣象廳警報 ── */
-  .jma{font-size:12.5px; font-weight:700; line-height:1.45; margin:4px 0 6px; padding:7px 10px;
+  .jma{font-size:0.78125rem; font-weight:700; line-height:1.45; margin:4px 0 6px; padding:7px 10px;
        border-radius:8px; display:flex; flex-wrap:wrap; align-items:baseline; gap:6px}
   .jma.ok{background:var(--soft); color:var(--muted)}
   .jma.warn{background:#FFF4E2; color:#9A5B00}
   .jma.bad{background:#FFE9E9; color:#B42318}
   .jma.load,.jma.stale{background:var(--soft); color:var(--muted2); font-weight:600}
-  .jmawhen{font-weight:600; opacity:.7; font-size:11.5px}
-  .jma a{margin-left:auto; color:inherit; text-decoration:underline; font-size:11.5px; opacity:.8}
+  .jmawhen{font-weight:600; opacity:.7; font-size:0.71875rem}
+  .jma a{margin-left:auto; color:inherit; text-decoration:underline; font-size:0.71875rem; opacity:.8}
   /* tenki.jp：日本境內、預報窗內先出。橫向可滑，窄屏唔好撐破。 */
   .tenki{margin:0 0 8px 18px}
   .tenki-top{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
-    font-size:12.5px; font-weight:700; color:var(--ink2); line-height:1.35}
+    font-size:0.78125rem; font-weight:700; color:var(--ink2); line-height:1.35}
   .tenki-top b{color:var(--ink); font-weight:800}
   .tenki-top span{font-weight:600; color:var(--muted)}
-  .tenki-top a{margin-left:auto; color:var(--link); font-size:11.5px; font-weight:700; text-decoration:none}
+  .tenki-top a{margin-left:auto; color:var(--link); font-size:0.71875rem; font-weight:700; text-decoration:none}
   .tenki-scroll{display:flex; gap:6px; overflow-x:auto; margin-top:6px; padding-bottom:2px;
     -webkit-overflow-scrolling:touch; scrollbar-width:none}
   .tenki-scroll::-webkit-scrollbar{height:0}
   .tenki-d{flex:0 0 auto; width:68px; border:1px solid var(--line); border-radius:8px;
     padding:5px 4px 6px; text-align:center; background:var(--soft2)}
   .tenki-d.on{border-color:var(--acc); background:var(--acc-soft)}
-  .tenki-d i{display:block; font-style:normal; font-size:10.5px; color:var(--muted); font-weight:700}
-  .tenki-d b{display:block; font-size:11.5px; font-weight:800; line-height:1.25; margin-top:2px; word-break:break-word}
-  .tenki-d em{display:block; font-style:normal; font-size:11px; font-weight:700; margin-top:2px; font-variant-numeric:tabular-nums}
-  .tenki-d s{display:block; text-decoration:none; font-size:10.5px; color:var(--link); font-weight:700; margin-top:1px}
-  .tenki.load{font-size:12px; color:var(--muted2); font-weight:600; margin:0 0 8px 18px}
+  .tenki-d i{display:block; font-style:normal; font-size:0.65625rem; color:var(--muted); font-weight:700}
+  .tenki-d b{display:block; font-size:0.71875rem; font-weight:800; line-height:1.25; margin-top:2px; word-break:break-word}
+  .tenki-d em{display:block; font-style:normal; font-size:0.6875rem; font-weight:700; margin-top:2px; font-variant-numeric:tabular-nums}
+  .tenki-d s{display:block; text-decoration:none; font-size:0.65625rem; color:var(--link); font-weight:700; margin-top:1px}
+  .tenki.load{font-size:0.75rem; color:var(--muted2); font-weight:600; margin:0 0 8px 18px}
   .here{margin:2px 0 12px; padding:8px 10px 8px; border:1px solid var(--line); border-radius:10px; background:var(--soft2)}
-  .here-k{font-size:11px; font-weight:800; letter-spacing:.04em; color:var(--muted); margin:0 0 4px}
+  .here-k{font-size:0.6875rem; font-weight:800; letter-spacing:.04em; color:var(--muted); margin:0 0 4px}
   .here .tenki,.here .tenki.load{margin:0}
-  .here .om{font-size:13px; font-weight:700; color:var(--ink2)}
+  .here .om{font-size:0.8125rem; font-weight:700; color:var(--ink2)}
   @media (prefers-color-scheme:dark){
     .jma.warn{background:#3A2A0C; color:#F5C06B}
     .jma.bad{background:#3A1414; color:#F09A94}
@@ -586,34 +586,34 @@
   /* ── 搵附近 ── */
   .nrchips{display:flex; flex-wrap:wrap; gap:5px; margin:0 0 8px}
   .nrc{padding:6px 9px; min-height:32px; border:1px solid var(--line); border-radius:99px;
-       background:var(--card); font-size:12px; font-weight:700; color:var(--ink2)}
+       background:var(--card); font-size:0.75rem; font-weight:700; color:var(--ink2)}
   .nrc.on{background:var(--acc); border-color:var(--acc); color:#fff}
   .nrbar{display:flex; align-items:center; gap:5px; margin:0 0 6px}
   .nrr{padding:5px 10px; min-height:30px; border:1px solid var(--line); border-radius:99px;
-       background:var(--card); font-size:12px; font-weight:700; color:var(--muted)}
+       background:var(--card); font-size:0.75rem; font-weight:700; color:var(--muted)}
   .nrr.on{background:var(--ink); border-color:var(--ink); color:var(--surf)}
   .nrbar .sp{flex:1}
-  .nrfrom{font-size:11.5px; color:var(--muted2); font-weight:600; margin:0 0 10px}
+  .nrfrom{font-size:0.71875rem; color:var(--muted2); font-weight:600; margin:0 0 10px}
   .nrlist{display:flex; flex-direction:column}
   .nrrow{display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--line)}
-  .nrd{flex:none; width:52px; text-align:right; font-size:13px; font-weight:800;
+  .nrd{flex:none; width:52px; text-align:right; font-size:0.8125rem; font-weight:800;
        font-variant-numeric:tabular-nums; color:var(--muted)}
   .nrmid{flex:1; min-width:0}
-  .nrn{font-size:14px; font-weight:700; line-height:1.35; word-break:break-word}
-  .nrh{font-size:11.5px; color:var(--muted2); font-weight:600; margin-top:2px}
+  .nrn{font-size:0.875rem; font-weight:700; line-height:1.35; word-break:break-word}
+  .nrh{font-size:0.71875rem; color:var(--muted2); font-weight:600; margin-top:2px}
 
   /* ── 換算器 ── */
   .cvpair{display:flex; align-items:center; gap:10px; margin:2px 0 12px}
-  .cvsel{width:auto; min-width:96px; font-weight:800; font-size:16px}
-  .cvswap{flex:none; width:40px; height:40px; border-radius:99px; border:1px solid var(--line); background:var(--card); font-size:18px; color:var(--acc)}
+  .cvsel{width:auto; min-width:96px; font-weight:800; font-size:1rem}
+  .cvswap{flex:none; width:40px; height:40px; border-radius:99px; border:1px solid var(--line); background:var(--card); font-size:1.125rem; color:var(--acc)}
   .cvsel{flex:1; min-width:0}
-  .cvhome{font-size:16px; font-weight:800}
+  .cvhome{font-size:1rem; font-weight:800}
   .cvrow{display:flex; align-items:center; gap:10px; margin-bottom:8px}
-  .cvrow label{flex:none; width:44px; font-size:13px; font-weight:800; color:var(--muted)}
-  .cvin{flex:1; font-size:24px !important; font-weight:800; font-variant-numeric:tabular-nums; text-align:right; padding:10px 12px; min-height:52px}
+  .cvrow label{flex:none; width:44px; font-size:0.8125rem; font-weight:800; color:var(--muted)}
+  .cvin{flex:1; font-size:1.5rem !important; font-weight:800; font-variant-numeric:tabular-nums; text-align:right; padding:10px 12px; min-height:52px}
   .cvquick{display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 12px}
-  .cvq{padding:6px 10px; border:1px solid var(--line); border-radius:99px; background:var(--card); font-size:12.5px; font-weight:700; color:var(--ink2)}
-  .cvrate{font-size:13px; color:var(--muted); font-weight:600; margin-bottom:10px}
+  .cvq{padding:6px 10px; border:1px solid var(--line); border-radius:99px; background:var(--card); font-size:0.78125rem; font-weight:700; color:var(--ink2)}
+  .cvrate{font-size:0.8125rem; color:var(--muted); font-weight:600; margin-bottom:10px}
   .cvdate{color:var(--muted2); font-weight:600}
   .cvbtns{display:flex; gap:8px}
   /* contenteditable 編輯器：睇落同 textarea 一樣，但打粗體即刻見到粗體 */
@@ -628,7 +628,7 @@
   .memo li,.mdbody li{margin:1px 0}
   .memo .mdsp,.mdbody .mdsp{height:6px}
   .memo a,.mdbody a{color:var(--link); font-weight:600}
-  .mdbody{margin-top:3px; font-size:13.5px; line-height:1.55}
+  .mdbody{margin-top:3px; font-size:0.84375rem; line-height:1.55}
   /* 附件檢視器：直接喺 app 裡面睇 */
   .fview{min-height:200px; display:flex; flex-direction:column; gap:10px; align-items:stretch}
   .fview img{width:100%; height:auto; max-height:62vh; object-fit:contain; border-radius:10px;
@@ -638,12 +638,12 @@
   .fvbtn{display:flex; gap:8px}
   .fvbtn .btn{text-decoration:none; text-align:center; flex:1}
   .stag{background:var(--soft); border:1px dashed var(--line); border-radius:9px; padding:10px 12px; margin-bottom:9px}
-  .stagh{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.03em; margin-bottom:6px}
+  .stagh{font-size:0.75rem; font-weight:800; color:var(--muted); letter-spacing:.03em; margin-bottom:6px}
   .stag .fitem.bad .fn,.stag .fitem.bad .fsz{color:var(--acc)}
   .racts{display:flex; gap:7px; margin-top:9px}
   .ract{display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 11px;
         border-radius:7px; border:1px solid var(--line); background:var(--bg);
-        color:var(--muted); font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap}
+        color:var(--muted); font-size:0.78125rem; font-weight:700; cursor:pointer; white-space:nowrap}
   .ract .ico{flex:0 0 auto}
   .ract:hover{border-color:var(--muted2); color:var(--ink2)}
   .ract.has{background:var(--link-soft); border-color:transparent; color:var(--link)}
@@ -652,55 +652,55 @@
   .pnote{margin-top:16px}
   .pnote textarea.inp{min-height:84px}
   .btnrow2{display:flex; align-items:center; gap:10px; margin-top:7px}
-  .btn.sm{width:auto; padding:0 14px; height:34px; font-size:13.5px; margin:0}
+  .btn.sm{width:auto; padding:0 14px; height:34px; font-size:0.84375rem; margin:0}
   .bkbox{border:1px solid var(--line); border-radius:10px; padding:12px 13px 2px; margin:2px 0 14px; background:var(--soft)}
-  .bkh{font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; margin-bottom:9px}
+  .bkh{font-size:0.75rem; font-weight:700; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; margin-bottom:9px}
   .bkbox .inp{background:var(--bg)}
 
   /* 「而家」卡：車上乘客用。大字、行距鬆、唔使精細撳 */
   .tbtn.now{background:var(--acc); color:#fff; border-color:var(--acc); font-weight:800}
   .tbtn.now:hover{background:var(--acc-d); border-color:var(--acc-d)}
   .nowwrap{padding-top:2px}
-  .nowtime{font-size:15px; color:var(--muted); font-weight:700; letter-spacing:.02em}
-  .nowtime span{font-size:12px; font-weight:600; color:var(--muted2); margin-left:6px}
-  .nowlbl{font-size:12px; font-weight:800; color:var(--muted); letter-spacing:.06em;
+  .nowtime{font-size:0.9375rem; color:var(--muted); font-weight:700; letter-spacing:.02em}
+  .nowtime span{font-size:0.75rem; font-weight:600; color:var(--muted2); margin-left:6px}
+  .nowlbl{font-size:0.75rem; font-weight:800; color:var(--muted); letter-spacing:.06em;
           text-transform:uppercase; margin:16px 0 4px}
-  .nowbig{font-size:27px; font-weight:800; line-height:1.18; letter-spacing:-.025em; display:flex;
+  .nowbig{font-size:1.6875rem; font-weight:800; line-height:1.18; letter-spacing:-.025em; display:flex;
           align-items:center; gap:9px; flex-wrap:wrap}
   .nowbig .ico{flex:0 0 auto}
-  .nowsub{font-size:14.5px; color:var(--muted); margin-top:5px; line-height:1.4}
-  .nowrow{display:flex; align-items:center; gap:10px; font-size:16px; padding:11px 0;
+  .nowsub{font-size:0.90625rem; color:var(--muted); margin-top:5px; line-height:1.4}
+  .nowrow{display:flex; align-items:center; gap:10px; font-size:1rem; padding:11px 0;
           border-top:1px solid var(--line2); line-height:1.35; flex-wrap:wrap}
   .nowrow:first-of-type{border-top:0}
   .nowrow .ico{flex:0 0 auto; color:var(--muted)}
-  .nowrow.big{font-size:20px; font-weight:700}
-  .nowrow em{font-style:normal; font-size:13px; font-weight:600; color:var(--muted); margin-left:2px}
+  .nowrow.big{font-size:1.25rem; font-weight:700}
+  .nowrow em{font-style:normal; font-size:0.8125rem; font-weight:600; color:var(--muted); margin-left:2px}
   .nowrow em.bad{color:var(--acc); font-weight:800}
   .nowrow.warn{color:var(--acc); font-weight:700}
   .nowrow.warn .ico{color:var(--acc)}
   .nowrow.ok .ico{color:var(--ok)}
   .nowrow a{color:var(--link); font-weight:700; display:flex; align-items:center; gap:10px}
   .nowwx{margin:14px 0 2px; padding:12px 14px; border-radius:10px; background:var(--soft);
-         font-size:16px; font-weight:700; letter-spacing:.01em; line-height:1.4}
+         font-size:1rem; font-weight:700; letter-spacing:.01em; line-height:1.4}
   .nowbtns{margin-top:16px; display:flex; flex-direction:column; gap:8px}
   .nowbtns .btn{text-align:center; text-decoration:none}
   .tfbtn.on{background:var(--acc)!important; color:#fff!important; border-color:var(--acc)!important}
 
   /* ── 而家／今日 分頁 ── */
   .ntabs{display:flex; gap:6px; margin:0 0 12px; padding-right:46px}
-  .ntab{flex:1; padding:9px 2px; min-height:40px; white-space:nowrap; font-size:13.5px; border:1px solid var(--line); border-radius:9px;
-        background:var(--card); color:var(--muted); font-size:14px; font-weight:700}
+  .ntab{flex:1; padding:9px 2px; min-height:40px; white-space:nowrap; font-size:0.84375rem; border:1px solid var(--line); border-radius:9px;
+        background:var(--card); color:var(--muted); font-size:0.875rem; font-weight:700}
   .ntab.on{background:var(--acc); border-color:var(--acc); color:#fff}
 
   /* ── 今日一頁 ── */
   .tdnav{display:flex; align-items:center; gap:8px; margin:0 0 8px}
-  .tdnav b{flex:1; text-align:center; font-size:15px; font-weight:800; letter-spacing:-.01em}
+  .tdnav b{flex:1; text-align:center; font-size:0.9375rem; font-weight:800; letter-spacing:-.01em}
   .tdb{width:42px; height:42px; border-radius:9px; border:1px solid var(--line);
-       background:var(--card); color:var(--fg); font-size:17px; line-height:1}
+       background:var(--card); color:var(--fg); font-size:1.0625rem; line-height:1}
   .tdb:disabled{opacity:.3}
-  .tdwx{font-size:12.5px; color:var(--muted); font-weight:600; margin:0 0 4px}
-  .tdfrom{font-size:12.5px; color:var(--muted); font-weight:600; margin:0 0 4px}
-  .tdmeta{font-size:12px; color:var(--muted2); font-weight:600; margin:0 0 12px}
+  .tdwx{font-size:0.78125rem; color:var(--muted); font-weight:600; margin:0 0 4px}
+  .tdfrom{font-size:0.78125rem; color:var(--muted); font-weight:600; margin:0 0 4px}
+  .tdmeta{font-size:0.75rem; color:var(--muted2); font-weight:600; margin:0 0 12px}
   .tdlist{display:flex; flex-direction:column}
   .tdrow{display:flex; align-items:flex-start; gap:9px; padding:10px 0;
          border-top:1px solid var(--line)}
@@ -708,16 +708,16 @@
   /* 打勾係途中最常撳嘅掣（手套／行路／趕住）。圓圈維持 28px 好睇，
      但用 ::after 撐開真正嘅觸控範圍到 44px —— Apple HIG 最細嗰個數。 */
   .tdrow .tick{flex:none; margin-top:1px; color:var(--muted2); position:relative;
-               width:28px; height:28px; font-size:13px}
+               width:28px; height:28px; font-size:0.8125rem}
   .tdrow .tick::after{content:''; position:absolute; top:-8px; left:-8px; right:-8px; bottom:-8px}
   .tdrow.done .tick{background:var(--ok); border-color:var(--ok); color:#fff}
-  .tdt{flex:none; width:44px; text-align:right; font-size:13.5px; font-weight:800;
+  .tdt{flex:none; width:44px; text-align:right; font-size:0.84375rem; font-weight:800;
        font-variant-numeric:tabular-nums; line-height:1.25; padding-top:2px}
-  .tdt.est{color:var(--muted2); font-weight:700; font-size:12.5px}
+  .tdt.est{color:var(--muted2); font-weight:700; font-size:0.78125rem}
   .tdmid{flex:1; min-width:0}
-  .tdn{font-size:14.5px; font-weight:700; line-height:1.35; word-break:break-word}
-  .tdw{font-size:12px; color:var(--warn); font-weight:700; margin-top:3px}
-  .tdc{font-size:11.5px; color:var(--muted2); font-weight:600; margin-top:3px}
+  .tdn{font-size:0.90625rem; font-weight:700; line-height:1.35; word-break:break-word}
+  .tdw{font-size:0.75rem; color:var(--warn); font-weight:700; margin-top:3px}
+  .tdc{font-size:0.71875rem; color:var(--muted2); font-weight:600; margin-top:3px}
   .tdc .sep{margin:0 5px; opacity:.5}
   .tdgo{flex:none; width:42px; height:42px; display:flex; align-items:center; justify-content:center;
         border-radius:9px; border:1px solid var(--line); color:var(--acc); text-decoration:none}
@@ -726,8 +726,8 @@
   .ico.rot90{transform:rotate(90deg)}
   .home{padding-top:6px}
   .homeh{display:flex; align-items:baseline; gap:10px; margin:6px 0 18px}
-  .homeh h1{font-size:27px; font-weight:800; letter-spacing:-.03em; margin:0}
-  .homeh .n{font-size:13px; color:var(--muted); font-weight:700}
+  .homeh h1{font-size:1.6875rem; font-weight:800; letter-spacing:-.03em; margin:0}
+  .homeh .n{font-size:0.8125rem; color:var(--muted); font-weight:700}
   .tgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:16px}
   .tcard{background:var(--card); border-radius:12px; box-shadow:var(--sh2); overflow:hidden;
          cursor:pointer; text-align:left; padding:0; border:1.5px solid transparent;
@@ -736,42 +736,42 @@
   .tcard.on{border-color:var(--acc)}
   .tph{position:relative; height:124px; background:var(--soft); overflow:hidden}
   .tph img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 42%; display:block}
-  .twhen{position:absolute; z-index:2; left:10px; bottom:10px; font-size:11.5px; font-weight:800;
+  .twhen{position:absolute; z-index:2; left:10px; bottom:10px; font-size:0.71875rem; font-weight:800;
          padding:3px 8px; border-radius:20px; background:rgba(255,255,255,.94); color:var(--ink);
          letter-spacing:.02em; box-shadow:0 1px 4px rgba(0,0,0,.18)}
   .twhen.now{background:var(--acc); color:#fff}
   .twhen.past{background:rgba(0,0,0,.6); color:#fff}
-  .tnow{position:absolute; z-index:2; right:10px; top:10px; font-size:11px; font-weight:800; padding:3px 8px;
+  .tnow{position:absolute; z-index:2; right:10px; top:10px; font-size:0.6875rem; font-weight:800; padding:3px 8px;
         border-radius:20px; background:var(--ink); color:#fff; letter-spacing:.02em}
   .tinfo{padding:12px 13px 10px}
-  .tnm{font-size:16px; font-weight:700; letter-spacing:-.02em; line-height:1.25;
+  .tnm{font-size:1rem; font-weight:700; letter-spacing:-.02em; line-height:1.25;
        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
-  .tsub{font-size:12.5px; color:var(--muted); margin-top:3px; line-height:1.35}
+  .tsub{font-size:0.78125rem; color:var(--muted); margin-top:3px; line-height:1.35}
   .tbar{height:3px; border-radius:3px; background:var(--soft2); margin:10px 0 7px; overflow:hidden}
   .tbar i{display:block; height:100%; border-radius:3px}
-  .tmeta{font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px}
+  .tmeta{font-size:0.75rem; color:var(--muted); display:flex; align-items:center; gap:6px}
   .tmeta .kebab{margin-left:auto}
   .tcard.add{display:flex; flex-direction:column; align-items:center; justify-content:center;
              gap:8px; min-height:190px; background:var(--soft); box-shadow:none;
              border:1.5px dashed var(--line); color:var(--muted)}
   .tcard.add:hover{border-color:var(--acc); color:var(--acc); transform:none; box-shadow:none}
-  .tcard.add span{font-size:14px; font-weight:700}
+  .tcard.add span{font-size:0.875rem; font-weight:700}
   .h1back{background:none; border:0; padding:0 7px 0 0; color:var(--muted); cursor:pointer;
           vertical-align:2px}
   .h1back:hover{color:var(--acc)}
   .tochome{width:100%; text-align:left; background:none; border:0; cursor:pointer;
-           font-size:13.5px; font-weight:700; color:var(--ink2); padding:8px 10px 10px;
+           font-size:0.84375rem; font-weight:700; color:var(--ink2); padding:8px 10px 10px;
            display:flex; align-items:center; gap:7px; border-bottom:1px solid var(--line); margin-bottom:8px}
   .tochome:hover{color:var(--acc)}
   @media print{ .tochome,.h1back{display:none} }
   .prows{margin:16px 0 4px; display:flex; flex-direction:column}
-  .prow{display:flex; gap:11px; padding:9px 0; border-top:1px solid var(--line2); font-size:14px; align-items:flex-start}
+  .prow{display:flex; gap:11px; padding:9px 0; border-top:1px solid var(--line2); font-size:0.875rem; align-items:flex-start}
   .prow:first-child{border-top:0}
   .prow em{font-style:normal; width:18px; flex:0 0 auto; text-align:center}
   .prow span,.prow a{flex:1; word-break:break-word; white-space:pre-wrap}
   .prow a{color:var(--link); text-decoration:none; font-weight:600}
   .prow a[data-act]{font-weight:700; margin-left:6px; cursor:pointer}
-  .phours{background:var(--soft); border-radius:10px; padding:11px 14px; margin-top:10px; font-size:13.5px; line-height:1.9}
+  .phours{background:var(--soft); border-radius:10px; padding:11px 14px; margin-top:10px; font-size:0.84375rem; line-height:1.9}
 
   /* ============ sheet / modal ============ */
   .sheet{position:fixed; inset:0; z-index:60; display:none}
@@ -779,19 +779,19 @@
   .sheet .bg{position:absolute; inset:0; background:rgba(33,37,41,.45)}
   .sheet .pan{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(450px,calc(100vw - 32px));
               max-height:88vh; overflow-y:auto; background:var(--surf); border-radius:12px; box-shadow:var(--sh2); padding:22px}
-  .sheet h3{margin:0 0 16px; font-size:21px; font-weight:700; letter-spacing:-.02em}
+  .sheet h3{margin:0 0 16px; font-size:1.3125rem; font-weight:700; letter-spacing:-.02em}
   .sheet .close{position:absolute; top:12px; right:12px; width:40px; height:40px; display:flex; align-items:center; justify-content:center; color:var(--muted); border-radius:99px}
   .sheet .close:active{background:var(--soft)}
   .sheet .close:hover{background:var(--soft)}
   .fld{margin-bottom:12px}
-  .fld label{display:block; font-size:12.5px; color:var(--muted); margin:0 0 5px 1px; font-weight:700}
-  .inp{width:100%; background:var(--surf); border:1px solid var(--line); border-radius:8px; padding:10px 12px; outline:none; font-size:14.5px}
+  .fld label{display:block; font-size:0.78125rem; color:var(--muted); margin:0 0 5px 1px; font-weight:700}
+  .inp{width:100%; background:var(--surf); border:1px solid var(--line); border-radius:8px; padding:10px 12px; outline:none; font-size:0.90625rem}
   /* 🔴 iOS Safari：一 focus 字細過 16px 嘅輸入欄就會自動放大成個頁，而且唔會自己縮返。
      揿類型 icon 會自動 focus 個輸入欄，所以症狀係「揿完 icon 畫面放大縮唔返」。
      唔可以用 maximum-scale=1 解決（會連手指放大都禁埋，唔應該）。正解係觸控裝置一律 16px。 */
   @media (pointer:coarse){
     .inp, .addbar .fi input, .aiin textarea,
-    input:not([type=checkbox]):not([type=radio]), select, textarea{font-size:16px}
+    input:not([type=checkbox]):not([type=radio]), select, textarea{font-size:1rem}
     .inp{padding:11px 12px}
   }
   /* 暗號欄。iOS Safari 同 WhatsApp／LINE／Instagram 內置瀏覽器畫密碼圓點時
@@ -800,7 +800,7 @@
      避免深色模式把圓點畫成同底同色。 */
   input[type="password"]{
     font-family: system-ui, -apple-system, "Segoe UI", "Helvetica Neue", sans-serif;
-    font-size: 16px;
+    font-size: 1rem;
     line-height: 1.4;
     color: var(--ink);
     -webkit-text-fill-color: var(--ink);
@@ -811,7 +811,7 @@
   .inp:focus{border-color:var(--acc)}
   textarea.inp{resize:vertical; min-height:80px; line-height:1.55}
   .two{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-  .btn{display:block; width:100%; background:var(--ink); color:var(--surf); border-radius:99px; padding:12px; font-size:15px; font-weight:700; text-align:center}
+  .btn{display:block; width:100%; background:var(--ink); color:var(--surf); border-radius:99px; padding:12px; font-size:0.9375rem; font-weight:700; text-align:center}
   .btn.ghost{background:var(--surf); color:var(--ink); border:1px solid var(--line)}
   .btn.ghost:hover{background:var(--soft)}
   .btn.acc{background:var(--acc); color:#fff}
@@ -819,10 +819,10 @@
   .btn.warn{background:var(--warn); color:#fff}
   .btnrow{display:flex; gap:9px; margin-top:11px}
   .btnrow .btn{flex:1}
-  .hint{font-size:13px; color:var(--muted); margin-top:9px; line-height:1.65}
+  .hint{font-size:0.8125rem; color:var(--muted); margin-top:9px; line-height:1.65}
   .hint.err{color:var(--warn)}
   .menu{position:fixed; z-index:70; background:var(--card); border:1px solid var(--line); border-radius:9px; box-shadow:var(--sh2); padding:4px; min-width:180px}
-  .menu button{display:block; width:100%; text-align:left; padding:8px 11px; border-radius:6px; font-size:14px}
+  .menu button{display:block; width:100%; text-align:left; padding:8px 11px; border-radius:6px; font-size:0.875rem}
   .menu button:hover{background:var(--soft)}
   .menu button.dz{color:var(--warn)}
   .menu hr{border:0; border-top:1px solid var(--line); margin:4px 6px}
@@ -856,15 +856,15 @@
   .gate.show{display:flex}
   .gate.show ~ .chatfab, .gate.show ~ .chatbd, .gate.show ~ .ai, .gate.show ~ .totop{display:none !important}
   .gate .box{width:100%; max-width:340px; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:var(--sh2); padding:26px}
-  .gate h2{margin:0 0 7px; font-size:24px; font-weight:700; letter-spacing:-.02em}
-  .gate p{margin:0 0 16px; font-size:14px; color:var(--muted); line-height:1.6}
+  .gate h2{margin:0 0 7px; font-size:1.5rem; font-weight:700; letter-spacing:-.02em}
+  .gate p{margin:0 0 16px; font-size:0.875rem; color:var(--muted); line-height:1.6}
   .gate .inp{margin-bottom:10px}
 
   /* ============ responsive ============ */
   .sidebd{display:none; position:fixed; inset:0; z-index:79; background:rgba(33,37,41,.42)}
   .sidebd.show{display:block}
   .sideclose{display:none; margin-left:auto; width:30px; height:30px; border-radius:50%;
-    align-items:center; justify-content:center; font-size:17px; color:var(--muted)}
+    align-items:center; justify-content:center; font-size:1.0625rem; color:var(--muted)}
   .sideclose:hover{background:var(--soft)}
   @media (max-width:1080px){ :root{ --side:0px; --mapw:38%; }
     .side{position:fixed; left:0; top:0; bottom:0; width:230px; max-width:82vw; z-index:80;
@@ -877,23 +877,23 @@
     .shell{grid-template-columns:1fr}
     .mapwrap{position:fixed; inset:0; z-index:50; display:none}
     .mapwrap.open{display:block}
-    .mapclose{position:absolute; top:12px; right:12px; z-index:6; background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:7px 14px; font-size:13.5px; font-weight:700}
+    .mapclose{position:absolute; top:12px; right:12px; z-index:6; background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:7px 14px; font-size:0.84375rem; font-weight:700}
     .page{padding:6px 18px 150px}
     .locblock{margin:6px -18px 20px}
     .locsky{padding:10px 12px 0; gap:8px}
-    .locname{font-size:20px}
-    .loctime{font-size:24px}
-    .locwx{font-size:20px}
+    .locname{font-size:1.25rem}
+    .loctime{font-size:1.5rem}
+    .locwx{font-size:1.25rem}
     .wxstrip{margin:14px 18px 0}
-    .tripid h1{font-size:24px}
+    .tripid h1{font-size:1.5rem}
     .nowstrip{margin:16px 0 28px; padding:16px 16px 15px}
-    .ns-time b{font-size:26px}
-    .ns-place{font-size:15px}
-    .sech h2{font-size:21px}
+    .ns-time b{font-size:1.625rem}
+    .ns-place{font-size:0.9375rem}
+    .sech h2{font-size:1.3125rem}
     .top{padding:8px 14px}
     .addbar .fi{flex:1 1 100%}
     .kinds{width:100%; justify-content:space-between}
-    .kinds button{width:38px; height:34px; font-size:16px}
+    .kinds button{width:38px; height:34px; font-size:1rem}
     .add{padding-left:0}
     .sug{left:0}
     .idx{left:0; top:10px}
@@ -904,12 +904,12 @@
   }
   @media (min-width:821px){ .mapclose{display:none} .mapbar{right:12px} }
   .overviewActions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.overviewActions button,.dayBack{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:9px;padding:8px 12px;font-weight:650;background:var(--card,#fff)}
-  .overviewActions button{font-size:14px;padding:7px 10px}.overviewActions button:first-child{background:var(--ink);color:var(--bg)}.daySummary{display:grid;grid-template-columns:65px minmax(0,1fr) auto 12px;align-items:center;gap:10px;width:100%;min-height:47px;padding:8px 4px;text-align:left;border-bottom:1px solid var(--line)}.daySummary b{color:var(--muted);font-size:13px}.daySummary strong{font-size:16px}.daySummary small,.stopRead>small,.docFile small{color:var(--muted)}.daySummary i,.stopButton i{color:var(--muted);font-style:normal}.daySummary[aria-expanded=true]{border-bottom-color:var(--link);background:var(--soft)}.daySumWrap{margin:0!important}
-  .timedStop{display:flex;align-items:center;padding:0;border-bottom:1px solid var(--line)}.stopButton{flex:1;min-width:0;display:flex;align-items:center;gap:9px;text-align:left;padding:13px 2px}.stopButton time{flex:0 0 67px;color:var(--link);font-size:14px;font-variant-numeric:tabular-nums;font-weight:700}.stopButton span{flex:1;min-width:0;overflow-wrap:anywhere;font-size:15px;font-weight:620}.stopButton small{display:inline-flex;gap:3px;align-items:center;white-space:nowrap;color:var(--muted)}.stopButton small svg{vertical-align:middle}.timedStop .kebab{opacity:1}
+  .overviewActions button{font-size:0.875rem;padding:7px 10px}.overviewActions button:first-child{background:var(--ink);color:var(--bg)}.daySummary{display:grid;grid-template-columns:65px minmax(0,1fr) auto 12px;align-items:center;gap:10px;width:100%;min-height:47px;padding:8px 4px;text-align:left;border-bottom:1px solid var(--line)}.daySummary b{color:var(--muted);font-size:0.8125rem}.daySummary strong{font-size:1rem}.daySummary small,.stopRead>small,.docFile small{color:var(--muted)}.daySummary i,.stopButton i{color:var(--muted);font-style:normal}.daySummary[aria-expanded=true]{border-bottom-color:var(--link);background:var(--soft)}.daySumWrap{margin:0!important}
+  .timedStop{display:flex;align-items:center;padding:0;border-bottom:1px solid var(--line)}.stopButton{flex:1;min-width:0;display:flex;align-items:center;gap:9px;text-align:left;padding:13px 2px}.stopButton time{flex:0 0 67px;color:var(--link);font-size:0.875rem;font-variant-numeric:tabular-nums;font-weight:700}.stopButton span{flex:1;min-width:0;overflow-wrap:anywhere;font-size:0.9375rem;font-weight:620}.stopButton small{display:inline-flex;gap:3px;align-items:center;white-space:nowrap;color:var(--muted)}.stopButton small svg{vertical-align:middle}.timedStop .kebab{opacity:1}
   .timedStop .stopPin,.timedStop .stopType{display:grid;place-items:center;align-self:center;flex:0 0 36px;min-height:44px;padding:0}
-  .stopPin b{display:grid;place-items:center;min-width:27px;height:27px;padding:0 4px;border-radius:50%;background:var(--pin-color);color:white;font:700 14px/1 system-ui}
+  .stopPin b{display:grid;place-items:center;min-width:27px;height:27px;padding:0 4px;border-radius:50%;background:var(--pin-color);color:white;font:700 0.875rem/1 system-ui}
   .stopType{color:var(--muted)}
-  .hourPair{margin:10px 0 16px;min-width:0}.hourRow{padding:7px 0;min-width:0}.hourRow h4,.docGroup h4,.stopRead h4{margin:0 0 7px;font-size:14px}.hourRow small{color:var(--muted)}.hourRail{max-width:100%;display:flex;overflow-x:auto;gap:5px;overscroll-behavior-x:contain}.hourRail>div{flex:none;display:grid;gap:2px;min-width:61px;text-align:center;padding:7px 5px;border:1px solid var(--line);border-radius:7px;background:var(--soft)}.hourRail time,.hourRail span{font-size:12px}.hourRail strong{font-size:16px}.docGroup{margin:22px 0}.docGroup h4{border-bottom:1px solid var(--line);padding-bottom:6px}.docGroup h5{margin:12px 0 3px;font-size:13px;color:var(--muted)}.docFile{display:flex;align-items:center;gap:8px;text-align:left;width:100%;padding:10px 6px;border-bottom:1px solid var(--line)}.docFile span{flex:1;min-width:0;overflow-wrap:anywhere}.stopRead{line-height:1.55}.stopRead h3{padding-right:24px}.stopRead dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:8px 0}.stopRead dt{color:var(--muted)}.stopRead dd{margin:0;overflow-wrap:anywhere}.stopRead section{margin:18px 0}.readText{overflow-wrap:anywhere;line-height:1.7}.readText a{color:var(--link)}.readText p{margin:.45em 0}.fileReturn{margin:0 0 10px;color:var(--link)}.hourRow .hourRail{scrollbar-width:thin}
+  .hourPair{margin:10px 0 16px;min-width:0}.hourRow{padding:7px 0;min-width:0}.hourRow h4,.docGroup h4,.stopRead h4{margin:0 0 7px;font-size:0.875rem}.hourRow small{color:var(--muted)}.hourRail{max-width:100%;display:flex;overflow-x:auto;gap:5px;overscroll-behavior-x:contain}.hourRail>div{flex:none;display:grid;gap:2px;min-width:61px;text-align:center;padding:7px 5px;border:1px solid var(--line);border-radius:7px;background:var(--soft)}.hourRail time,.hourRail span{font-size:0.75rem}.hourRail strong{font-size:1rem}.docGroup{margin:22px 0}.docGroup h4{border-bottom:1px solid var(--line);padding-bottom:6px}.docGroup h5{margin:12px 0 3px;font-size:0.8125rem;color:var(--muted)}.docFile{display:flex;align-items:center;gap:8px;text-align:left;width:100%;padding:10px 6px;border-bottom:1px solid var(--line)}.docFile span{flex:1;min-width:0;overflow-wrap:anywhere}.stopRead{line-height:1.55}.stopRead h3{padding-right:24px}.stopRead dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:8px 0}.stopRead dt{color:var(--muted)}.stopRead dd{margin:0;overflow-wrap:anywhere}.stopRead section{margin:18px 0}.readText{overflow-wrap:anywhere;line-height:1.7}.readText a{color:var(--link)}.readText p{margin:.45em 0}.fileReturn{margin:0 0 10px;color:var(--link)}.hourRow .hourRail{scrollbar-width:thin}
   @media screen{
     .tripPage{--moss:#416559;--leaf:#edf3ef;--rule:#dce5df;max-width:760px;padding-top:14px}
     #s-location .locblock{margin:0;overflow:hidden;border:1px solid var(--rule);border-radius:20px;background:var(--surf)}
@@ -928,19 +928,19 @@
     #s-itin>.sech,.tripResources>h2{margin:0 0 14px}
     #s-itin>.sech .n{margin-left:auto}
     .daySummary{min-height:56px;grid-template-columns:56px minmax(0,1fr) auto 14px;padding:8px 5px;gap:10px;border-color:var(--rule)}
-    .daySummary b{background:var(--leaf);color:var(--moss);font-size:12px;border-radius:6px;padding:4px 0;text-align:center;font-variant-numeric:tabular-nums}
-    .daySummary strong{font-size:17px;font-weight:650}.daySummary i{color:var(--moss)}
+    .daySummary b{background:var(--leaf);color:var(--moss);font-size:0.75rem;border-radius:6px;padding:4px 0;text-align:center;font-variant-numeric:tabular-nums}
+    .daySummary strong{font-size:1.0625rem;font-weight:650}.daySummary i{color:var(--moss)}
     .daySummary[aria-expanded=true]{background:var(--leaf);border-color:var(--rule)}
     .tripResources{margin:38px 0 0}
-    .tripResources>h2{font-size:23px;letter-spacing:-.025em}
+    .tripResources>h2{font-size:1.4375rem;letter-spacing:-.025em}
     .resourceGroup{background:var(--soft2);border:1px solid var(--line2);border-radius:16px;padding:16px 15px 6px;margin:12px 0}
-    .resourceGroup>h3{margin:0 0 6px;color:var(--moss);font-size:13px;font-weight:700;letter-spacing:.06em}
+    .resourceGroup>h3{margin:0 0 6px;color:var(--moss);font-size:0.8125rem;font-weight:700;letter-spacing:.06em}
     .resourceGroup .sec,.resourceGroup .sec.shut{margin:0;border-top:1px solid var(--rule)}
     .resourceGroup h3+.sec{border-top:0}
     .resourceGroup .sech,.resourceGroup .sec.shut .sech{padding:0;margin:0}
     .resourceGroup .foldbtn{gap:10px;min-height:55px}
     .resourceIcon{display:grid;place-items:center;color:var(--moss);flex:none}
-    .resourceLabel{font-size:15px;font-weight:650;overflow-wrap:anywhere}
+    .resourceLabel{font-size:0.9375rem;font-weight:650;overflow-wrap:anywhere}
     .resourceGroup .foldbtn .n{margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap}
     .resourceGroup .foldbtn .chev{margin-left:auto;flex:none}.resourceGroup .foldbtn .n+.chev{margin-left:0}
     .resourceGroup .sec .chev{transform:rotate(180deg)}.resourceGroup .sec.shut .chev{transform:none}
@@ -965,7 +965,7 @@
     .tripPage .triphead{margin:22px 0 27px}
     .tripPage .tripid{padding:17px clamp(12px,3vw,22px);margin:0;border:1px solid var(--thread);border-radius:6px 17px 17px 6px;background:var(--cover);box-shadow:inset 5px 0 0 var(--thread)}
     .titleSpread{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-right:16px}
-    .titleSpread>div{min-width:0}.titleSpread h1{font-size:clamp(20px,3.8vw,27px);line-height:1.3;overflow-wrap:anywhere}
+    .titleSpread>div{min-width:0}.titleSpread h1{font-size:clamp(1.25rem,4.2750vw,1.6875rem);line-height:1.3;overflow-wrap:anywhere}
     .tripPage .tripid .hedit{right:3px;top:4px}
     .tripPage .overviewActions{border-top:1px dashed var(--thread);padding-top:11px;margin-top:12px}
     .tripPage .overviewActions button:not(:first-child){color:var(--ink2);background:var(--paper);border-color:var(--thread)}
@@ -977,7 +977,7 @@
     .daySumWrap:nth-of-type(3n+1) .daySummary b{background:#e3e9e6;color:#4e6261}
     .tripResources>h2{margin-bottom:14px}
     .resourceGroup{background:var(--paper);border-color:var(--thread)}
-    .resourceGroup>h3{display:flex;align-items:center;gap:8px;font-size:16px;letter-spacing:0;border-bottom:1px dashed var(--thread);padding-bottom:5px}
+    .resourceGroup>h3{display:flex;align-items:center;gap:8px;font-size:1rem;letter-spacing:0;border-bottom:1px dashed var(--thread);padding-bottom:5px}
     .resourceGroup:first-of-type>h3{color:var(--rust)}
     .resourceGroup .sec{border-color:var(--thread)}
     .sheet .handbookTitle{display:flex;align-items:center;gap:8px}
@@ -1001,10 +1001,10 @@
     .dayPages{border:1px solid var(--rule);border-radius:15px;background:color-mix(in srgb,var(--paper) 88%,var(--surf));padding-inline:clamp(10px,3vw,17px)}
     .dayPages>.day+.day{border-top:1px solid color-mix(in srgb,var(--rule) 70%,transparent)}
     .dayPages .daySummary{grid-template-columns:54px minmax(0,1fr) 14px;gap:14px;min-height:55px;padding:7px 0;border:0}
-    .dayPages .daySummary b{border-radius:12px;font-size:12px;line-height:1.5;padding:3px 0;white-space:nowrap}
+    .dayPages .daySummary b{border-radius:12px;font-size:0.75rem;line-height:1.5;padding:3px 0;white-space:nowrap}
     .dayPlace{display:flex;align-items:baseline;flex-wrap:wrap;gap:1px 10px;min-width:0}
     .dayPlace strong{max-width:100%;overflow-wrap:anywhere}
-    .dayPlace small{font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .dayPlace small{font-size:0.8125rem;white-space:nowrap;font-variant-numeric:tabular-nums}
     .daySummary i{display:grid;place-items:center}
     .daySummary i svg{transform:rotate(-90deg)}
     .daySummary[aria-expanded=true] i svg{transform:rotate(0)}
@@ -1029,51 +1029,57 @@
     .doc:has(.tripPage) .tripDock{display:flex;justify-content:center;align-items:center;position:fixed;inset:auto 0 0;z-index:13;
       gap:clamp(8px,3vw,18px);background:var(--paper);border-top:1px solid var(--thread);padding:2px 10px calc(3px + env(safe-area-inset-bottom))}
     .tripDock span{display:flex}.tripDock #dockTop{transform:rotate(180deg)}
-    .tripDock button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding-inline:6px;gap:6px;font-size:13px;font-weight:650;color:var(--moss)}
+    .tripDock button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding-inline:6px;gap:6px;font-size:0.8125rem;font-weight:650;color:var(--moss)}
     body:has(.tripPage) .chatfab,body:has(.tripPage) .totop{display:none}
   }
   @media screen and (prefers-color-scheme:dark){.tripDock button{color:#b8cfaa}}
 
   @media screen{
-    body{font-size:17px}
-    .side nav button,.sgrp h4,.tbtn,.resourceLabel{font-size:16px}
-    .side nav button i,.top .sync,.dayPlace small,.hourRail time,.hourRail span{font-size:14px}
-    .daySummary strong,.hourRail strong,.stopButton span{font-size:18px}
-    .stopButton time,.tripDock button,.hourRow h4,.docGroup h4,.stopRead h4,.docGroup h5{font-size:16px}
-    .dayPages .daySummary b,.hourRow .rowWxSource{font-size:13px}
-    .leg,.sheet .hint{font-size:14px}
-    .stopRead,.docFile{font-size:17px}
-    .tripPage .overviewActions [data-act="doclibrary"]{min-height:48px;padding:10px 20px;gap:9px;font-size:17px}
-    .tripDock [data-act="doclibrary"]{min-height:46px;gap:7px;font-size:15px;font-weight:700}
+    :root{font-size:112.5%}
+    body{font-size:1.0625rem}
+    .side nav button,.sgrp h4,.tbtn,.resourceLabel{font-size:1rem}
+    .side nav button i,.top .sync,.dayPlace small,.hourRail time,.hourRail span{font-size:0.875rem}
+    .daySummary strong,.hourRail strong,.stopButton span{font-size:1.125rem}
+    .stopButton time,.tripDock button,.hourRow h4,.docGroup h4,.stopRead h4,.docGroup h5{font-size:1rem}
+    .dayPages .daySummary b,.hourRow .rowWxSource{font-size:0.8125rem}
+    .leg,.sheet .hint{font-size:0.875rem}
+    .stopRead,.docFile{font-size:1.0625rem}
+    .tripPage .overviewActions [data-act="doclibrary"]{min-height:48px;padding:10px 20px;gap:9px;font-size:1.0625rem}
+    .tripDock [data-act="doclibrary"]{min-height:46px;gap:7px;font-size:0.9375rem;font-weight:700}
     .stopFile,.racts [data-act="qfile"],.chip.file.tap{
       display:inline-flex;align-items:center;justify-content:center;flex:none;gap:5px;
       padding:6px 10px;min-height:44px;border-radius:9px;background:var(--link-soft);color:var(--link);
-      font-size:15px;font-weight:650;white-space:nowrap}
+      font-size:0.9375rem;font-weight:650;white-space:nowrap}
     .timedStop .stopFile{margin-inline:5px}
     .docFilters{display:flex;flex-wrap:wrap;gap:7px}
     .docFilters button{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);
-      border-radius:24px;padding:7px 13px;min-height:44px;color:var(--ink2);background:var(--surf);font-size:16px}
+      border-radius:24px;padding:7px 13px;min-height:44px;color:var(--ink2);background:var(--surf);font-size:1rem}
     .docFilters button[aria-pressed=true]{color:var(--surf);background:var(--ink);border-color:var(--ink)}
     .docGroup h4{font-weight:700}.docFile{min-height:48px;gap:10px}
   }
   @media screen and (max-width:420px){
-    .stopButton{gap:6px}.stopButton time{flex-basis:51px;font-size:14px}
-    .timedStop .stopFile{padding:5px 7px;margin-inline:2px;font-size:14px}
-    .top .tbtn{padding-inline:8px;font-size:15px}
+    .stopButton{gap:6px}.stopButton time{flex-basis:51px;font-size:0.875rem}
+    .timedStop .stopFile{padding:5px 7px;margin-inline:2px;font-size:0.875rem}
+    .top .tbtn{padding-inline:8px;font-size:0.9375rem}
   }
-  .heroWxSource{display:inline-block;margin-top:4px;padding:2px 6px;border-radius:6px;background:#fffaf2eb;color:#362f29!important;text-shadow:none!important;font-size:11px;font-weight:650}
-  .rowWxSource{display:block;margin:-3px 0 6px;font-size:12px}
+  @media screen and (max-width:360px){
+    .top{flex-wrap:wrap;justify-content:space-between;gap:2px;padding:5px 8px}
+    .top .sync{order:1;flex-basis:100%;line-height:1.3}
+    .top .tbtn{padding-inline:6px}
+  }
+  .heroWxSource{display:inline-block;margin-top:4px;padding:2px 6px;border-radius:6px;background:#fffaf2eb;color:#362f29!important;text-shadow:none!important;font-size:0.6875rem;font-weight:650}
+  .rowWxSource{display:block;margin:-3px 0 6px;font-size:0.75rem}
   .venueInfo{display:flex;align-items:flex-start;gap:14px;padding:2px 10px 15px 40px;color:var(--ink2);overflow-wrap:anywhere}
   .timedStop:has(+.venueInfo){border-bottom:0}
   .venueInfo figure{flex:none;margin:0;width:clamp(72px,12vw,116px)}
   .venueInfo img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;border-radius:9px;background:var(--line2)}
-  .venueInfo figcaption,.venueSource{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+  .venueInfo figcaption,.venueSource{display:block;color:var(--muted);font-size:0.75rem;margin-top:4px}
   .venueBody{min-width:0;flex:1}
-  .venueFact{display:flex;align-items:baseline;gap:7px;font-size:14px;line-height:1.5}
+  .venueFact{display:flex;align-items:baseline;gap:7px;font-size:0.875rem;line-height:1.5}
   .venueFact>.ico{align-self:flex-start;margin-top:3px;flex:none;color:var(--muted)}
   .venueLinks{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:3px}
-  .venueLinks a{color:var(--moss);font-size:14px;font-weight:650;display:inline-flex;align-items:center;gap:5px;min-height:34px;text-decoration:underline;text-underline-offset:3px}
-  .venueWeek{font-size:14px;line-height:1.65;margin:6px 0}.venueWeek summary{cursor:pointer;color:var(--moss)}
+  .venueLinks a{color:var(--moss);font-size:0.875rem;font-weight:650;display:inline-flex;align-items:center;gap:5px;min-height:34px;text-decoration:underline;text-underline-offset:3px}
+  .venueWeek{font-size:0.875rem;line-height:1.65;margin:6px 0}.venueWeek summary{cursor:pointer;color:var(--moss)}
   .venueDetail{padding:10px 0 12px}.venueDetail figure{width:clamp(90px,24%,170px)}
   @media(max-width:520px){.venueInfo{padding-left:4px;gap:10px}.venueDetail{display:block}.venueDetail figure{width:100%;margin:0 0 12px}.venueDetail img{max-height:220px}.venueLinks a{min-height:40px}}
 </style>
@@ -1101,7 +1107,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261122-v60" style="padding-top:0">v60</div>
+        <div id="ver" data-build="20261122-v61" style="padding-top:0">v61</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1167,7 +1173,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261122-v60';
+  var APP_VER='20261122-v61';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2890,7 +2896,7 @@
     var lg=getLog(d)||{text:'',mood:''}, done=dayItems(d).filter(function(x){return x.done;});
     openSheet('<h3>'+ic('book',19,'inline')+' '+longD(d)+'</h3>'+
       '<div class="moods" style="display:flex;gap:6px;margin-bottom:10px">'+
-      MOODS.map(function(m){ return '<button class="tbtn jm'+(lg.mood===m?' solid':'')+'" data-m="'+m+'" style="width:38px;height:38px;justify-content:center;font-size:17px">'+m+'</button>'; }).join('')+'</div>'+
+      MOODS.map(function(m){ return '<button class="tbtn jm'+(lg.mood===m?' solid':'')+'" data-m="'+m+'" style="width:38px;height:38px;justify-content:center;font-size:1.0625rem">'+m+'</button>'; }).join('')+'</div>'+
       '<textarea class="inp" id="jText" style="min-height:150px" placeholder="今日去了哪裏、吃了什麼、有什麼感受…">'+esc(lg.text)+'</textarea>'+
       (done.length?'<div class="hint">今日已打勾：'+done.map(function(x){return esc(x.name);}).join('、')+'</div>':'')+
       '<div class="btnrow"><button class="btn ghost" data-act="ailog" data-d="'+d+'">'+ic('spark',15,'inline')+' AI 幫我寫</button>'+
@@ -4398,7 +4404,7 @@
       if(dp!==dq) return dp<dq?1:-1;
       return (q.cost||0)-(p.cost||0);
     });
-    h+='<div class="exphead"><h3>開支</h3><span class="sp"></span><span style="font-size:13px;color:var(--muted)">日期（新到舊）</span></div><div class="panel pad">';
+    h+='<div class="exphead"><h3>開支</h3><span class="sp"></span><span style="font-size:0.8125rem;color:var(--muted)">日期（新到舊）</span></div><div class="panel pad">';
     sorted.forEach(function(x){
       var c=itemCcy(x), conv = c!==cur();
       h+='<div class="exp"><div class="ic">'+kico(x.kind,16)+'</div><div class="bd">'+
@@ -4694,17 +4700,17 @@
     }, true);
   }
   function mapPop(x){
-    return '<div style="font:14px -apple-system,PingFang HK,sans-serif;min-width:160px">'+
+    return '<div style="font:0.875rem -apple-system,PingFang HK,sans-serif;min-width:160px">'+
       '<b style="display:block;margin-bottom:3px">'+esc(x.name)+'</b>'+
       (x.rating?'<span style="color:#C9700A;font-weight:700">'+ic('star',12,'inline')+' '+(+x.rating).toFixed(1)+'</span> ':'')+
-      (x.addr?'<span style="color:#6C757D;font-size:12.5px">'+esc(tidyAddr(x.addr))+'</span>':'')+
-      ((x.files||[]).length||x.memo? '<div style="color:#6C757D;font-size:12px;margin-top:4px">'+
+      (x.addr?'<span style="color:#6C757D;font-size:0.78125rem">'+esc(tidyAddr(x.addr))+'</span>':'')+
+      ((x.files||[]).length||x.memo? '<div style="color:#6C757D;font-size:0.75rem;margin-top:4px">'+
         (x.memo?'有標註':'')+((x.files||[]).length? (x.memo?' · ':'')+'附件 '+x.files.length:'')+'</div>':'')+
       '<div style="display:flex;gap:12px;margin-top:7px">'+
       '<a href="#" data-act="mapdetail" data-id="'+x.id+'" '+
-        'style="color:#3F52E3;font-weight:700;font-size:12.5px;text-decoration:none">詳情 ›</a>'+
+        'style="color:#3F52E3;font-weight:700;font-size:0.78125rem;text-decoration:none">詳情 ›</a>'+
       '<a href="https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+x.lat+','+x.lng+
-        '" target="_blank" rel="noopener" style="color:#3F52E3;font-weight:700;font-size:12.5px;text-decoration:none">導航 →</a>'+
+        '" target="_blank" rel="noopener" style="color:#3F52E3;font-weight:700;font-size:0.78125rem;text-decoration:none">導航 →</a>'+
       '</div></div>';
   }
   function drawMap(){
@@ -5326,7 +5332,7 @@
       '<div class="fld"><label>名</label><input class="inp" id="eName" value="'+esc(x.name)+
         '" placeholder="'+esc(x.kind==='flight'?'香港 — 東京 HX606':(x.kind==='stay'?'Hotel Granvia Kyoto':'打個名，例：清水寺'))+'"></div>'+
       '<div class="fld"><label>類型</label><div class="kinds" id="eKinds" style="gap:5px">'+
-        KORDER.map(function(kk){ return '<button data-k="'+kk+'" class="'+(x.kind===kk?'on':'')+'" style="width:auto;padding:0 11px;height:34px;font-size:13px">'+ic(KINDS[kk].i,15,'inline')+' '+KINDS[kk].n+'</button>'; }).join('')+'</div></div>'+
+        KORDER.map(function(kk){ return '<button data-k="'+kk+'" class="'+(x.kind===kk?'on':'')+'" style="width:auto;padding:0 11px;height:34px;font-size:0.8125rem">'+ic(KINDS[kk].i,15,'inline')+' '+KINDS[kk].n+'</button>'; }).join('')+'</div></div>'+
       '<div class="two"><div class="fld"><label>'+(k.tl||'時間')+'</label><input class="inp" id="eTime" type="time" value="'+esc(x.time||'')+'"></div>'+
       '<div class="fld"><label>使費</label><div style="display:flex;gap:7px">'+
         '<input class="inp" id="eCcy" value="'+esc(itemCcy(x))+'" style="width:78px;text-transform:uppercase">'+
