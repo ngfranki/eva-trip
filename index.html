@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261122-v61">
+<html lang="zh-HK" data-build="20261122-v62">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1107,7 +1107,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261122-v61" style="padding-top:0">v61</div>
+        <div id="ver" data-build="20261122-v62" style="padding-top:0">v62</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1173,7 +1173,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261122-v61';
+  var APP_VER='20261122-v62';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -4171,6 +4171,14 @@
   function venueUrl(value){
     try{var u=new URL(value);return /^https?:$/.test(u.protocol)?u.href:'';}catch(e){return '';}
   }
+  function matchesCheckedVenue(x,checked){
+    return checked && x.placeId && checked.placeId===x.placeId &&
+      checked.name===x.name && checked.addr===(x.addr||'') &&
+      checked.lat===x.lat && checked.lng===x.lng;
+  }
+  function officialVenueSite(x){
+    return matchesCheckedVenue(x,x.verifiedSite) ? venueUrl(x.verifiedSite.url) : '';
+  }
   function venueMap(x){
     if(!kd(x.kind).geo) return '';
     var officialMap=venueUrl(x.mapUrl);
@@ -4185,7 +4193,7 @@
   }
   function stopPlacePreview(x,detail){
     if(!kd(x.kind).geo) return '';
-    var map=venueMap(x), site=venueUrl(x.site), photo=venueUrl(x.photoUrl);
+    var map=venueMap(x), site=officialVenueSite(x), photo=venueUrl(x.photoUrl);
     var links=[], facts=[];
     function link(url,label,icon){
       if(url)links.push('<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+ic(icon,16)+esc(label)+'</a>');
@@ -4193,6 +4201,7 @@
     function fact(icon,value){
       if(value)facts.push('<div class="venueFact">'+ic(icon,15)+'<span>'+esc(value)+'</span></div>');
     }
+    if(matchesCheckedVenue(x,x.locationNotice))fact('info',x.locationNotice.text);
     var hours=Array.isArray(x.hours) && x.date ? x.hours[hoursIdx(x.date)] : '';
     if(hours)fact('clock','星期'+dow(x.date)+'營業時間 · '+hours.replace(/^[^0-9:：]{1,14}[:：]\s*/,''));
     if(x.hoursNote)fact('info',x.hoursNote);
@@ -4201,8 +4210,13 @@
     if(detail && x.rating)fact('star',Number(x.rating).toFixed(1)+(x.ratingCount?'（'+Number(x.ratingCount).toLocaleString()+' 則評分）':''));
     if(detail && x.phone) links.push('<a href="tel:'+esc(String(x.phone).replace(/[^+0-9]/g,''))+'">'+ic('phone',16)+esc(x.phone)+'</a>');
     link(map,'Google Maps','map');
-    link(site,x.siteKind==='listing'?'預訂／地點專頁':x.siteKind==='info'?'地點介紹':'官方網站','link');
-    if(detail && venueUrl(x.hoursSource) && venueUrl(x.hoursSource)!==site)link(venueUrl(x.hoursSource),'營業時間來源','clock');
+    if(matchesCheckedVenue(x,x.locationNotice) && x.locationNotice.directionsLabel){
+      link('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(x.lat+','+x.lng),x.locationNotice.directionsLabel,'pin');
+    }
+    link(site,'官方網站','link');
+    if(detail && matchesCheckedVenue(x,x.verifiedHoursSource) && x.verifiedHoursSource.url===x.hoursSource && x.hoursSource!==site){
+      link(venueUrl(x.hoursSource),'營業時間來源','clock');
+    }
     var week=detail && Array.isArray(x.hours) && x.hours.length===7 ?
       '<details class="venueWeek"><summary>全週營業時間</summary>'+x.hours.map(function(h){return '<div>'+esc(h||'待確認')+'</div>';}).join('')+'</details>' : '';
     var source=detail && (x.infoSource||x.infoChecked) ? '<small class="venueSource">'+esc([x.infoSource,x.infoChecked].filter(Boolean).join(' · '))+'</small>':'';
@@ -4862,8 +4876,9 @@
   // 由 Google details 填落 item
   function fillFromDetails(x,d){
     if(!d) return;
-    if(d.lat){ x.lat=+d.lat; x.lng=+d.lng; x.unverified=0; }
-    if(d.addr) x.addr=d.addr;
+    var keepCheckedPin=d.placeId===x.placeId && matchesCheckedVenue(x,x.locationNotice);
+    if(!keepCheckedPin && d.lat){ x.lat=+d.lat; x.lng=+d.lng; x.unverified=0; }
+    if(!keepCheckedPin && d.addr) x.addr=d.addr;
     if(d.placeId) x.placeId=d.placeId;
     if(d.rating!=null) x.rating=d.rating;
     if(d.ratingCount!=null) x.ratingCount=d.ratingCount;
@@ -4871,7 +4886,7 @@
     if(d.hours) x.hours=d.hours;
     if(d.utcOff!=null) x.utcOff=d.utcOff;
     if(d.phone) x.phone=d.phone;
-    if(d.site) x.site=d.site;
+    if(d.site && !officialVenueSite(x)) x.site=d.site;
     if(d.photo) x.photoName=d.photo;
     if(d.types && d.types.length) x.gtypes=d.types.slice(0,4);
   }
@@ -5369,6 +5384,7 @@
        '</div></div>';
 
     var rows=[];
+    if(matchesCheckedVenue(x,x.locationNotice)) rows.push([ic('info',17), esc(x.locationNotice.text), '']);
     if(x.addr) rows.push([ic('pin',17), esc(x.addr), venueMap(x)]);
     var th=todayHourLine(x);
     if(th) rows.push([ic('clock',17), esc(th)+(x.hours.length>1?' <a data-act="allhours">\u5168\u9031</a>':''), '']);
@@ -5380,7 +5396,8 @@
     if(x.seat) rows.push([ic('check',17), '座位 '+esc(x.seat), '']);
     if(x.term) rows.push([ic('pin',17), esc(x.term), '']);
     if(x.phone) rows.push([ic('phone',17), esc(x.phone), 'tel:'+String(x.phone).replace(/[^0-9+]/g,'')]);
-    if(venueUrl(x.site)) rows.push([ic('link',17), x.siteKind==='listing'?'預訂／地點專頁':x.siteKind==='info'?'地點介紹':'官方網站', venueUrl(x.site)]);
+    var site=officialVenueSite(x);
+    if(site) rows.push([ic('link',17), '官方網站', site]);
     if(x.time) rows.push([ic('clock',17), esc((k.tl?k.tl+' ':'')+x.time), '']);
     if(+x.cost) rows.push([ic('money',17), esc(fmtCcy(itemCcy(x), x.cost))+(itemCcy(x)!==cur()?' \u2248 '+esc(fmtCcy(cur(),toHome(x.cost,itemCcy(x)))):''), '']);
 
@@ -5437,6 +5454,7 @@
       gCall({op:'details',placeId:pid},function(d,e2){
         if(e2||!d){ setSync('err','\u651d\u5514\u5230\u8a73\u60c5'); if(cb) cb(false); return; }
         x=itemById(xid)||x;                     // state 可能已經換過，重新拎
+        if(!d.placeId) d.placeId=pid;
         snap(); fillFromDetails(x,d); save(); setSync('ok','\u5df2\u88dc '+x.name);
         if(x.photoName) photoUrl(x,function(){ render(); if(cb) cb(true); });
         else if(cb) cb(true);
@@ -6144,7 +6162,7 @@
     if(x.rating) b.push('★ '+(+x.rating).toFixed(1)+(x.ratingCount? ' ('+(+x.ratingCount).toLocaleString()+')':''));
     var m=memoPlain(x.memo); if(m) b.push('【我的標註】\n'+m);
     if(x.note) b.push(x.note);
-    if(x.site) b.push(x.site);
+    var site=officialVenueSite(x); if(site) b.push(site);
     if((x.files||[]).length) b.push('附件 '+x.files.length+' 個（在 app 內查看）');
     return b.join('\n\n');
   }
@@ -6300,7 +6318,7 @@
         if(+x.cost) bits.push('使費：'+fmtCcy(itemCcy(x), x.cost));
         if(x.memo) bits.push('【標註】'+memoPlain(x.memo));
         if(x.note) bits.push(x.note);
-        if(x.site) bits.push(x.site);
+        var site=officialVenueSite(x); if(site) bits.push(site);
         L.push('BEGIN:VEVENT');
         L.push('UID:'+x.id+'@eva-trip');
         L.push('DTSTAMP:'+st);
