@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261120-v59">
+<html lang="zh-HK" data-build="20261122-v60">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -906,6 +906,9 @@
   .overviewActions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.overviewActions button,.dayBack{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:9px;padding:8px 12px;font-weight:650;background:var(--card,#fff)}
   .overviewActions button{font-size:14px;padding:7px 10px}.overviewActions button:first-child{background:var(--ink);color:var(--bg)}.daySummary{display:grid;grid-template-columns:65px minmax(0,1fr) auto 12px;align-items:center;gap:10px;width:100%;min-height:47px;padding:8px 4px;text-align:left;border-bottom:1px solid var(--line)}.daySummary b{color:var(--muted);font-size:13px}.daySummary strong{font-size:16px}.daySummary small,.stopRead>small,.docFile small{color:var(--muted)}.daySummary i,.stopButton i{color:var(--muted);font-style:normal}.daySummary[aria-expanded=true]{border-bottom-color:var(--link);background:var(--soft)}.daySumWrap{margin:0!important}
   .timedStop{display:flex;align-items:center;padding:0;border-bottom:1px solid var(--line)}.stopButton{flex:1;min-width:0;display:flex;align-items:center;gap:9px;text-align:left;padding:13px 2px}.stopButton time{flex:0 0 67px;color:var(--link);font-size:14px;font-variant-numeric:tabular-nums;font-weight:700}.stopButton span{flex:1;min-width:0;overflow-wrap:anywhere;font-size:15px;font-weight:620}.stopButton small{display:inline-flex;gap:3px;align-items:center;white-space:nowrap;color:var(--muted)}.stopButton small svg{vertical-align:middle}.timedStop .kebab{opacity:1}
+  .timedStop .stopPin,.timedStop .stopType{display:grid;place-items:center;align-self:center;flex:0 0 36px;min-height:44px;padding:0}
+  .stopPin b{display:grid;place-items:center;min-width:27px;height:27px;padding:0 4px;border-radius:50%;background:var(--pin-color);color:white;font:700 14px/1 system-ui}
+  .stopType{color:var(--muted)}
   .hourPair{margin:10px 0 16px;min-width:0}.hourRow{padding:7px 0;min-width:0}.hourRow h4,.docGroup h4,.stopRead h4{margin:0 0 7px;font-size:14px}.hourRow small{color:var(--muted)}.hourRail{max-width:100%;display:flex;overflow-x:auto;gap:5px;overscroll-behavior-x:contain}.hourRail>div{flex:none;display:grid;gap:2px;min-width:61px;text-align:center;padding:7px 5px;border:1px solid var(--line);border-radius:7px;background:var(--soft)}.hourRail time,.hourRail span{font-size:12px}.hourRail strong{font-size:16px}.docGroup{margin:22px 0}.docGroup h4{border-bottom:1px solid var(--line);padding-bottom:6px}.docGroup h5{margin:12px 0 3px;font-size:13px;color:var(--muted)}.docFile{display:flex;align-items:center;gap:8px;text-align:left;width:100%;padding:10px 6px;border-bottom:1px solid var(--line)}.docFile span{flex:1;min-width:0;overflow-wrap:anywhere}.stopRead{line-height:1.55}.stopRead h3{padding-right:24px}.stopRead dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:8px 0}.stopRead dt{color:var(--muted)}.stopRead dd{margin:0;overflow-wrap:anywhere}.stopRead section{margin:18px 0}.readText{overflow-wrap:anywhere;line-height:1.7}.readText a{color:var(--link)}.readText p{margin:.45em 0}.fileReturn{margin:0 0 10px;color:var(--link)}.hourRow .hourRail{scrollbar-width:thin}
   @media screen{
     .tripPage{--moss:#416559;--leaf:#edf3ef;--rule:#dce5df;max-width:760px;padding-top:14px}
@@ -1031,8 +1034,48 @@
   }
   @media screen and (prefers-color-scheme:dark){.tripDock button{color:#b8cfaa}}
 
+  @media screen{
+    body{font-size:17px}
+    .side nav button,.sgrp h4,.tbtn,.resourceLabel{font-size:16px}
+    .side nav button i,.top .sync,.dayPlace small,.hourRail time,.hourRail span{font-size:14px}
+    .daySummary strong,.hourRail strong,.stopButton span{font-size:18px}
+    .stopButton time,.tripDock button,.hourRow h4,.docGroup h4,.stopRead h4,.docGroup h5{font-size:16px}
+    .dayPages .daySummary b,.hourRow .rowWxSource{font-size:13px}
+    .leg,.sheet .hint{font-size:14px}
+    .stopRead,.docFile{font-size:17px}
+    .tripPage .overviewActions [data-act="doclibrary"]{min-height:48px;padding:10px 20px;gap:9px;font-size:17px}
+    .tripDock [data-act="doclibrary"]{min-height:46px;gap:7px;font-size:15px;font-weight:700}
+    .stopFile,.racts [data-act="qfile"],.chip.file.tap{
+      display:inline-flex;align-items:center;justify-content:center;flex:none;gap:5px;
+      padding:6px 10px;min-height:44px;border-radius:9px;background:var(--link-soft);color:var(--link);
+      font-size:15px;font-weight:650;white-space:nowrap}
+    .timedStop .stopFile{margin-inline:5px}
+    .docFilters{display:flex;flex-wrap:wrap;gap:7px}
+    .docFilters button{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);
+      border-radius:24px;padding:7px 13px;min-height:44px;color:var(--ink2);background:var(--surf);font-size:16px}
+    .docFilters button[aria-pressed=true]{color:var(--surf);background:var(--ink);border-color:var(--ink)}
+    .docGroup h4{font-weight:700}.docFile{min-height:48px;gap:10px}
+  }
+  @media screen and (max-width:420px){
+    .stopButton{gap:6px}.stopButton time{flex-basis:51px;font-size:14px}
+    .timedStop .stopFile{padding:5px 7px;margin-inline:2px;font-size:14px}
+    .top .tbtn{padding-inline:8px;font-size:15px}
+  }
   .heroWxSource{display:inline-block;margin-top:4px;padding:2px 6px;border-radius:6px;background:#fffaf2eb;color:#362f29!important;text-shadow:none!important;font-size:11px;font-weight:650}
   .rowWxSource{display:block;margin:-3px 0 6px;font-size:12px}
+  .venueInfo{display:flex;align-items:flex-start;gap:14px;padding:2px 10px 15px 40px;color:var(--ink2);overflow-wrap:anywhere}
+  .timedStop:has(+.venueInfo){border-bottom:0}
+  .venueInfo figure{flex:none;margin:0;width:clamp(72px,12vw,116px)}
+  .venueInfo img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;border-radius:9px;background:var(--line2)}
+  .venueInfo figcaption,.venueSource{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+  .venueBody{min-width:0;flex:1}
+  .venueFact{display:flex;align-items:baseline;gap:7px;font-size:14px;line-height:1.5}
+  .venueFact>.ico{align-self:flex-start;margin-top:3px;flex:none;color:var(--muted)}
+  .venueLinks{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:3px}
+  .venueLinks a{color:var(--moss);font-size:14px;font-weight:650;display:inline-flex;align-items:center;gap:5px;min-height:34px;text-decoration:underline;text-underline-offset:3px}
+  .venueWeek{font-size:14px;line-height:1.65;margin:6px 0}.venueWeek summary{cursor:pointer;color:var(--moss)}
+  .venueDetail{padding:10px 0 12px}.venueDetail figure{width:clamp(90px,24%,170px)}
+  @media(max-width:520px){.venueInfo{padding-left:4px;gap:10px}.venueDetail{display:block}.venueDetail figure{width:100%;margin:0 0 12px}.venueDetail img{max-height:220px}.venueLinks a{min-height:40px}}
 </style>
 </head>
 <body>
@@ -1058,7 +1101,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261120-v59" style="padding-top:0">v59</div>
+        <div id="ver" data-build="20261122-v60" style="padding-top:0">v60</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1124,7 +1167,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261120-v59';
+  var APP_VER='20261122-v60';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1169,6 +1212,7 @@
     plus:'<path d="M12 5v14"/><path d="M5 12h14"/>',
     x:'<path d="m6.5 6.5 11 11"/><path d="m17.5 6.5-11 11"/>',
     search:'<circle cx="11" cy="11" r="7"/><path d="m20.2 20.2-4.6-4.6"/>',
+    clip:'<path d="m8 12.5 6.2-6.2a3.8 3.8 0 0 1 5.4 5.4l-8.2 8.2a5.4 5.4 0 0 1-7.6-7.6l8.1-8.1"/><path d="m7.7 13 6.6-6.6a1.8 1.8 0 0 1 2.6 2.6l-7.2 7.2a2.8 2.8 0 0 1-4-4"/>',
     copy:'<rect x="8.5" y="8.5" width="12" height="12" rx="2.2"/><path d="M15.5 5.5V5A2 2 0 0 0 13.5 3H5.5A2 2 0 0 0 3.5 5v8a2 2 0 0 0 2 2h.5"/>',
     book:'<path d="M4 4.5A2 2 0 0 1 6 2.5h13v17H6a2 2 0 0 0-2 2Z"/><path d="M4 4.5v17"/><path d="M8 7h7"/><path d="M8 11h7"/>',
     compass:'<circle cx="12" cy="12" r="9"/><path d="m15.8 8.2-2 5.6-5.6 2 2-5.6Z"/>',
@@ -3681,7 +3725,7 @@
       '<div class="tripid"><button class="kebab hedit" data-act="edittrip" title="改旅程">⋯</button>'+
       '<div class="titleSpread"><div><h1><button class="h1back" data-act="home" title="所有旅程">'+ic('chev',16,'rot90')+'</button>'+esc(t.name)+'</h1>'+
       '<div class="sub when">'+esc(when)+'</div></div><span class="travelFriends" aria-hidden="true"></span></div>'+
-      '<div class="overviewActions"><button data-act="doclibrary">'+ic('copy',16)+'全部附件</button><button data-act="fxsheet">'+ic('money',16)+'貨幣換算</button></div></div></div>';
+      '<div class="overviewActions"><button data-act="doclibrary">'+ic('clip',21)+'全部附件</button><button data-act="fxsheet">'+ic('money',16)+'貨幣換算</button></div></div></div>';
   }
   function quickRow(){
     var counts={}; tItems().forEach(function(x){ counts[x.kind]=(counts[x.kind]||0)+1; });
@@ -3934,7 +3978,7 @@
   }
   function listLabel(l){
     if(l.name==='想去') return '想去的地點';
-    if(l.name==='筆記') return '參考資料與清單';
+    if(['筆記','參考資料與清單','參考資料清單'].includes(l.name)) return '常用清單';
     if(l.name==='舊行程（同步前保留）') return '同步前的行程存檔';
     return l.name;
   }
@@ -4071,12 +4115,29 @@
   function readFiles(x,back){
     return fileEntries(x).map(function(entry){return fileButton(x,entry,back);}).join('');
   }
-  function documentLibrary(){
+  var documentCategories=[
+    ['all','全部','copy'],['general','一般附件','clip'],['flight','航班','flight'],
+    ['stay','酒店和住宿','stay'],['rental','租車','car']
+  ];
+  function documentCategory(f,x){
+    // The same file may be linked to several stops. Its contents take precedence over the stop type.
+    var title=f.n||'';
+    if(/保險|保單|insurance|地圖|平面圖|指南|路線|轉航廈|接駁|收費|guide|map\b/i.test(title)) return 'general';
+    if(/機票|登機證|登機牌|航班|e-?ticket|boarding pass|flight/i.test(title)) return 'flight';
+    if(/酒店|住宿|民宿|入住|房型|hotel|airbnb|lodging|check[ -]?in/i.test(title)) return 'stay';
+    if(/租車|租賃車|還車|取車|rent(?:al)?[ -]?(?:a[ -]?)?car|car rental/i.test(title)) return 'rental';
+    if(x.kind==='flight' || x.kind==='stay') return x.kind;
+    return 'general';
+  }
+  function documentLibrary(category){
+    category=category||'all';
     var items=tItems().filter(function(x){return x.files && x.files.length;}).sort(byOrd);
     var grouped=new Map(), dated=new Set(), list=[];
     items.filter(function(x){return x.date;}).forEach(function(x){x.files.forEach(function(f){dated.add(f.p);});});
     items.forEach(function(x){
-      var fs=fileEntries(x).filter(function(a){return x.date || !dated.has(a.f.p);});
+      var fs=fileEntries(x).filter(function(a){
+        return (x.date || !dated.has(a.f.p)) && (category==='all' || documentCategory(a.f,x)===category);
+      });
       if(!fs.length)return;
       var k=x.date||'';
       if(!grouped.has(k))grouped.set(k,[]);
@@ -4093,8 +4154,56 @@
       });
       list.push('</section>');
     });
-    openSheet('<h3 class="handbookTitle"><span class="friendStamp friendBird" aria-hidden="true"></span>全部附件</h3>'+(list.join('')||'<p>這個旅程暫時未有附件。</p>'));
-    $('pan').__reopen=documentLibrary;
+    var filters='<div class="docFilters" role="group" aria-label="附件分類">'+documentCategories.map(function(c){
+      return '<button type="button" data-act="docfilter" data-category="'+c[0]+'" aria-pressed="'+(c[0]===category)+'">'+ic(c[2],17)+c[1]+'</button>';
+    }).join('')+'</div>';
+    openSheet('<div class="docLibrary" data-category="'+esc(category)+'"><h3 class="handbookTitle"><span class="friendStamp friendBird" aria-hidden="true"></span>全部附件</h3>'+filters+
+      (list.join('')||'<p class="empty">這個分類暫時未有附件。</p>')+'</div>');
+    $('pan').__reopen=function(){documentLibrary(category);};
+  }
+  // Render the same dated venue information in the timeline and in its reading pane.
+  function venueUrl(value){
+    try{var u=new URL(value);return /^https?:$/.test(u.protocol)?u.href:'';}catch(e){return '';}
+  }
+  function venueMap(x){
+    if(!kd(x.kind).geo) return '';
+    var officialMap=venueUrl(x.mapUrl);
+    if(officialMap && /^(?:www\.)?google\.[a-z.]+$|^maps\.app\.goo\.gl$|^maps\.google\.[a-z.]+$/.test(new URL(officialMap).hostname)) return officialMap;
+    var precise=x.lat!=null && x.lng!=null && Number.isFinite(+x.lat) && Number.isFinite(+x.lng);
+    var query=x.placeId ? [x.name,x.addr].filter(Boolean).join(' ') :
+      precise ? x.lat+','+x.lng : [x.name,x.addr].filter(Boolean).join(' ');
+    if(!query) return '';
+    var params=new URLSearchParams({api:'1',query:query});
+    if(x.placeId) params.set('query_place_id',x.placeId);
+    return 'https://www.google.com/maps/search/?'+params;
+  }
+  function stopPlacePreview(x,detail){
+    if(!kd(x.kind).geo) return '';
+    var map=venueMap(x), site=venueUrl(x.site), photo=venueUrl(x.photoUrl);
+    var links=[], facts=[];
+    function link(url,label,icon){
+      if(url)links.push('<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+ic(icon,16)+esc(label)+'</a>');
+    }
+    function fact(icon,value){
+      if(value)facts.push('<div class="venueFact">'+ic(icon,15)+'<span>'+esc(value)+'</span></div>');
+    }
+    var hours=Array.isArray(x.hours) && x.date ? x.hours[hoursIdx(x.date)] : '';
+    if(hours)fact('clock','星期'+dow(x.date)+'營業時間 · '+hours.replace(/^[^0-9:：]{1,14}[:：]\s*/,''));
+    if(x.hoursNote)fact('info',x.hoursNote);
+    if(!hours && !x.hoursNote && (x.kind==='eat'||x.kind==='buy')) fact('clock','營業時間待確認');
+    if(x.addr)fact('pin',detail?x.addr:tidyAddr(x.addr));
+    if(detail && x.rating)fact('star',Number(x.rating).toFixed(1)+(x.ratingCount?'（'+Number(x.ratingCount).toLocaleString()+' 則評分）':''));
+    if(detail && x.phone) links.push('<a href="tel:'+esc(String(x.phone).replace(/[^+0-9]/g,''))+'">'+ic('phone',16)+esc(x.phone)+'</a>');
+    link(map,'Google Maps','map');
+    link(site,x.siteKind==='listing'?'預訂／地點專頁':x.siteKind==='info'?'地點介紹':'官方網站','link');
+    if(detail && venueUrl(x.hoursSource) && venueUrl(x.hoursSource)!==site)link(venueUrl(x.hoursSource),'營業時間來源','clock');
+    var week=detail && Array.isArray(x.hours) && x.hours.length===7 ?
+      '<details class="venueWeek"><summary>全週營業時間</summary>'+x.hours.map(function(h){return '<div>'+esc(h||'待確認')+'</div>';}).join('')+'</details>' : '';
+    var source=detail && (x.infoSource||x.infoChecked) ? '<small class="venueSource">'+esc([x.infoSource,x.infoChecked].filter(Boolean).join(' · '))+'</small>':'';
+    var picture=photo ? '<figure><img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="'+esc(photo)+'" alt="'+esc(x.name)+'的地點相片" onerror="this.parentNode.hidden=true">'+
+      (detail && x.photoSource?'<figcaption>'+esc(x.photoSource)+'</figcaption>':'')+'</figure>' : '';
+    return '<div class="venueInfo'+(detail?' venueDetail':'')+'">'+picture+'<div class="venueBody">'+facts.join('')+week+
+      '<div class="venueLinks">'+links.join('')+'</div>'+source+'</div></div>';
   }
   function stopDetails(x){
     if(!x)return;
@@ -4105,8 +4214,9 @@
     field('日期',x.date);
     field(x.kind==='flight'?'起飛':'時間',x.time || (time?(time.est?'約 ':'')+minHM(time.at):''));
     if(x.kind==='flight')field('抵達',x.arrivalLocal && (x.arrivalDate+' '+x.arrivalLocal));
-    field('地址',x.addr);field('確認編號',x.conf);field('費用',x.cost?fmtCcy(itemCcy(x),x.cost):'');
+    if(!kd(x.kind).geo)field('地址',x.addr);field('確認編號',x.conf);field('費用',x.cost?fmtCcy(itemCcy(x),x.cost):'');
     var h='<div class="stopRead"><small>'+esc(kd(x.kind).n)+'</small><h3>'+esc(x.name)+'</h3><dl>'+fields.join('')+'</dl>';
+    h+=stopPlacePreview(x,true);
     if(x.files && x.files.length)h+='<section><h4>所需文件</h4>'+readFiles(x,'stop')+'</section>';
     if(x.note)h+='<section><h4>行程資料</h4><div class="readText">'+noteHtml(x)+'</div></section>';
     if(hasMemo)h+='<section><h4>筆記</h4><div class="readText">'+memoHtml(x.memo)+'</div></section>';
@@ -4114,9 +4224,14 @@
     h+='<div class="btnrow"><button class="btn ghost" data-act="focus" data-id="'+esc(x.id)+'">地點資料及編輯</button><button class="btn ghost" data-act="qfile" data-id="'+esc(x.id)+'">管理附件</button></div></div>';
     openSheet(h);$('pan').__reopen=function(){stopDetails(itemById(x.id));};
   }
-  function timedStop(x,r){
+  function timedStop(x,r,point){
+    var badge=point
+      ? '<button type="button" class="stopPin" data-act="pinjump" data-id="'+esc(x.id)+'" style="--pin-color:'+point.c+'" aria-label="'+esc('在地圖查看 '+point.n+' 號 · '+x.name)+'"><b>'+point.n+'</b></button>'
+      : '<span class="stopType" aria-hidden="true">'+kico(x.kind,17)+'</span>';
     var files=fileEntries(x).length, id=esc(x.id);
-    return '<div class="row timedStop'+(x.done?' done':'')+'" data-id="'+id+'" draggable="true"><button class="stopButton" data-act="readstop" data-id="'+id+'"><time>'+esc((r.est?'約 ':'')+minHM(r.at))+'</time><span>'+esc(x.name)+'</span>'+(files?'<small>'+ic('copy',13)+' '+files+'</small>':'')+'<i>›</i></button><button class="kebab" data-act="rowmenu" data-id="'+id+'" aria-label="項目選單">⋯</button></div>';
+    return '<div class="row timedStop'+(x.done?' done':'')+'" data-id="'+id+'" draggable="true">'+badge+'<button class="stopButton" data-act="readstop" data-id="'+id+'"><time>'+esc((r.est?'約 ':'')+minHM(r.at))+'</time><span>'+esc(x.name)+'</span>'+'<i>›</i></button>'+
+      (files?'<button type="button" class="stopFile" data-act="chipfile" data-id="'+id+'" aria-label="'+esc(x.name)+'，附件 '+files+'">'+ic('clip',16)+'附件 '+files+'</button>':'')+
+      '<button class="kebab" data-act="rowmenu" data-id="'+id+'" aria-label="項目選單">⋯</button></div>';
   }
 
   function itinSec(){
@@ -4139,7 +4254,8 @@
       h+='<div class="panel" data-drop="day:'+d+'">';
       if(arr.length){
         h+='<div class="rows">';
-        var pn=0, prev=null, legIdx=0;
+        var pointsById=new Map(numberedStops(arr,d,i).map(function(p){return [p.x.id,p];}));
+        var prev=null, legIdx=0;
         ensureRoute(d);
         var lp=legFromPrev(d);
         if(lp) h+='<div class="leg from"><em>'+ic('car',15)+'</em>由 '+esc(lp.name)+' 出發 · '+
@@ -4147,8 +4263,7 @@
         arr.forEach(function(x){
           // 🔴 一定要同 ensureRoute 嘅 filter 一模一樣（lat!=null && lng!=null），
           // 唔係嘅話 legs 會對錯段。
-          var isGeo = kd(x.kind).geo && x.lat!=null && x.lng!=null;
-          var idx=null; if(isGeo){ pn++; idx={n:pn,c:c}; }
+          var idx=pointsById.get(x.id), isGeo=!!idx;
           // 2026-09-15 修：舊版凡有 prev 就 legIdx++，連「備註」「待辦」呢啲冇座標嘅
           // 都食一格。Google 只會回有座標嗰啲之間嘅 legs，所以一行備註夾喺中間，
           // 之後每一段車程都會錯位一格（顯示嘅係下一段嘅時間）。只有兩邊都有座標才算一段。
@@ -4160,7 +4275,7 @@
               '<a href="#" data-act="legnav" data-a="'+prev.id+'" data-b="'+x.id+'">路線</a></div>';
             legIdx++;
           }
-          h+=printDays?rowHTML(x,idx):timedStop(x,schedule.get(x.id));
+          h+=printDays?rowHTML(x,idx):timedStop(x,schedule.get(x.id),idx)+stopPlacePreview(x);
           if(isGeo) prev=x;
         });
         h+='</div>';
@@ -4197,7 +4312,7 @@
     if(tl) chips.push('<span class="chip">'+esc(tl)+'</span>');
     if(+x.cost) chips.push('<span class="chip cost">'+esc(fmtCcy(itemCcy(x), x.cost))+'</span>');
     if((x.files||[]).length) chips.push('<button class="chip file tap" data-act="chipfile" data-id="'+x.id+'" title="開附件">'+
-      ic('note',11,'inline')+' '+x.files.length+'</button>');
+      ic('clip',16,'inline')+' 附件 '+x.files.length+'</button>');
     if(x.unverified) chips.push('<span class="chip warn" title="地圖找不到這個名稱，可能是 AI 虛構的">⚠ 查不到</span>');
     var chk='';
     if(x.kind==='check' && x.checks && x.checks.length){
@@ -4240,7 +4355,7 @@
           '<button class="ract'+(x.memo?' has':'')+'" data-act="qnote" data-id="'+x.id+'">'+
             ic('note',13)+(x.memo? '標註' : '加標註')+'</button>'+
           '<button class="ract'+((x.files||[]).length?' has':'')+'" data-act="qfile" data-id="'+x.id+'">'+
-            ic('copy',13)+((x.files||[]).length? '附件 '+x.files.length : '加附件')+'</button>'+
+            ic('clip',17)+((x.files||[]).length? '附件 '+x.files.length : '加附件')+'</button>'+
         '</div>'+
       '</div>'+thumb+
       '<div class="rt">'+
@@ -4329,14 +4444,14 @@
     sc.onerror=function(){ gState='fail'; setSync('err','Google 地圖載入失敗，用返 OSM'); drawMap(); };
     document.head.appendChild(sc);
   }
-  function pinIcon(label,color,big){
+  function pinIcon(label,color,big,offset){
     var w=big?34:27, h=big?44:35;
     var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" viewBox="0 0 28 36">'+
       '<path d="M14 0C6.3 0 0 6.3 0 14c0 9.9 14 22 14 22s14-12.1 14-22C28 6.3 21.7 0 14 0z" fill="'+color+'" stroke="#fff" stroke-width="2.2"/>'+
       '<text x="14" y="19.5" font-size="'+(String(label).length>1?11:13)+'" font-weight="700" fill="#fff" '+
       'text-anchor="middle" font-family="-apple-system,PingFang HK,sans-serif">'+String(label)+'</text></svg>';
     return { url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg),
-             scaledSize:new google.maps.Size(w,h), anchor:new google.maps.Point(w/2,h) };
+             scaledSize:new google.maps.Size(w,h), anchor:new google.maps.Point(w/2-(offset||0),h) };
   }
   // 手機開合地圖／視窗變化之後通知兩個地圖庫重新量尺寸
   var gKickT=null;
@@ -4426,9 +4541,9 @@
       var big=hlId===p.x.id;
       var m=new google.maps.Marker({
         position:{lat:p.x.lat,lng:p.x.lng}, map:gmap,
-        icon:pinIcon(p.n||'·', p.c, big), title:p.x.name, zIndex:big?999:1
+        icon:pinIcon(p.n||'·', p.c, big,p.offset), title:pinTitle(p), zIndex:big?999:1
       });
-      m.__id=p.x.id; m.__n=p.n||'·'; m.__c=p.c;
+      m.__id=p.x.id; m.__n=p.n||'·'; m.__c=p.c; m.__offset=p.offset;
       m.addListener('click',function(){
         lastPinAt=Date.now();
         hlId=p.x.id;
@@ -4440,7 +4555,7 @@
         //    用家見到就係「撳完冇反應」。所以唔可以 render()：
         //    highlight 自己換 icon 就夠。
         gmarks.forEach(function(mm){
-          if(mm.__id && mm.setIcon) mm.setIcon(pinIcon(mm.__n, mm.__c, mm.__id===hlId));
+          if(mm.__id && mm.setIcon) mm.setIcon(pinIcon(mm.__n, mm.__c, mm.__id===hlId, mm.__offset));
           if(mm.__id && mm.setZIndex) mm.setZIndex(mm.__id===hlId? 999 : 1);
         });
         scrollTo(p.x.id);
@@ -4472,18 +4587,35 @@
     if(!gTraffic || !gmap) return;
     try{ gTraffic.setMap(state.settings.traffic? gmap : null); }catch(e){}
   }
+  function isMapStop(x){
+    return kd(x.kind).geo && x.lat!=null && x.lng!=null;
+  }
+  function numberedStops(items,date,dayIndex){
+    var color=dayColor(dayIndex);
+    return items.filter(isMapStop).map(function(x,i){return {x:x,n:i+1,c:color,d:date,di:dayIndex};});
+  }
   function mapPoints(){
     var out=[], ds=days();
     ds.forEach(function(d,i){
       if(mapDay!=='all' && mapDay!==d) return;
-      var n=0;
-      dayItems(d).forEach(function(x){ if(kd(x.kind).geo && x.lat){ n++; out.push({x:x, n:n, c:dayColor(i), d:d, di:i}); } });
+      out=out.concat(numberedStops(dayItems(d),d,i));
     });
     if(mapDay==='all') tLists().forEach(function(l){
-      listItems(l.id).forEach(function(x){ if(x.lat) out.push({x:x, n:'', c:'#9A9680', d:null, di:-1}); });
+      listItems(l.id).forEach(function(x){ if(x.lat!=null && x.lng!=null) out.push({x:x, n:'', c:'#9A9680', d:null, di:-1}); });
+    });
+    // Spread pins for repeat visits while preserving the true route and navigation coordinates.
+    var colocated=new Map();
+    out.forEach(function(p){
+      var key=p.x.lat+','+p.x.lng;
+      if(!colocated.has(key)) colocated.set(key,[]);
+      colocated.get(key).push(p);
+    });
+    colocated.forEach(function(group){
+      group.forEach(function(p,i){p.offset=(i-(group.length-1)/2)*28;});
     });
     return out;
   }
+  function pinTitle(p){return p.n?'Day '+(p.di+1)+' · '+p.n+' · '+p.x.name:p.x.name;}
   function mapBar(){
     var t=curTrip();
     var tf = (gState==='on')
@@ -4519,9 +4651,9 @@
     if(e2===w2 || n===s2) return null;
     var my=mercY(n), ms=mercY(s2);
     var best=null, bd=1e9;
-    mapPts().forEach(function(p){
-      var px=(p.x.lng - w2)/(e2 - w2)*r.width;
-      var py=(my - mercY(p.x.lat))/(my - ms)*r.height;
+    mapPoints().forEach(function(p){
+      var px=(p.x.lng - w2)/(e2 - w2)*r.width+p.offset;
+      var py=(my - mercY(p.x.lat))/(my - ms)*r.height-14;
       var d=Math.sqrt((px-x)*(px-x)+(py-y)*(py-y));
       if(d<bd){ bd=d; best=p; }
     });
@@ -4538,7 +4670,7 @@
       if(mk) gInfo.open({anchor:mk, map:gmap});
       else { gInfo.setPosition({lat:x.lat, lng:x.lng}); gInfo.open({map:gmap}); }
       gmarks.forEach(function(mm){
-        if(mm.__id && mm.setIcon) mm.setIcon(pinIcon(mm.__n, mm.__c, mm.__id===hlId));
+        if(mm.__id && mm.setIcon) mm.setIcon(pinIcon(mm.__n, mm.__c, mm.__id===hlId, mm.__offset));
         if(mm.__id && mm.setZIndex) mm.setZIndex(mm.__id===hlId? 999 : 1);
       });
     } else if(map){
@@ -4558,7 +4690,7 @@
       //    「撳地圖＝關氣泡」嘅預設行為，而我哋喺 capture 階段跑（早過佢哋）——
       //    同步開嘅話，佢哋跟住就即刻關咗，又變「撳完冇反應」。
       //    （2026-09-16 實測：mapHit 本來就命中，係開完被關。）
-      setTimeout(function(){ openPin(x); scrollTo(x.id); }, 60);
+      setTimeout(function(){ if(Date.now()-lastPinAt>=400){openPin(x);scrollTo(x.id);} }, 60);
     }, true);
   }
   function mapPop(x){
@@ -4574,19 +4706,6 @@
       '<a href="https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+x.lat+','+x.lng+
         '" target="_blank" rel="noopener" style="color:#3F52E3;font-weight:700;font-size:12.5px;text-decoration:none">導航 →</a>'+
       '</div></div>';
-  }
-  // 而家地圖上面有邊啲點。drawMap 同 mapHit 共用同一套，唔會對唔上。
-  function mapPts(){
-    var out=[], t=curTrip(); if(!t) return out;
-    days().forEach(function(d,i){
-      if(mapDay!=='all' && mapDay!==d) return;
-      var c=dayColor(i), n=0;
-      dayItems(d).forEach(function(x){
-        if(!(kd(x.kind).geo && x.lat!=null && x.lng!=null)) return;
-        n++; out.push({x:x, n:n, c:c, d:d});
-      });
-    });
-    return out;
   }
   function drawMap(){
     // 線上就清走離線提示。一定要喺呢度做：Leaflet 路徑係 append 唔係換 innerHTML，
@@ -4635,14 +4754,14 @@
     var lines={}, ll=[];
     pts.forEach(function(p){
       var big = hlId===p.x.id;
-      var m=L.marker([p.x.lat,p.x.lng],{icon:L.divIcon({className:'',
+      var m=L.marker([p.x.lat,p.x.lng],{title:pinTitle(p),icon:L.divIcon({className:'',
         html:'<div class="pin'+(big?' big':'')+'" style="background:'+p.c+'"><b>'+(p.n||'·')+'</b></div>',
-        iconSize:[25,25], iconAnchor:[12,25]}), zIndexOffset: big?1000:0});
+        iconSize:[25,25], iconAnchor:[12-p.offset,25],popupAnchor:[p.offset,-23]}), zIndexOffset: big?1000:0});
       // 同 Google 路徑一樣：render() 會清走 marker，popup 即開即消失
       m.bindPopup(mapPop(p.x), {maxWidth:260});
       m.__id=p.x.id;
       m.on('click',function(){ lastPinAt=Date.now(); hlId=p.x.id; scrollTo(p.x.id); });
-      m.bindTooltip(p.x.name,{direction:'top',offset:[0,-22]});
+      m.bindTooltip(esc(pinTitle(p)),{direction:'top',offset:[p.offset,-22]});
       m.addTo(map); markers.push(m); ll.push([p.x.lat,p.x.lng]);
       if(p.d){ (lines[p.d]=lines[p.d]||{c:p.c,a:[]}).a.push([p.x.lat,p.x.lng]); }
     });
@@ -4654,11 +4773,20 @@
     bindMapFallback();          // 🔴 之前只綁咗 Google 路徑，OSM 路徑冇綁
   }
   function flyTo(x){
-    if(!x.lat) return;
+    if(x.lat==null || x.lng==null) return;
     if(gState==='on' && gmap){ gmap.panTo({lat:x.lat,lng:x.lng}); if(gmap.getZoom()<15) gmap.setZoom(15); return; }
     if(map) map.flyTo([x.lat,x.lng], Math.max(map.getZoom(),15), {duration:.6});
   }
-  function scrollTo(id){ var target=itemById(id);if(target && target.date && curTrip() && expandedDay!==curTrip().id+'|'+target.date){expandedDay=curTrip().id+'|'+target.date;render();} var el=document.querySelector('.row[data-id="'+id+'"]'); if(el) el.scrollIntoView({block:'center',behavior:'smooth'}); }
+  function scrollTo(id){
+    var target=itemById(id);
+    if(target && target.date && curTrip() && expandedDay!==curTrip().id+'|'+target.date){
+      expandedDay=curTrip().id+'|'+target.date;
+      // Keep the marker and its open popup alive when opening a different day from the map.
+      if($('s-itin')) $('s-itin').outerHTML=itinSec();
+    }
+    var el=document.querySelector('.row[data-id="'+CSS.escape(id)+'"]');
+    if(el) el.scrollIntoView({block:'center',behavior:'smooth'});
+  }
 
   // ---------- geocode ----------
   function destToken(){
@@ -5235,7 +5363,7 @@
        '</div></div>';
 
     var rows=[];
-    if(x.addr) rows.push([ic('pin',17), esc(x.addr), x.lat? 'https://www.google.com/maps/search/?api=1&query='+x.lat+','+x.lng : '']);
+    if(x.addr) rows.push([ic('pin',17), esc(x.addr), venueMap(x)]);
     var th=todayHourLine(x);
     if(th) rows.push([ic('clock',17), esc(th)+(x.hours.length>1?' <a data-act="allhours">\u5168\u9031</a>':''), '']);
     if(x.note) rows.push([ic('info',17), noteHtml(x), '']);
@@ -5246,7 +5374,7 @@
     if(x.seat) rows.push([ic('check',17), '座位 '+esc(x.seat), '']);
     if(x.term) rows.push([ic('pin',17), esc(x.term), '']);
     if(x.phone) rows.push([ic('phone',17), esc(x.phone), 'tel:'+String(x.phone).replace(/[^0-9+]/g,'')]);
-    if(x.site) rows.push([ic('link',17), esc(String(x.site).replace(/^https?:\/\//,'').slice(0,42)), x.site]);
+    if(venueUrl(x.site)) rows.push([ic('link',17), x.siteKind==='listing'?'預訂／地點專頁':x.siteKind==='info'?'地點介紹':'官方網站', venueUrl(x.site)]);
     if(x.time) rows.push([ic('clock',17), esc((k.tl?k.tl+' ':'')+x.time), '']);
     if(+x.cost) rows.push([ic('money',17), esc(fmtCcy(itemCcy(x), x.cost))+(itemCcy(x)!==cur()?' \u2248 '+esc(fmtCcy(cur(),toHome(x.cost,itemCcy(x)))):''), '']);
 
@@ -6575,6 +6703,7 @@
     else if(act==='pinjump'){
       var xj=itemById(id); if(!xj) return;
       if(xj.lat==null){ setSync('err','這個項目沒有座標，地圖上看不到'); return; }
+      if(xj.date && mapDay!==xj.date){mapDay=xj.date;drawMap();}
       hlId=xj.id;
       $('mapwrap').classList.add('open');           // 手機要先開地圖（desktop 本來就開）
       setTimeout(function(){
@@ -6828,24 +6957,30 @@
     }
     else if(act==='showday'){
       var date=el.dataset.d, key=curTrip().id+'|'+date;
-      expandedDay=expandedDay===key?'':key;render();
+      expandedDay=expandedDay===key?'':key;mapDay=expandedDay?date:'all';render();
       var summary=$('s-d'+days().indexOf(date)).querySelector('.daySummary');
       summary.focus({preventScroll:true});summary.scrollIntoView({block:expandedDay?'start':'nearest'});
     }
     else if(act==='readstop'){stopDetails(itemById(id));}
     else if(act==='doclibrary'){documentLibrary();}
+    else if(act==='docfilter'){
+      documentLibrary(el.dataset.category);
+      var active=$('pan').querySelector('.docFilters [aria-pressed="true"]');
+      if(active) active.focus({preventScroll:true});
+    }
     else if(act==='readfile'){
       var origin=el.dataset.from, fileOwner=itemById(id), returnY=$('pan').scrollTop;
+      var library=el.closest('.docLibrary'), category=library && library.dataset.category;
       viewFile(fileOwner,+el.dataset.i);
       var back=document.createElement('button');back.className='fileReturn';
       back.textContent=origin==='library'?'‹ 全部附件':'‹ 行程詳情';
-      back.onclick=function(){if(origin==='library') documentLibrary();else stopDetails(fileOwner);$('pan').scrollTop=returnY;};
+      back.onclick=function(){if(origin==='library') documentLibrary(category);else stopDetails(fileOwner);$('pan').scrollTop=returnY;};
       $('pan').insertBefore(back,$('pan').querySelector('h3'));
     }
     else if(act==='go'){
       var sid=el.getAttribute('data-s');
       if(/^s-d\d+$/.test(sid)){
-        expandedDay=curTrip().id+'|'+days()[+sid.slice(3)];view='trip';render();
+        mapDay=days()[+sid.slice(3)];expandedDay=curTrip().id+'|'+mapDay;view='trip';render();
       }
       function jumpTo(){
         var s3=sid? $(sid) : null;
@@ -6866,7 +7001,14 @@
       }
       sideOpen(false);
     }
-    else if(act==='mapday'){ mapDay=el.getAttribute('data-d'); if(map) map.__fit=0; if(gmap) gmap.__fit=0; drawMap(); }
+    else if(act==='mapday'){
+      mapDay=el.dataset.d;
+      expandedDay=mapDay==='all'?'':curTrip().id+'|'+mapDay;
+      if(map) map.__fit=0; if(gmap) gmap.__fit=0;
+      render();
+      var selectedDay=$('s-d'+days().indexOf(mapDay));
+      if(selectedDay) selectedDay.scrollIntoView({block:'start'});
+    }
     else if(act==='openmap'){ $('mapwrap').classList.add('open');
       setTimeout(function(){ if(map) map.invalidateSize(); gKick(); },80); }
     else if(act==='closemap'){ $('mapwrap').classList.remove('open'); }
@@ -7303,7 +7445,7 @@
   checkBuild();
   (function(){
     var set=function(id,n2,sz){ var e=$(id); if(e) e.innerHTML=ic(n2,sz); };
-    set('brandIc','compass',18); set('aiIc','spark',17); set('mapIc','map',16); set('aiHeadIc','spark',16); set('dockFiles','copy',16); set('dockChat','chat',17); set('dockTop','chev',15); set('chatFab','chat',26); set('toTop','chev',18);
+    set('brandIc','compass',18); set('aiIc','spark',17); set('mapIc','map',16); set('aiHeadIc','spark',16); set('dockFiles','clip',20); set('dockChat','chat',17); set('dockTop','chev',15); set('chatFab','chat',26); set('toTop','chev',18);
     var docScroll=$('doc');
     if(docScroll){
       var syncToTop=function(){
