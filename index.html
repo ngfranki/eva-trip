@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261122-v62">
+<html lang="zh-HK" data-build="20261123-v63">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -148,10 +148,17 @@
   .ns-wx b{font-size:1.125rem; letter-spacing:-.03em}
   .ns-wx .dim{color:var(--muted); font-weight:650; font-size:0.84375rem}
   .ns-wx .ico{color:var(--ink2)}
+  .wxReading{display:inline-grid;justify-items:center;align-content:start;gap:2px;vertical-align:middle;white-space:nowrap}
+  .wxReading .wxValue{line-height:1.2;font-variant-numeric:tabular-nums}
+  .wxGlyph{width:1.45rem;height:1.45rem}
+  .locwx .wxGlyph{width:1.7rem;height:1.7rem;filter:drop-shadow(0 1px 2px #fffc)}
+  .locwx .loccond{align-self:flex-end;padding-bottom:3px}
+  .scene-night .locwx .wxGlyph{filter:drop-shadow(0 1px 2px #182431)}
 
   /* 插畫頂部係天空。地名靠左、時間天氣靠右，只佔天空一條，唔遮風景。 */
   .locblock{margin:8px -22px 22px}
-  .lochero{position:relative; aspect-ratio:2.1; overflow:hidden; background:#e7eef3}
+  .lochero{position:relative; display:grid; grid-template-columns:minmax(0,1fr); overflow:hidden; background:#e7eef3}
+  .lochero::before{content:"";grid-area:1 / 1;aspect-ratio:2.1;pointer-events:none}
   .locimg{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:24% 86%; display:block}
   .nearbyplaces{display:flex;gap:8px;align-items:center;padding:6px 14px;font-size:0.8125rem;color:var(--muted)}
   .nearbyplaces select{min-width:0;max-width:75%;border:1px solid var(--line);border-radius:8px;padding:4px;font:inherit;background:var(--paper);color:var(--ink)}
@@ -168,7 +175,7 @@
   .scene-evening::after{height:100%;background:linear-gradient(245deg,#f2a76950,transparent 65%);pointer-events:none}
   .scene-night::after{background:linear-gradient(#0b162593,transparent)}
   .scene-night .locsky *{color:#fff;text-shadow:0 1px 4px #16202e}
-  .locsky{z-index:1;position:absolute; top:0; left:0; right:0; display:flex; align-items:flex-start;
+  .locsky{z-index:1;position:relative;grid-area:1 / 1;align-self:start; display:flex; align-items:flex-start;
     justify-content:space-between; gap:14px; padding:11px 14px 0; pointer-events:none}
   .locleft{flex:1 1 auto; min-width:0; max-width:54%}
   .locright{flex:0 0 auto; max-width:46%; text-align:right}
@@ -1051,6 +1058,8 @@
       padding:6px 10px;min-height:44px;border-radius:9px;background:var(--link-soft);color:var(--link);
       font-size:0.9375rem;font-weight:650;white-space:nowrap}
     .timedStop .stopFile{margin-inline:5px}
+    .nightDocs{padding:8px 12px;margin:12px 0;border:1px solid var(--line);border-radius:12px;background:var(--surf)}
+    .nightDocs summary{padding:8px 0;cursor:pointer;font-weight:650}
     .docFilters{display:flex;flex-wrap:wrap;gap:7px}
     .docFilters button{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);
       border-radius:24px;padding:7px 13px;min-height:44px;color:var(--ink2);background:var(--surf);font-size:1rem}
@@ -1107,7 +1116,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261122-v62" style="padding-top:0">v62</div>
+        <div id="ver" data-build="20261123-v63" style="padding-top:0">v63</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1173,7 +1182,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261122-v62';
+  var APP_VER='20261123-v63';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1191,6 +1200,9 @@
   var DCOL=['--d1','--d2','--d3','--d4','--d5','--d6','--d7'];
 
   // ---------- 圖標：統一 24px monoline SVG，用 currentColor，唔用 emoji ----------
+  var wxCloud='<path fill="#dce7eb" stroke="#536a78" d="M6.4 14.2h11a3.8 3.8 0 0 0 .1-7.6 5.3 5.3 0 0 0-10.2.4 3.6 3.6 0 1 0-.9 7.2Z"/>';
+  var wxSun='<g stroke="#a96217"><circle cx="12" cy="12" r="4.3" fill="#ffd477"/><path d="M12 2v2.3M12 19.7V22M2 12h2.3M19.7 12H22M4.9 4.9l1.6 1.6m11 11 1.6 1.6m0-14.2-1.6 1.6m-11 11-1.6 1.6"/></g>';
+  var wxMoon='<path fill="#f8df97" stroke="#80714e" d="M18.9 16.2A8.2 8.2 0 0 1 8 5.1a8.3 8.3 0 1 0 10.9 11.1Z"/>';
   var ICO={
     pin:'<path d="M12 21.5s6.8-6 6.8-11.2a6.8 6.8 0 1 0-13.6 0C5.2 15.5 12 21.5 12 21.5Z"/><circle cx="12" cy="10" r="2.5"/>',
     eat:'<path d="M4.5 3v6.5a2.8 2.8 0 0 0 5.6 0V3"/><path d="M7.3 12.3V21"/><path d="M17.5 3c-1.6 1.3-2.4 3-2.4 5s.8 3.7 2.4 5"/><path d="M17.5 3v18"/>',
@@ -1222,12 +1234,18 @@
     copy:'<rect x="8.5" y="8.5" width="12" height="12" rx="2.2"/><path d="M15.5 5.5V5A2 2 0 0 0 13.5 3H5.5A2 2 0 0 0 3.5 5v8a2 2 0 0 0 2 2h.5"/>',
     book:'<path d="M4 4.5A2 2 0 0 1 6 2.5h13v17H6a2 2 0 0 0-2 2Z"/><path d="M4 4.5v17"/><path d="M8 7h7"/><path d="M8 11h7"/>',
     compass:'<circle cx="12" cy="12" r="9"/><path d="m15.8 8.2-2 5.6-5.6 2 2-5.6Z"/>',
-    wxsun:'<circle cx="12" cy="12" r="3.6"/><path d="M12 3v2.1M12 18.9V21M3 12h2.1M18.9 12H21M5.4 5.4l1.5 1.5M17.1 17.1l1.5 1.5M18.6 5.4l-1.5 1.5M6.9 17.1l-1.5 1.5"/>',
-    wxpart:'<circle cx="8.2" cy="8" r="2.3"/><path d="M8.2 3.7v1.3M8.2 11v1.2M3.9 8h1.3M11.2 8h1.2M5.2 5l.9.9M10.3 10.1l.9.9M11.2 5l-.9.9"/><path d="M8.8 18.2h8.2a3.1 3.1 0 0 0 .3-6.2 3.8 3.8 0 0 0-6.6-1"/>',
-    wxcloud:'<path d="M7.2 17.6h9.3a3.5 3.5 0 0 0 .4-7 4.5 4.5 0 0 0-8.7-1.2 3.2 3.2 0 0 0-1 8.2Z"/>',
-    wxrain:'<path d="M7 14.4h9.4a3.4 3.4 0 0 0 .3-6.8 4.3 4.3 0 0 0-8.3-1.1A3 3 0 0 0 7 14.4Z"/><path d="M8.8 16.8v2M12 16.8v2M15.2 16.8v2"/>',
-    wxsnow:'<path d="M7 13.8h9.4a3.4 3.4 0 0 0 .3-6.8 4.3 4.3 0 0 0-8.3-1.1A3 3 0 0 0 7 13.8Z"/><path d="M9 16.4v2.2M12 16.2v2.4M15 16.4v2.2M8.2 17.5h1.6M11.2 17.4h1.6M14.2 17.5h1.6"/>',
-    wxstorm:'<path d="M7 13.5h9.4a3.4 3.4 0 0 0 .3-6.8 4.3 4.3 0 0 0-8.3-1.1A3 3 0 0 0 7 13.5Z"/><path d="m12.2 15-2 3.4h2.3l-1.6 3.2"/>',
+    wxsun:wxSun,
+    wxmoon:wxMoon,
+    wxcloud:'<g transform="translate(0 3)">'+wxCloud+'</g>',
+    wxpart:'<g transform="translate(-1 -2) scale(.75)">'+wxSun+'</g><g transform="translate(2 7) scale(.85)">'+wxCloud+'</g>',
+    wxpartnight:'<g transform="translate(0 -2) scale(.8)">'+wxMoon+'</g><g transform="translate(2 7) scale(.85)">'+wxCloud+'</g>',
+    wxrain:wxCloud+'<path stroke="#327398" d="m8 17-2 3.5m7-3.5-2 3.5m7-3.5-2 3.5"/>',
+    wxsnow:wxCloud+'<path stroke="#347494" d="M8 16v5m-2.2-3.8 4.4 2.6m-4.4 0 4.4-2.6M16 16v5m-2.2-3.8 4.4 2.6m-4.4 0 4.4-2.6"/>',
+    wxsleet:wxCloud+'<path stroke="#347494" d="m7.5 17-2.1 3.7M15.5 16v5m-2.2-3.8 4.4 2.6m-4.4 0 4.4-2.6"/>',
+    wxstorm:wxCloud+'<path fill="#ffd477" stroke="#986420" d="m12 13-3 5h3l-.9 4.1 5-7H13l1-2.1Z"/>',
+    wxfog:wxCloud+'<path stroke="#65747c" d="M3 17h10m3 0h4M6 20h13"/>',
+    wxwind:'<path stroke="#507c77" d="M2 9h12a3 3 0 1 0-3-3M4 13h15a2 2 0 1 0-2-2M2 17h10a2.5 2.5 0 1 1-2.5 2.5"/>',
+    wxunknown:'<circle cx="12" cy="12" r="8.8"/><path d="M9.5 9a2.5 2.5 0 1 1 4.3 1.8L12 12.6v.9M12 17h.01"/>',
     route:'<circle cx="6" cy="18.5" r="2.6"/><circle cx="18" cy="5.5" r="2.6"/><path d="M8.6 18.5h5.9a3.4 3.4 0 0 0 0-6.8H9.5a3.4 3.4 0 0 1 0-6.2h5.9"/>',
     print:'<path d="M6.5 9V3.5h11V9"/><path d="M6.5 17.5H5A1.8 1.8 0 0 1 3.2 15.7v-4.9A1.8 1.8 0 0 1 5 9h14a1.8 1.8 0 0 1 1.8 1.8v4.9a1.8 1.8 0 0 1-1.8 1.8h-1.5"/><path d="M6.5 14h11v6.5h-11Z"/>',
     gear:'<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.3a2 2 0 1 1-4 0V21a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.3-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.1V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 11a2 2 0 1 1 0 4Z"/>'
@@ -1541,7 +1559,7 @@
     }
     return sec? {sec:sec, m:m, real:false} : null;
   }
-  function dayWx(d){
+  function dayWxHTML(d){
     var t=curTrip(); if(!t) return '';
     var w=wxGet(d), bits=[];
     var dr=dayDrive(d), rr=dayRoute(d);
@@ -1550,7 +1568,7 @@
     // tenki.jp 已經覆蓋呢一日就唔好再疊一次 Open-Meteo 氣溫。車程同天黑照出。
     var tk=tenkiHit(d);
     if(!tk && w && w.mx!=null){
-      bits.push(Math.round(w.mn)+'°~'+Math.round(w.mx)+'°');
+      bits.push(wxReading((w.mn==null?'—':Math.round(w.mn)+'°')+'~'+Math.round(w.mx)+'°',w.cd));
       // 有具體雨雪量就唔好再講一次「雨」（舊版會出「雨 · 雨 24mm」）
       var amt='';
       if(+w.sn>0) amt='雪 '+(+w.sn).toFixed(0)+'cm';
@@ -1559,7 +1577,7 @@
       else if(WXI[w.cd]) bits.push(WXI[w.cd]);
     } else if(!tk && w && w.h && w.h.mx!=null){
       // 超出 16 日預報窗 → 用往年同期實際數字，並且講明係往年
-      bits.push('往年 '+Math.round(w.h.mn)+'°~'+Math.round(w.h.mx)+'°');
+      bits.push(wxReading('往年 '+(w.h.mn==null?'—':Math.round(w.h.mn)+'°')+'~'+Math.round(w.h.mx)+'°',null,w.h.sn>=0.3?'同期有降雪紀錄':''));
       if(w.h.sn!=null && w.h.sn>=0.3) bits.push('雪 '+(w.h.sn<1? w.h.sn.toFixed(1) : w.h.sn.toFixed(0))+'cm');
     }
     var set = w&&w.set ? w.set : null;
@@ -1568,7 +1586,7 @@
       if(c){ var st=sunTimes(c.lat, c.lng, d, (w&&w.tz!=null)? w.tz : null);
         if(st && st.set) set=st.set; else if(st && st.polar==='night') set='極夜'; }
     }
-    if(set) bits.push('天黑 '+set);
+    if(set) bits.push('天黑 '+esc(set));
     return bits.join(' · ');
   }
 
@@ -1697,7 +1715,7 @@
   }
   function tenkiTemp(x){
     if(!x || (x.high==null && x.low==null)) return '';
-    return (x.high==null?'—':Math.round(x.high))+'°/'+(x.low==null?'—':Math.round(x.low))+'°';
+    return wxReading((x.high==null?'—':Math.round(x.high)+'°')+'/'+(x.low==null?'—':Math.round(x.low)+'°'),null,x.weather);
   }
   function tenkiBox(m, d){
     var days=m.days||[], hit=null, i;
@@ -1787,9 +1805,9 @@
     }
     var bits=['今日'];
     if(WXI[hereOm.cd]) bits.push(WXI[hereOm.cd]);
-    if(hereOm.mx!=null && hereOm.mn!=null) bits.push(Math.round(hereOm.mn)+'°/'+Math.round(hereOm.mx)+'°');
+    if(hereOm.mx!=null && hereOm.mn!=null) bits.push(wxReading(Math.round(hereOm.mn)+'°/'+Math.round(hereOm.mx)+'°',hereOm.cd));
     if(typeof hereOm.rain==='number') bits.push('降水 '+hereOm.rain+'%');
-    return '<div class="here"><div class="here-k">目前位置'+who+'</div><div class="om">'+esc(bits.join(' · '))+'</div></div>';
+    return '<div class="here"><div class="here-k">目前位置'+who+'</div><div class="om">'+bits.join(' · ')+'</div></div>';
   }
   function hereHTML(){
     if(gpsPaused || gpsErr) return '';
@@ -1858,27 +1876,28 @@
     if(!a || a.lat==null || lat==null || lng==null) return false;
     return hav([a.lat,a.lng],[lat,lng])<3;
   }
-  function wxIcon(code, text){
-    var t=String(text||'');
-    if(t){
-      if(/雷/.test(t)) return 'wxstorm';
-      if(/雪/.test(t) && /雨/.test(t)) return 'wxrain';
-      if(/雪/.test(t)) return 'wxsnow';
-      if(/雨/.test(t)) return 'wxrain';
-      if(/霧/.test(t)) return 'wxcloud';
-      if(/晴/.test(t) && /陰|雲|曇/.test(t)) return 'wxpart';
-      if(/陰|雲|曇/.test(t)) return 'wxcloud';
-      if(/晴/.test(t)) return 'wxsun';
-    }
-    var c=+code;
-    if(!isFinite(c)) return 'wxcloud';
-    if(c===0||c===1) return 'wxsun';
-    if(c===2) return 'wxpart';
-    if(c===3||c===45||c===48) return 'wxcloud';
-    if((c>=51&&c<=67)||(c>=80&&c<=82)) return 'wxrain';
-    if((c>=71&&c<=77)||c===85||c===86) return 'wxsnow';
-    if(c>=95) return 'wxstorm';
-    return 'wxcloud';
+  function wxIcon(code,text,night){
+    var t=text || WXI[code] || '';
+    if(/雷|冰雹/.test(t)) return 'wxstorm';
+    if(/凍雨|凍毛雨|霙|みぞれ/.test(t) || (/雪/.test(t) && /雨/.test(t))) return 'wxsleet';
+    if(/雪/.test(t)) return 'wxsnow';
+    if(/雨/.test(t)) return 'wxrain';
+    if(/霧/.test(t)) return 'wxfog';
+    if(/風/.test(t)) return 'wxwind';
+    if(/薄雲|多雲/.test(t) || (/晴/.test(t) && /陰|雲|曇/.test(t))) return night?'wxpartnight':'wxpart';
+    if(/陰|雲|曇/.test(t)) return 'wxcloud';
+    if(/晴/.test(t)) return night?'wxmoon':'wxsun';
+    return 'wxunknown';
+  }
+  function wxReading(temp,code,label,night){
+    if(!temp) return '';
+    var icon=wxIcon(code,label,night);
+    return '<span class="wxReading" title="'+esc(label || WXI[code] || '未有天況資料')+'"><strong class="wxValue num">'+esc(temp)+'</strong>'+
+      ic(icon,24,'wxGlyph '+icon)+'</span>';
+  }
+  function nightAt(time,solar){
+    if(solar && solar.polar) return solar.polar==='night';
+    return solar && solar.rise && solar.set ? time<solar.rise || time>=solar.set : time<'06:00' || time>='18:00';
   }
   function currentStop(){
     var t=curTrip(); if(!t) return null;
@@ -2081,9 +2100,7 @@
     if(!place) place = s.denied ? (s.lat!=null ? '行程位置' : '未能取得位置') : '定位中';
     var tag=s.src==='stop'? '<i class="ns-tag">行程</i>' : '';
     var wxRow=has
-      ? '<div class="ns-wx">'+ic(wxIcon(w.code, w.label),22)+
-        (temp?'<b class="num">'+esc(temp)+'</b>':'')+
-        (hl?'<span class="dim num">'+esc(hl)+'</span>':'')+
+      ? '<div class="ns-wx">'+wxReading(temp,w.code,w.label,w.isDay===0)+wxReading(hl,w.code,w.label)+
         (rain?'<span class="dim num">'+esc(rain)+'</span>':'')+'</div>'
       : '<div class="ns-wx dim">'+((s.lat==null && s.denied)?'開啟定位，或先在行程加入地點':'取得天氣…')+'</div>';
     return '<div class="nowstrip" id="nowstrip">'+
@@ -2333,8 +2350,7 @@
     var strip=(todayBits.length?'<div class="wxstrip">'+todayBits.join(' · ')+'</div>':'')+
       hourPair(localDay,{name:name||g.place||'所在地',lat:lat,lng:lng});
     var wxbit=(w.code!=null || cond || temp)
-      ? '<div class="locwx">'+(w.code!=null||cond? ic(wxIcon(w.code, cond),30):'')+
-          (temp?'<b class="num">'+esc(temp)+'</b>':'')+
+      ? '<div class="locwx">'+(temp?wxReading(temp,w.code,cond,night):ic(wxIcon(w.code,cond,night),26,'wxGlyph'))+
           (cond?'<span class="loccond">'+esc(cond)+'</span>':'')+'</div>'
       : '';
     return '<div class="locblock">'+
@@ -3149,17 +3165,17 @@
       '每行開頭係項目 id。淨係答問題就唔好出 JSON。日期一定要係行程入面有嘅。\n\n'+
       '=== 而家同行程 ===\n'+tripBrief();
   }
-  function chatContextLine(){
+  function chatContextHTML(){
     var g, c, w, t, ds, td, di, day, place, wx;
     try{ g=glanceShown(); }catch(e){ g={}; }
     try{ c=glanceClocks(g); }catch(e){ c={loc:''}; }
     w=g.wx||{};
     place=g.place || (g.lat==null ? '未有位置' : (g.src==='stop' ? '行程位置' : '定位中'));
-    wx=w.label||'';
-    if(w.temp!=null) wx=(wx?wx+' ':'')+Math.round(w.temp)+'°';
+    wx=esc(w.label||'');
+    if(w.temp!=null) wx+=(wx?' ':'')+wxReading(Math.round(w.temp)+'°',w.code,w.label,w.isDay===0);
     t=curTrip(); ds=t?days():[]; td=today(); di=ds.indexOf(td);
     day=!t ? '未開旅程' : (di>=0 ? '第'+(di+1)+'日' : (ds.length && td<ds[0] ? '行程未開始' : (ds.length ? '行程已完' : '')));
-    return [day, place, c.loc, wx].filter(Boolean).join(' · ');
+    return [esc(day),esc(place),esc(c.loc),wx].filter(Boolean).join(' · ');
   }
   function aiClose(){
     var p=$('aiPanel'); if(p) p.classList.remove('open');
@@ -3184,7 +3200,7 @@
     var log=chatLog(), h='', last=log.length? log[log.length-1] : null;
     if(!log.length){
       h='<div class="aiwelcome"><p>直接問就得。我已經知道呢個行程、今日係第幾日、你而家喺邊，同埋今日天氣。</p>'+
-        '<span class="aictx">'+esc(chatContextLine())+'</span></div>';
+        '<span class="aictx">'+chatContextHTML()+'</span></div>';
     } else {
       log.forEach(function(m,i){
         if(m.r==='sys'){ h+='<div class="msg sys">'+esc(m.t)+'</div>'; return; }
@@ -4057,7 +4073,7 @@
     var mixed=primaryCount && backupCount;
     var source=mixed?'tenki.jp · 缺少時段用 Open-Meteo':primaryCount?'tenki.jp':'Open-Meteo'+(rec.japan?' · 後備':'');
     return '<small class="rowWxSource">'+esc(source)+'</small><div class="hourRail" tabindex="0" aria-label="逐小時天氣">'+slots.map(function(h){
-      return '<div><time>'+esc(h[0])+'</time><strong>'+Math.round(h[1])+'°</strong><span>'+esc(h[2])+'</span>'+
+      return '<div><time>'+esc(h[0])+'</time>'+wxReading(Math.round(h[1])+'°',null,h[2],nightAt(h[0],rec.solar))+'<span>'+esc(h[2])+'</span>'+
         (mixed && !h[3]?'<small>Open-Meteo</small>':'')+'</div>';
     }).join('')+'</div>'+(rec.failed && backupCount?'<small>上次下載 '+esc(new Date(rec.at).toLocaleString('zh-HK'))+'</small>':'');
   }
@@ -4075,6 +4091,7 @@
       hourlyCache.set(key,rec);
     }
     rec.date=d;rec.japan=inJapan(point.lat,point.lng);
+    rec.solar=sunTimes(point.lat,point.lng,d,lngTz(point.lng,point.lat));
     var tk=rec.japan?preferredTenki(point):null;
     rec.primary=tk && tk.hours;
     var missing=!rec.primary || Array.from({length:24},function(_,h){return !rec.primary[d+'T'+String(h).padStart(2,'0')+':00'];}).some(Boolean);
@@ -4121,6 +4138,29 @@
   function readFiles(x,back){
     return fileEntries(x).map(function(entry){return fileButton(x,entry,back);}).join('');
   }
+  function overnightDocuments(date){
+    var seen=new Set();
+    dayItems(date).forEach(function(x){fileEntries(x).forEach(function(entry){seen.add(entry.f.contentHash||entry.f.p);});});
+    var rows=[];
+    tItems().forEach(function(x){
+      var stay=x.stayDocumentPeriod;
+      if(!stay || !Array.isArray(stay.paths) || x.kind!=='stay' || x.date!==stay.arrival || !(stay.arrival<date && date<stay.departure))return;
+      var files=fileEntries(x).filter(function(entry){
+        var key=entry.f.contentHash||entry.f.p;
+        if(!stay.paths.includes(entry.f.p) || seen.has(key))return false;
+        seen.add(key);
+        return true;
+      });
+      if(files.length)rows.push({x:x,files:files,title:'當晚住宿 · '+stay.name});
+    });
+    return rows;
+  }
+  function overnightDocumentList(date){
+    return overnightDocuments(date).map(function(row){
+      return '<details class="nightDocs"><summary>'+esc(row.title)+' · 附件 '+row.files.length+'</summary>'+
+        row.files.map(function(entry){return fileButton(row.x,entry,'day');}).join('')+'</details>';
+    }).join('');
+  }
   var documentCategories=[
     ['all','全部','copy'],['general','一般附件','clip'],['flight','航班','flight'],
     ['stay','酒店和住宿','stay'],['rental','租車','car']
@@ -4138,22 +4178,34 @@
   function documentLibrary(category){
     category=category||'all';
     var items=tItems().filter(function(x){return x.files && x.files.length;}).sort(byOrd);
-    var grouped=new Map(), dated=new Set(), list=[];
+    var grouped=new Map(), dated=new Set(), listedStayFiles=new Set(), list=[];
     items.filter(function(x){return x.date;}).forEach(function(x){x.files.forEach(function(f){dated.add(f.p);});});
     items.forEach(function(x){
       var fs=fileEntries(x).filter(function(a){
-        return (x.date || !dated.has(a.f.p)) && (category==='all' || documentCategory(a.f,x)===category);
+        if((!x.date && dated.has(a.f.p)) || (category!=='all' && documentCategory(a.f,x)!==category))return false;
+        if(x.date && x.kind==='stay' && x.placeId){
+          var key=[x.date,x.placeId,a.f.contentHash||a.f.p].join('|');
+          if(listedStayFiles.has(key))return false;
+          listedStayFiles.add(key);
+        }
+        return true;
       });
       if(!fs.length)return;
       var k=x.date||'';
       if(!grouped.has(k))grouped.set(k,[]);
       grouped.get(k).push({x:x,files:fs});
     });
+    if(category==='all' || category==='stay'){
+      days().forEach(function(d){
+        var extra=overnightDocuments(d);
+        if(extra.length)grouped.set(d,(grouped.get(d)||[]).concat(extra));
+      });
+    }
     Array.from(grouped.keys()).sort(function(a,b){return !a?1:!b?-1:a.localeCompare(b);}).forEach(function(d){
       var i=days().indexOf(d);
       list.push('<section class="docGroup"><h4>'+esc(d?(i<0?'':'Day '+(i+1)+' · ')+md(d)+' '+dow(d):'旅程共用及備份')+'</h4>');
       grouped.get(d).forEach(function(row){
-        list.push('<h5>'+esc(row.x.name)+'</h5>');
+        list.push('<h5>'+esc(row.title||row.x.name)+'</h5>');
         row.files.forEach(function(a){
           list.push(fileButton(row.x,a,'library'));
         });
@@ -4264,12 +4316,12 @@
       if(!opened){h+='</div>';return;}
       var arr=dayItems(d), c=dayColor(i), tot=sumHome(arr);
       var schedule=new Map(dayPlan(d).map(function(r){return [r.x.id,r];}));
-      var wxl=dayWx(d);
+      var wxl=dayWxHTML(d);
       h+='<div class="dayh"><span class="dot" style="background:'+c+'"></span>'+
          '<h3>第'+(i+1)+'日</h3><span class="dd">'+longD(d)+'</span><span class="sp"></span>'+
          (tot?'<span class="tot">'+money(tot)+'</span>':'')+
          '<button class="kebab" data-act="daymenu" data-d="'+d+'">⋯</button></div>'+
-         (wxl?'<div class="dayw">'+esc(wxl)+'</div>':'')+
+         (wxl?'<div class="dayw">'+wxl+'</div>':'')+
          (printDays?'':hourPair(d));
       h+='<div class="panel" data-drop="day:'+d+'">';
       if(arr.length){
@@ -4300,7 +4352,7 @@
         });
         h+='</div>';
       } else h+='<div class="empty">今日還未有安排</div>';
-      h+=addHTML('day:'+d)+'</div>';
+      h+=addHTML('day:'+d)+'</div>'+overnightDocumentList(d);
       var lg=getLog(d);
       if(lg && lg.text) h+='<div class="jr" data-act="journal" data-d="'+d+'">'+(lg.mood?'<span class="mo">'+esc(lg.mood)+'</span>':'')+esc(lg.text)+'</div>';
       h+='</div>';
@@ -5567,7 +5619,7 @@
     liveWxBusy=true;
     var u='https://api.open-meteo.com/v1/forecast?latitude='+myPos.lat.toFixed(3)+
       '&longitude='+myPos.lng.toFixed(3)+
-      '&current=temperature_2m,snowfall,precipitation,weather_code,wind_gusts_10m,visibility&timezone=auto';
+      '&current=temperature_2m,snowfall,precipitation,weather_code,is_day,wind_gusts_10m,visibility&timezone=auto';
     fetch(u).then(function(r){ return r.ok? r.json():null; }).then(function(j){
       liveWxBusy=false;
       if(j&&j.current){ liveWxData=j.current; liveWxAt=Date.now(); liveWxNA=''; }
@@ -5576,7 +5628,7 @@
     }).catch(function(){ liveWxBusy=false; liveWxNA='無法取得現場天氣（沒有網絡？）'; later(cb,null); });
   }
   // 一句人話。視界同陣風先講 —— 嗰兩樣係決定「行唔行得」嘅嘢，唔係氣溫。
-  function liveWxLine(){
+  function liveWxHTML(){
     var c=liveWxData; if(!c) return '';
     var bits=[];
     if(c.visibility!=null){
@@ -5590,7 +5642,7 @@
       var g=+c.wind_gusts_10m;
       bits.push((g>=60?'⚠ ':'')+'陣風 '+Math.round(g)+'km/h');
     }
-    if(c.temperature_2m!=null) bits.push(Math.round(c.temperature_2m)+'°C');
+    if(c.temperature_2m!=null) bits.push(wxReading(Math.round(c.temperature_2m)+'°C',c.weather_code,'',c.is_day===0));
     return bits.join(' · ');
   }
 
@@ -5714,8 +5766,8 @@
        '<button class="tdb" data-act="tdday" data-d="'+(ds[i+1]||'')+'"'+(i>=ds.length-1?' disabled':'')+'>›</button>'+
        '</div>';
     if(d===today()) h+=hereHTML();
-    var wl=dayWx(d);
-    if(wl) h+='<div class="tdwx">'+esc(wl)+'</div>';
+    var wl=dayWxHTML(d);
+    if(wl) h+='<div class="tdwx">'+wl+'</div>';
     h+=hourPair(d);
     var jp=dayPt(d);
     if(jp) h+=jmaHTML(jp.lat, jp.lng, function(){ if($('pan').__now && nowTab==='today') nowRender(); });
@@ -6105,8 +6157,8 @@
     }
 
     if(myPos){
-      var lw=liveWxLine();
-      if(lw) h+='<div class="nowwx">'+esc(lw)+'</div>';
+      var lw=liveWxHTML();
+      if(lw) h+='<div class="nowwx">'+lw+'</div>';
       else if(liveWxNA) h+='<div class="nowwx" style="color:var(--muted)">'+esc(liveWxNA)+'</div>';
       else { h+='<div class="nowwx"><span class="spin"></span>正在取得現場天氣…</div>'; liveWx(function(){ nowRender(); }); }
     }
@@ -6997,8 +7049,12 @@
       var library=el.closest('.docLibrary'), category=library && library.dataset.category;
       viewFile(fileOwner,+el.dataset.i);
       var back=document.createElement('button');back.className='fileReturn';
-      back.textContent=origin==='library'?'‹ 全部附件':'‹ 行程詳情';
-      back.onclick=function(){if(origin==='library') documentLibrary(category);else stopDetails(fileOwner);$('pan').scrollTop=returnY;};
+      back.textContent=origin==='library'?'‹ 全部附件':origin==='day'?'‹ 當日行程':'‹ 行程詳情';
+      back.onclick=function(){
+        if(origin==='day'){closeSheet();el.focus({preventScroll:true});return;}
+        if(origin==='library') documentLibrary(category);else stopDetails(fileOwner);
+        $('pan').scrollTop=returnY;
+      };
       $('pan').insertBefore(back,$('pan').querySelector('h3'));
     }
     else if(act==='go'){
