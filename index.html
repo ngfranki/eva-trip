@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261124-v86">
+<html lang="zh-HK" data-build="20261124-v87">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -83,7 +83,7 @@
   /* ============ shell ============ */
   .shell{display:grid; grid-template-columns:var(--side) minmax(0,1fr) var(--mapw); grid-template-rows:minmax(0,1fr); height:100vh; height:100dvh}
   .side{background:var(--surf); border-right:1px solid var(--line); display:flex; flex-direction:column; overflow-y:auto; padding-bottom:10px}
-  .doc{min-width:0;min-height:0;overflow-y:auto; overflow-x:hidden; background:var(--bg); touch-action:pan-y; overscroll-behavior-x:none}
+  .doc{min-width:0;min-height:0;overflow-anchor:none;overflow-y:auto; overflow-x:hidden; background:var(--bg); touch-action:pan-y; overscroll-behavior-x:none}
   .mapwrap{position:relative; min-width:0; height:100%; min-height:0; background:var(--soft)}
   #map{position:absolute; inset:0; z-index:1}
 
@@ -1168,7 +1168,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261124-v86" style="padding-top:0">v86</div>
+        <div id="ver" data-build="20261124-v87" style="padding-top:0">v87</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1236,7 +1236,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261124-v86';
+  var APP_VER='20261124-v87';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1723,13 +1723,11 @@
     return null;
   }
   function tenkiPaint(){
-    var doc=$('doc'), y=doc? doc.scrollTop : 0;
     if(view!=='home') render();
     else {
       var hero=document.querySelector('.home .locblock');
-      if(hero) hero.outerHTML=locHeroHTML();
+      if(hero) refreshHero(hero);
     }
-    if(doc && !moveLanding) doc.scrollTop=y;
     if($('pan') && $('pan').__now) nowRender();
   }
   function tenkiLoad(p){
@@ -2309,8 +2307,13 @@
     if(!e.target.matches('select[data-nearby-scenes]')) return;
     selectedScene=e.target.value;
     var block=e.target.closest('.locblock');
-    if(block) block.outerHTML=locHeroHTML();
+    if(block) refreshHero(block);
   });
+  function refreshHero(block){
+    var place=readingPosition();
+    block.outerHTML=locHeroHTML();
+    restoreReadingPosition(place);
+  }
   function locHeroHTML(){
     heroKick();
     var sub=heroSubject();
@@ -2428,7 +2431,7 @@
   }
   function secShut(id){ return id!=='s-itin' && !foldOpen[id]; }
   function foldHead(id, title, extra, right, icon){
-    return '<div class="sec'+(secShut(id)?' shut':'')+'" id="'+id+'"><div class="sech">'+
+    return '<div class="sec'+(secShut(id)?' shut':'')+'" id="'+id+'"><div class="sech" data-read-at="section-'+esc(id)+'">'+
       '<button class="foldbtn" data-act="fold" aria-expanded="'+!secShut(id)+'" data-s="'+id+'">'+(icon?'<span class="resourceIcon">'+ic(icon,18)+'</span>':'')+
       '<span class="resourceLabel">'+title+'</span>'+(extra||'')+ic('chev',13,'chev')+'</button>'+(right||'')+'</div><div class="secbody">';
   }
@@ -3675,14 +3678,55 @@
     return { ic:ic('car',15), t:t2+' · '+(km<10?km.toFixed(1):Math.round(km))+' km', real:1 };
   }
 
+  // Keep the line being read at the same height across a synchronous refresh.
+  // No scroll listener or delayed correction: the next gesture always owns the pane.
+  function readingPosition(){
+    var pane=$('doc'), page=$('main').firstElementChild;
+    if(!page || moveLanding || printDays)return null;
+    var mark={page:page.dataset.readPage,scroll:pane.scrollTop,visible:[]};
+    if(!mark.page || mark.scroll<=1)return mark;
+    var bounds=pane.getBoundingClientRect(), top=Math.max(bounds.top,pane.querySelector('.top').getBoundingClientRect().bottom);
+    var aim=top+Math.min(80,Math.max(0,bounds.bottom-top)*.2);
+    page.querySelectorAll('[data-read-at]').forEach(function(el){
+      var r=el.getBoundingClientRect();
+      if(!r.height || r.bottom<=top || r.top>=bounds.bottom)return;
+      var section=el.closest('[data-drop]');
+      mark.visible.push({key:el.dataset.readAt,scope:section&&section.dataset.drop,top:r.top-bounds.top,
+        distance:Math.max(0,r.top-aim,aim-r.bottom)});
+    });
+    mark.visible.sort(function(a,b){return a.distance-b.distance;});
+    return mark;
+  }
+  function restoreReadingPosition(mark){
+    var page=$('main').firstElementChild, pane=$('doc');
+    if(!mark || !mark.page || !page || page.dataset.readPage!==mark.page)return;
+    var target=Math.max(0,mark.scroll), paneTop=pane.getBoundingClientRect().top, positions=[];
+    for(var point of mark.visible){
+      var scope=point.scope?'[data-drop="'+CSS.escape(point.scope)+'"] ':'';
+      var el=page.querySelector(scope+'[data-read-at="'+CSS.escape(point.key)+'"]');
+      if(!el || !el.getClientRects().length)continue;
+      positions.push({y:pane.scrollTop+el.getBoundingClientRect().top-paneTop-point.top,
+        owner:point.key.replace(/^venue-/,'item-')});
+    }
+    // If a single stop was reordered, its neighbours identify the surviving passage.
+    // All of them can shift by several screens on sync, even when nobody scrolled.
+    var passage=positions.find(function(p){return positions.some(function(other){
+      return p.owner!==other.owner && Math.abs(p.y-other.y)<=2;
+    });});
+    if(positions.length)target=(passage||positions[0]).y;
+    if(Math.abs(pane.scrollTop-target)>1)pane.scrollTop=target;
+  }
+
   // ---------- render ----------
   function render(){
     if(!state) return;
+    var reading=readingPosition();
     upBtns();
     var t=curTrip();
     if(view==='home' || !t){
       if(moveLanding) releaseMoveLanding();
       $('main').innerHTML=homeView();
+      restoreReadingPosition(reading);
       $('toc').innerHTML=toc();
       var v0=$('ver'); if(v0) v0.textContent='v '+APP_VER;
       hereKick();
@@ -3691,18 +3735,19 @@
     ensureList();
     if(MODE==='cloud') wxFetch();      // 自己有守衛，唔會每次 render 都打
     fxFetch();                          // 自動匯率，同樣有守衛
-    var h='<div class="page tripPage">';
-    h+='<section id="s-location" aria-label="定位與天氣">'+locHeroHTML()+'</section>';
+    var h='<div class="page tripPage" data-read-page="'+esc(JSON.stringify([t.id,expandedDay]))+'">';
+    h+='<section id="s-location" data-read-at="weather" aria-label="定位與天氣">'+locHeroHTML()+'</section>';
     h+=tripHead(t);
     h+=itinSec();
     h+=resourcesSec(t);
     h+='</div>';
     $('main').innerHTML=h;
+    if(moveCaption) positionMovedStop();
+    restoreReadingPosition(reading);
     $('toc').innerHTML=toc();
     var v=$('ver'); if(v) v.textContent='v '+APP_VER;
     drawMap();
     hereKick();
-    if(moveLanding) positionMovedStop();
   }
   // 封面：揀個有相、評分最高嘅地點做 hero；冇就用漸變
   // ==================== 首頁：行程格 ====================
@@ -3785,7 +3830,7 @@
 
   function homeView(){
     var ts=state.trips.slice().sort(tripSort);
-    var h='<div class="page home">';
+    var h='<div class="page home" data-read-page="home">';
     h+='<div class="homeh"><h1>我的旅程</h1><span class="n">'+ts.length+'</span></div>';
     if(!ts.length){
       h+='<div class="panel pad"><div class="empty">還未有旅程<br>先建立一個</div>'+
@@ -3799,7 +3844,7 @@
       var its=tripItems(t.id), done=its.filter(function(x){ return x.done; }).length;
       var nd=tripDays(t), cur=(t.id===state.settings.curTrip);
       var pct=its.length? Math.round(done/its.length*100) : 0;
-      h+='<div class="tcard'+(cur?' on':'')+'" data-act="picktrip" data-id="'+t.id+'">'+
+      h+='<div class="tcard'+(cur?' on':'')+'" data-read-at="trip-'+esc(t.id)+'" data-act="picktrip" data-id="'+t.id+'">'+
         '<div class="tph">'+art+
           '<span class="twhen '+w.cls+'">'+esc(w.txt)+'</span>'+
           (cur?'<span class="tnow">正在查看</span>':'')+
@@ -3835,7 +3880,7 @@
   function tripHead(t){
     var n=days().length;
     var when=t.start? (md(t.start)+'–'+md(t.end)+' · '+n+'日') : '未定日期';
-    return '<div class="triphead">'+
+    return '<div class="triphead" data-read-at="trip-head">'+
       '<div class="tripid"><button class="kebab hedit" data-act="edittrip" title="改旅程">⋯</button>'+
       '<div class="titleSpread"><div><h1><button class="h1back" data-act="home" title="所有旅程">'+ic('chev',16,'rot90')+'</button>'+esc(t.name)+'</h1>'+
       '<div class="sub when">'+esc(when)+'</div></div><span class="travelFriends" aria-hidden="true"></span></div>'+
@@ -4099,7 +4144,7 @@
   function resourcesSec(t){
     var lists=tLists();
     var archive=lists.filter(function(l){return l.name==='舊行程（同步前保留）';});
-    var h='<section class="tripResources"><h2>旅程手冊</h2>';
+    var h='<section class="tripResources"><h2 data-read-at="resources">旅程手冊</h2>';
     h+='<div class="resourceGroup"><h3><span class="friendStamp friendBoris" aria-hidden="true"></span>收藏與筆記</h3>';
     lists.filter(function(l){return !archive.includes(l);}).forEach(function(l){h+=listSec(l);});
     h+=notesSec(t)+exploreSec();
@@ -4171,7 +4216,7 @@
   }
   function hourlyRow(label,d,point){
     var title=label+' · '+md(d)+(point?' · '+point.name:'');
-    var head='<section class="hourRow"><h4>'+esc(title)+'</h4>';
+    var head='<section class="hourRow" data-read-at="hour-'+esc(d)+'"><h4>'+esc(title)+'</h4>';
     if(!point || point.lat==null || point.lng==null) return head+'<small>當日未有目的地</small></section>';
     var local=fmtD(atTz(new Date(),lngTz(point.lng,point.lat)));
     if(d>shift(local,15)) return head+'<small>尚未到逐小時預報範圍</small></section>';
@@ -4200,7 +4245,9 @@
         try{localStorage.setItem('tripHourly2|'+key,JSON.stringify({hours:hours,at:rec.at}));}catch(e){}
       }).catch(function(){rec.failed=true;rec.message='暫時未能取得逐小時預報';}).finally(function(){
         rec.loading=false;
+        var place=readingPosition();
         document.querySelectorAll('[data-hour-key]').forEach(function(box){if(box.dataset.hourKey===key) box.innerHTML=hourCells(rec);});
+        restoreReadingPosition(place);
         positionHours(key,rec);
       });
     }
@@ -4366,7 +4413,7 @@
     var source=detail && (x.infoSource||x.infoChecked) ? '<small class="venueSource">'+esc([x.infoSource,x.infoChecked].filter(Boolean).join(' · '))+'</small>':'';
     var picture=photo ? '<figure><img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="'+esc(photo)+'" alt="'+esc(x.name)+'的地點相片" onerror="this.parentNode.hidden=true">'+
       (detail && x.photoSource?'<figcaption>'+esc(x.photoSource)+'</figcaption>':'')+'</figure>' : '';
-    return '<div class="venueInfo'+(detail?' venueDetail':'')+'">'+picture+'<div class="venueBody">'+facts.join('')+week+
+    return '<div class="venueInfo'+(detail?' venueDetail':'')+'" data-read-at="venue-'+esc(x.id)+'">'+picture+'<div class="venueBody">'+facts.join('')+week+
       '<div class="venueLinks">'+links.join('')+'</div>'+source+'</div></div>';
   }
   function stopDetails(x){
@@ -4393,18 +4440,18 @@
       ? '<button type="button" class="stopPin" data-act="pinjump" data-id="'+esc(x.id)+'" style="--pin-color:'+point.c+'" aria-label="'+esc('在地圖查看 '+point.n+' 號 · '+x.name)+'"><b>'+point.n+'</b></button>'
       : '<span class="stopType" aria-hidden="true">'+kico(x.kind,17)+'</span>';
     var files=fileEntries(x).length, id=esc(x.id);
-    return '<div class="row timedStop'+(x.done?' done':'')+'" data-id="'+id+'" draggable="true"><button type="button" class="stopGrip" data-act="movestop" data-id="'+id+'" aria-label="'+esc('移動行程：'+x.name)+'" title="長按拖動，或點一下選日期及位置">'+ic('grip',17)+'</button>'+badge+'<button class="stopButton" data-act="readstop" data-id="'+id+'"><time>'+esc((r.est?'約 ':'')+minHM(r.at))+'</time><span>'+esc(x.name)+'</span>'+'<i>›</i></button>'+
+    return '<div class="row timedStop'+(x.done?' done':'')+'" data-read-at="item-'+id+'" data-id="'+id+'" draggable="true"><button type="button" class="stopGrip" data-act="movestop" data-id="'+id+'" aria-label="'+esc('移動行程：'+x.name)+'" title="長按拖動，或點一下選日期及位置">'+ic('grip',17)+'</button>'+badge+'<button class="stopButton" data-act="readstop" data-id="'+id+'"><time>'+esc((r.est?'約 ':'')+minHM(r.at))+'</time><span>'+esc(x.name)+'</span>'+'<i>›</i></button>'+
       (files?'<button type="button" class="stopFile" data-act="chipfile" data-id="'+id+'" aria-label="'+esc(x.name)+'，附件 '+files+'">'+ic('clip',16)+'附件 '+files+'</button>':'')+
       '<button class="kebab" data-act="rowmenu" data-id="'+id+'" aria-label="項目選單">⋯</button></div>';
   }
 
   function itinSec(){
     var ds=days();
-    if(!ds.length) return '<div class="sec" id="s-itin"><div class="sech"><h2>行程</h2></div><div class="empty">未定日期。按右上角 ⋯ 輸入出發同返程日。</div></div>';
-    var h='<div class="sec" id="s-itin"><div class="sech"><span class="friendStamp" aria-hidden="true"></span><h2>每日行程</h2><span class="n">'+ds.length+' 日</span></div><div class="dayPages">';
+    if(!ds.length) return '<div class="sec" id="s-itin"><div class="sech" data-read-at="itinerary"><h2>行程</h2></div><div class="empty">未定日期。按右上角 ⋯ 輸入出發同返程日。</div></div>';
+    var h='<div class="sec" id="s-itin"><div class="sech" data-read-at="itinerary"><span class="friendStamp" aria-hidden="true"></span><h2>每日行程</h2><span class="n">'+ds.length+' 日</span></div><div class="dayPages">';
     ds.forEach(function(d,i){
       var dest=dayDestination(d), opened=expandedDay===curTrip().id+'|'+d || printDays;
-      h+='<div class="day daySumWrap" id="s-d'+i+'"><button class="daySummary" data-act="showday" data-d="'+d+'" aria-expanded="'+opened+'"><b>Day '+(i+1)+'</b><span class="dayPlace"><strong>'+esc(dest.name)+'</strong><small>'+md(d)+'（'+dow(d)+'）</small></span><i>'+ic('chev',13)+'</i></button>';
+      h+='<div class="day daySumWrap" id="s-d'+i+'"><button class="daySummary" data-read-at="day-'+d+'" data-act="showday" data-d="'+d+'" aria-expanded="'+opened+'"><b>Day '+(i+1)+'</b><span class="dayPlace"><strong>'+esc(dest.name)+'</strong><small>'+md(d)+'（'+dow(d)+'）</small></span><i>'+ic('chev',13)+'</i></button>';
       if(!opened){h+='</div>';return;}
       var arr=dayItems(d), c=dayColor(i), tot=sumHome(arr);
       var schedule=new Map(dayPlan(d).map(function(r){return [r.x.id,r];}));
@@ -4505,7 +4552,7 @@
         'onerror="window.__phErr&&window.__phErr(this,\''+x.id+'\')" '+
         'data-act="rephoto" data-id="'+x.id+'"></div>'
       : '';
-    return '<div class="row'+(x.done?' done':'')+'" data-id="'+x.id+'" draggable="true">'+
+    return '<div class="row'+(x.done?' done':'')+'" data-read-at="item-'+esc(x.id)+'" data-id="'+x.id+'" draggable="true">'+
       '<div class="grip">'+ic('grip',14)+'</div>'+badge+
       '<div class="rcard">'+
         '<div class="nm">'+(idx?'<span class="kin">'+kico(x.kind,14,'inline')+'</span>':'')+
@@ -4857,7 +4904,24 @@
   function bindMapFallback(){
     var el=$('map'); if(!el || el.__hit) return;
     el.__hit=1;
+    var press=null, dragged=false;
+    el.addEventListener('pointerdown',function(ev){
+      if(!ev.isPrimary){dragged=true;return;}
+      press={id:ev.pointerId,x:ev.clientX,y:ev.clientY};dragged=false;
+    },true);
+    function trackMapPan(ev){
+      if(press && ev.pointerId===press.id && Math.hypot(ev.clientX-press.x,ev.clientY-press.y)>8)dragged=true;
+    }
+    window.addEventListener('pointermove',trackMapPan,{capture:true,passive:true});
+    window.addEventListener('pointerup',function(ev){
+      trackMapPan(ev);
+      if(press && press.id===ev.pointerId)press=null;
+    },true);
+    window.addEventListener('pointercancel',function(ev){
+      if(press && press.id===ev.pointerId){dragged=true;press=null;}
+    },true);
     el.addEventListener('click', function(ev){
+      if(dragged || ev.target.closest('a,button,.leaflet-control,.leaflet-popup,.gm-style-iw'))return;
       if(Date.now()-lastPinAt < 400) return;      // 底圖自己嗰個事件已經處理過
       var x=mapHit(ev.clientX, ev.clientY);
       if(!x) return;
@@ -5171,29 +5235,30 @@
     if(x.lat) flyTo(x);
   }
 
-  // Keep the destination in the itinerary pane while weather and route details settle.
-  var moveLanding=null, moveObserver=null;
+  // Reveal once for the move. Repainting the caption never scrolls or takes focus.
+  var moveLanding=null, moveCaption=null;
   function releaseMoveLanding(){
     moveLanding=null;
-    if(moveObserver){moveObserver.disconnect();moveObserver=null;}
+    moveCaption=null;
   }
   ['pointerdown','touchstart','wheel','keydown'].forEach(function(type){
     document.addEventListener(type,releaseMoveLanding,{capture:true,passive:true});
   });
   document.addEventListener('click',function(ev){if(ev.detail===0)releaseMoveLanding();},true);
-  if(window.visualViewport) window.visualViewport.addEventListener('resize',positionMovedStop);
   function positionMovedStop(){
-    if(!moveLanding)return;
-    var row=$('main').querySelector(moveLanding.selector);
+    var row=$('main').querySelector(moveCaption.selector);
     if(!row || !row.getClientRects().length){releaseMoveLanding();return;}
     if(!row.classList.contains('moveLanded')){
       row.classList.add('moveLanded');
       var caption=document.createElement('small');
       caption.className='moveCaption';
-      caption.textContent=moveLanding.label;
+      caption.textContent=moveCaption.label;
       row.querySelector('.stopButton > span, .rcard .nm').appendChild(caption);
-      if(moveLanding.keyboard) row.querySelector('.stopGrip, .kebab').focus({preventScroll:true});
     }
+    if(!moveLanding)return;
+    var keyboard=moveLanding.keyboard;
+    moveLanding=null;
+    if(keyboard)row.querySelector('.stopGrip, .kebab').focus({preventScroll:true});
     var pane=$('doc'), bounds=pane.getBoundingClientRect();
     var viewport=window.visualViewport;
     var top=Math.max(bounds.top,pane.querySelector('.top').getBoundingClientRect().bottom,viewport?viewport.offsetTop:0);
@@ -5217,13 +5282,9 @@
       scope='list:'+x.listId;label=listLabel(tLists().find(function(l){return l.id===x.listId;}));items=listItems(x.listId);
     }
     label='已移至'+label+' · 第 '+(items.findIndex(function(item){return item.id===x.id;})+1)+' 項';
-    moveLanding={selector:'[data-drop="'+CSS.escape(scope)+'"] .row[data-id="'+CSS.escape(x.id)+'"]',label:label,keyboard:keyboard};
+    moveCaption={selector:'[data-drop="'+CSS.escape(scope)+'"] .row[data-id="'+CSS.escape(x.id)+'"]',label:label};
+    moveLanding={keyboard:keyboard};
     $('moveNotice').textContent=x.name+'，'+label;
-    if(window.ResizeObserver){
-      moveObserver=new ResizeObserver(positionMovedStop);
-      moveObserver.observe($('main'));
-      moveObserver.observe($('doc'));
-    }
   }
   // Reuse the item itself so its booking, notes and documents follow its position.
   function moveStopTo(id,scope,beforeId,keyboard){
@@ -5370,6 +5431,11 @@
     clearTimeout(g.timer);
     cancelAnimationFrame(g.frame);
     document.removeEventListener('touchmove',moveStopTouch,true);
+    if(g.touchSource){
+      g.touchSource.removeEventListener('touchmove',moveDetachedStopTouch,true);
+      g.touchSource.removeEventListener('touchend',endStopTouch,true);
+      g.touchSource.removeEventListener('touchcancel',cancelStopMove,true);
+    }
     if(g.active){
       suppressTripMoveClick=Date.now()+600;
       document.body.classList.remove('tripMoving');
@@ -5465,7 +5531,10 @@
   },true);
   window.addEventListener('pointermove',function(ev){
     var g=stopGesture;
-    if(g && g.input==='pointer' && g.contact===ev.pointerId)updateStopMove(g,ev.clientX,ev.clientY,ev);
+    if(g && g.input==='pointer' && g.contact===ev.pointerId){
+      if(g.pointerType==='mouse' && !(ev.buttons&1)){cancelStopMove();return;}
+      updateStopMove(g,ev.clientX,ev.clientY,ev);
+    }
   },{capture:true,passive:false});
   window.addEventListener('pointerup',function(ev){
     var g=stopGesture;
@@ -5489,9 +5558,13 @@
       g.input='touch'; g.contact=finger.identifier;
     }else startStopMove(ev.target,finger.clientX,finger.clientY,'touch',finger.identifier,'touch');
     if(stopGesture && stopGesture.input==='touch'){
-      // A non-passive listener lets the app claim the pan after the hold. Before
-      // the hold, default scrolling stays enabled and cancels our candidate.
+      // A touch keeps its original target even if a refresh replaces that row.
+      // Listen there so lifting the finger always stops edge scrolling.
+      stopGesture.touchSource=ev.target;
       document.addEventListener('touchmove',moveStopTouch,{capture:true,passive:false});
+      ev.target.addEventListener('touchmove',moveDetachedStopTouch,{capture:true,passive:false});
+      ev.target.addEventListener('touchend',endStopTouch,{capture:true,passive:false});
+      ev.target.addEventListener('touchcancel',cancelStopMove,true);
     }
   },{capture:true,passive:true});
   function moveStopTouch(ev){
@@ -5501,12 +5574,16 @@
     if(!finger || ev.touches.length!==1 || !ev.cancelable){cancelStopMove();return;}
     updateStopMove(g,finger.clientX,finger.clientY,ev);
   }
-  document.addEventListener('touchend',function(ev){
+  function moveDetachedStopTouch(ev){
+    if(!ev.currentTarget.isConnected)moveStopTouch(ev);
+  }
+  function endStopTouch(ev){
     var g=stopGesture;
     if(!g || g.input!=='touch')return;
     var finger=matchingTouch(ev.changedTouches,g.contact);
     if(finger)releaseStopMove(g,finger.clientX,finger.clientY,ev);
-  },{capture:true,passive:false});
+  }
+  document.addEventListener('touchend',endStopTouch,{capture:true,passive:false});
   document.addEventListener('touchcancel',function(){cancelStopMove();},true);
   document.addEventListener('contextmenu',function(ev){
     if(stopGesture && stopMoveControl(ev.target))ev.preventDefault();
@@ -5520,6 +5597,7 @@
     }
   },true);
   window.addEventListener('blur',cancelStopMove);
+  window.addEventListener('pagehide',cancelStopMove);
   document.addEventListener('visibilitychange',function(){if(document.hidden)cancelStopMove();});
 
   // ---------- sheets ----------
@@ -7809,7 +7887,7 @@
     var c=glanceClocks(glanceShown());
     if(a.textContent && a.textContent!==c.loc){
       var currentHero=a.closest('.locblock');
-      if(currentHero){ currentHero.outerHTML=locHeroHTML(); return; }
+      if(currentHero){ refreshHero(currentHero); return; }
     }
     if(a.textContent!==c.loc) a.textContent=c.loc;
     var b=document.querySelector('[data-clk="hk"]');
