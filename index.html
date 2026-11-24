@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261123-v63">
+<html lang="zh-HK" data-build="20261124-v64">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1116,7 +1116,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261123-v63" style="padding-top:0">v63</div>
+        <div id="ver" data-build="20261124-v64" style="padding-top:0">v64</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1182,7 +1182,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261123-v63';
+  var APP_VER='20261124-v64';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2246,7 +2246,9 @@
     });
   }
   function sceneStyle(art){
-    return 'background-image:url('+art.path+');background-size:'+art.cols*100+'% '+art.rows*100+'%;background-position:'+art.x+'% '+art.y+'%';
+    if(art.standalone) return 'background-image:url('+art.path+');background-size:cover;background-position:center';
+    var layers=(art.overlay?'url('+art.overlay+'),':'')+'url('+art.path+')';
+    return 'background-image:'+layers+';background-size:'+art.cols*100+'% '+art.rows*100+'%;background-position:'+art.x+'% '+art.y+'%';
   }
   var selectedScene='';
   document.addEventListener('change',function(e){
@@ -7450,7 +7452,6 @@
     t.textContent=msg||'有新版，更新中…';
     t.hidden=false;
   }
-  function isTileCache(name){ return /-tiles$/.test(String(name||'')); }
   function forceUpdate(){
     showUpToast('更新中…');
     // 只保證本機行程已寫入 localStorage。唔會清 localStorage / IndexedDB。
@@ -7463,14 +7464,15 @@
       };
       var dropSW=function(){
         if(!('serviceWorker' in navigator)) return Promise.resolve();
-        return navigator.serviceWorker.getRegistrations().then(function(list){
-          return Promise.all((list||[]).map(function(r){ return r.unregister(); }));
+        var scope=new URL('./',location.href).href;
+        return navigator.serviceWorker.getRegistration(scope).then(function(reg){
+          if(reg && reg.scope===scope) return reg.unregister();
         });
       };
       var dropCache=function(){
         if(!window.caches) return Promise.resolve();
         return caches.keys().then(function(keys){
-          return Promise.all(keys.filter(function(k){ return !isTileCache(k) && k!==ATTC; }).map(function(k){ return caches.delete(k); }));
+          return Promise.all(keys.filter(function(k){ return /^trip-v\d+-shell$/.test(k); }).map(function(k){ return caches.delete(k); }));
         });
       };
       dropSW().catch(function(){}).then(dropCache).catch(function(){}).then(next, next);

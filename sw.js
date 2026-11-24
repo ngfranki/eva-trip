@@ -2,16 +2,17 @@
 // 目標：出門冇網都開得到 app、睇得返行程、之前睇過嘅地圖照樣有。
 // 注意：唔會批量預載地圖磚 —— OSM 嘅使用條款唔准 bulk download。
 // 只 cache 你自己睇過嘅磚（正常瀏覽行為），所以出門前喺 wifi 慢慢碌一次個地圖就會存低。
-importScripts('./scene-keys.js');
+importScripts('./scene-keys.js','./trip-scenery.js');
 const V = 'trip-v32';
 const SHELL = `${V}-shell`;
 const TILES = `${V}-tiles`;
 const TILE_MAX = 1200;
 
 const SHELL_URLS = [
-  './', './index.html', './manifest.json', './scene-keys.js', './trip-scenery.js',
+  './manifest.json',
   './icon-180.png', './icon-192.png', './icon-512.png',
   './hero/plush/marker.webp',
+  TripScenery.artwork('narita',TripScenery.condition({code:3},false,'morning'),false,'morning').path,
   './hero/tokyo.webp', './hero/sapporo.webp', './hero/tokachi.webp',
   './hero/akan.webp', './hero/hongkong.webp', './hero/default.webp',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
@@ -21,12 +22,14 @@ const SHELL_URLS = [
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
     const c = await caches.open(SHELL);
+    // Commit the page and its scene lookup together. Keep the previous offline copy if an update fails.
+    await c.addAll(['./index.html','./scene-keys.js','./trip-scenery.js'].map(path=>
+      new Request(new URL(path,self.location),{cache:'reload',credentials:'same-origin'})
+    ));
     await Promise.allSettled(SHELL_URLS.map(async (u) => {
       const abs = new URL(u, self.location).toString();
-      // index 唔好食 GitHub Pages 嘅 max-age=600，否則新 SW 預載都係舊頁
-      const fresh = u === './' || /index\.html$/.test(u);
-      const res = await fetch(abs, fresh ? { cache: 'no-store', credentials: 'same-origin' } : {});
-      if (res.ok) await c.put(u === './' ? './index.html' : u, res);
+      const res = await fetch(abs);
+      if (res.ok) await c.put(u, res);
     }));
     await self.skipWaiting();
   })());
@@ -34,9 +37,6 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
-    const ks = await caches.keys();
-    // trip-att 係用家自己預載嘅附件，換版唔好清走
-    await Promise.all(ks.filter((k) => !k.startsWith(V) && k !== 'trip-att').map((k) => caches.delete(k)));
     await self.clients.claim();
     // 唔好 client.navigate()。第一趟開頁（未入過暗號）activate 會整頁重載，
     // 打緊嘅暗號即刻被清走，睇落好似點打都冇字。有 listener 嘅頁自己決定 reload；
@@ -56,7 +56,7 @@ self.addEventListener('message', event => {
     const cache=await caches.open(SHELL);
     const keys=await cache.keys();
     const saved=new Set(keys.map(request=>request.url));
-    const paths=SCENE_KEYS.flatMap(key=>['','-b'].map(part=>new URL('./hero/atlas/'+key+part+'.webp',self.location).href)).filter(url=>!saved.has(url));
+    const paths=TripScenery.offlineArtwork().map(path=>new URL(path,self.location).href).filter(url=>!saved.has(url));
     async function download(){
       while(paths.length){
         const url=paths.shift();
@@ -132,18 +132,20 @@ self.addEventListener('fetch', (e) => {
   const isDoc = req.mode === 'navigate' || /\/index\.html$/.test(url.pathname);
   if (url.origin === self.location.origin) {
     e.respondWith((async () => {
-      const cached = await caches.match(req, { ignoreSearch: true })
-        || (isDoc ? await caches.match('./index.html') : null);
-      if(cached && (url.pathname.includes('/hero/scenes/') || url.pathname.includes('/hero/atlas/'))) return cached;
+      const isArtwork = /\/hero\/(?:atlas|edits|corrections|scenes)\//.test(url.pathname);
+      const shell = await caches.open(SHELL);
+      const cached = await shell.match(req, { ignoreSearch: !isArtwork })
+        || (isDoc ? await shell.match('./index.html') : null);
+      if(cached && isArtwork) return cached;
       // GitHub Pages 對 index.html 落 max-age=600。navigation 用預設 cache 會攞到舊頁。
-      const netReq = isDoc
+      const isSceneScript = /\/(?:trip-scenery|scene-keys)\.js$/.test(url.pathname);
+      const netReq = isDoc || isSceneScript
         ? fetch(url.toString(), { cache: 'no-store', credentials: 'same-origin', redirect: 'follow' })
         : fetch(req);
       const net = netReq.then(async (res) => {
         if (res.ok) {
-          const c = await caches.open(SHELL);
-          if (isDoc) await c.put('./index.html', res.clone());
-          else await c.put(req, res.clone());
+          if (isDoc) await shell.put('./index.html', res.clone());
+          else await shell.put(req, res.clone());
         }
         return res;
       });
@@ -152,7 +154,7 @@ self.addEventListener('fetch', (e) => {
       if (!cached) {
         // 第一次攞（cache 都冇），只可以等網絡
         try { return await net; } catch (err) {
-          return (isDoc && await caches.match('./index.html')) || Response.error();
+          return (isDoc && await shell.match('./index.html')) || Response.error();
         }
       }
       const slow = new Promise((r) => setTimeout(() => r('SLOW'), NET_MS));

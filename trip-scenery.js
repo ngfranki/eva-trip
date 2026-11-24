@@ -95,6 +95,64 @@ const TripScenery = (() => {
   }
   const morningKinds=['partly','overcast','fog','wind','rain','downpour','freezingrain','sleet','storm','hail','heavysnow','blizzard','snow','cover'];
   const nightKinds=['partly','overcast','fog','wind','downpour','freezingrain','sleet','storm','hail','heavysnow','blizzard'];
+  // First 12 characters of each revised WebP's SHA-256. An absent tile keeps its original atlas panel.
+  const tileRevisions={'narita-b1':'506881713572','tokachi-b29':'c19e0db2fa1f'};
+  const atlasRevisions={};
+  // Each sparse overlay has its original atlas dimensions and lists only the tiles it corrects.
+  const overlayRevisions={
+    "akan":{"rev":"08afd52883ce","tiles":[4]},
+    "biei":{"rev":"94eecdf9c82f","tiles":[2,7]},
+    "chitose":{"rev":"2c0921813e0d","tiles":[7]},
+    "cranes":{"rev":"9dbd65e7429f","tiles":[14]},
+    "default":{"rev":"aac3de9c851c","tiles":[1,7,13,16]},
+    "furano":{"rev":"8d89f832a68d","tiles":[14]},
+    "haneda":{"rev":"627adc008342","tiles":[4,10,12]},
+    "hkairport":{"rev":"811bca323825","tiles":[1]},
+    "kushiro":{"rev":"8b3a8b0df30f","tiles":[7]},
+    "kussharo":{"rev":"93c2e99f0902","tiles":[4,7]},
+    "marsh":{"rev":"06ee2357488e","tiles":[4,10]},
+    "narita":{"rev":"3c73241781f7","tiles":[12,15]},
+    "otaru":{"rev":"3791dd540955","tiles":[9]},
+    "roppongi":{"rev":"ee08e606e29f","tiles":[12]},
+    "sapporo":{"rev":"e925743f436f","tiles":[9]},
+    "spot-027c9d1e1":{"rev":"232e8945726d","tiles":[9]},
+    "spot-10e7818ff":{"rev":"b81ab9cee190","tiles":[7]},
+    "spot-147b71db6":{"rev":"416d411bcde1","tiles":[7,9]},
+    "spot-1f13a90b8":{"rev":"f4ba10447c2e","tiles":[14]},
+    "spot-266ac0336":{"rev":"1c92bfe9e476","tiles":[7,12]},
+    "spot-269608d5a":{"rev":"fe0e7d68ff92","tiles":[2,14]},
+    "spot-2e38dcad4":{"rev":"de1a9beaeb6c","tiles":[11,12]},
+    "spot-33cad23f7":{"rev":"7e078e457fee","tiles":[7]},
+    "spot-41089f741":{"rev":"8e1833296fca","tiles":[10]},
+    "spot-4398c48a7":{"rev":"717ad5046dbd","tiles":[9,11,15]},
+    "spot-46fc6bef6":{"rev":"975e8b2c7046","tiles":[7]},
+    "spot-495afce62":{"rev":"2350bb5f026c","tiles":[12,14]},
+    "spot-49779f027":{"rev":"5e265107b247","tiles":[7,12,14]},
+    "spot-54f5ce43e":{"rev":"7b3805db985d","tiles":[16]},
+    "spot-569b08bba":{"rev":"e3191d59a947","tiles":[4]},
+    "spot-5df3b4a31":{"rev":"99a3dba5bf36","tiles":[4]},
+    "spot-627afeabe":{"rev":"9ee8d64aa3dd","tiles":[12]},
+    "spot-697bbef9b-b":{"rev":"5614e56eafc1","tiles":[0,1,2,3,4,5,6,7,8,9,10,12,13,14,15,17,19,20,21,25,26,27,28,29]},
+    "tokachi-b":{"rev":"d6995c2b7eae","tiles":[1,2,4,5,6,8,10,12,14,15,16,18,19,20,21,22,23,25,26,27,28]},
+    "tomamu":{"rev":"914c9739a3e3","tiles":[4,14]},
+    "toya":{"rev":"28205ef6262d","tiles":[7]}
+  };
+  function atlasPath(stem){
+    const rev=atlasRevisions[stem];
+    return 'hero/atlas/'+stem+'.webp'+(rev?'?rev='+rev:'');
+  }
+  function tilePath(stem){
+    return 'hero/edits/'+stem+'.webp?rev='+tileRevisions[stem];
+  }
+  function overlayPath(stem){
+    return 'hero/corrections/'+stem+'.webp?rev='+overlayRevisions[stem].rev;
+  }
+  function offlineArtwork(){
+    return Object.keys(tileRevisions).map(tilePath).concat(
+      Object.keys(overlayRevisions).map(overlayPath),
+      SCENE_KEYS.flatMap(key=>[atlasPath(key),atlasPath(key+'-b')])
+    );
+  }
   function artwork(key,scene,night,light){
     let tile=-1;
     if(scene.covered && ['rain','downpour'].includes(scene.kind)) tile=night?28:light==='morning'?26:27;
@@ -104,9 +162,14 @@ const TripScenery = (() => {
     else if(scene.kind==='downpour') tile=25;
     const extra=tile>=0;
     if(!extra) tile=panels.indexOf(scene.image);
+    const edit=key+(extra?'-b':'-a')+tile;
+    if(tileRevisions[edit]) return {path:tilePath(edit),tile,standalone:true};
     const cols=extra?5:4, rows=extra?6:5;
-    return {path:'hero/atlas/'+key+(extra?'-b':'')+'.webp',tile,cols,rows,
+    const stem=key+(extra?'-b':'');
+    const art={path:atlasPath(stem),tile,cols,rows,
       x:(tile%cols)/(cols-1)*100,y:Math.floor(tile/cols)/(rows-1)*100};
+    if(overlayRevisions[stem]?.tiles.includes(tile)) art.overlay=overlayPath(stem);
+    return art;
   }
-  return {places,entry,nearest,planned,resolve,panels,condition,artwork};
+  return {places,entry,nearest,planned,resolve,panels,condition,artwork,offlineArtwork};
 })();
