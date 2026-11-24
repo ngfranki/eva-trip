@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261124-v83">
+<html lang="zh-HK" data-build="20261124-v84">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1091,6 +1091,33 @@
   .venueWeek{font-size:0.875rem;line-height:1.65;margin:6px 0}.venueWeek summary{cursor:pointer;color:var(--moss)}
   .venueDetail{padding:10px 0 12px}.venueDetail figure{width:clamp(90px,24%,170px)}
   @media(max-width:520px){.venueInfo{padding-left:4px;gap:10px}.venueDetail{display:block}.venueDetail figure{width:100%;margin:0 0 12px}.venueDetail img{max-height:220px}.venueLinks a{min-height:40px}}
+  .stopGrip{align-self:stretch;display:grid;place-items:center;flex:0 0 36px;min-height:44px;padding:0;color:var(--muted);cursor:grab;touch-action:none}
+  .stopGrip svg{pointer-events:none}
+  .stopGrip:hover,.stopGrip:focus-visible{color:var(--ink);background:var(--surf2);border-radius:8px}
+  .stopGrip,.stopButton{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+  .moveTip{display:flex;align-items:center;gap:6px;margin:12px 0 5px;color:var(--muted);font-size:.875rem}
+  .stopMoveForm>p{margin:0 0 16px;color:var(--muted)}
+  .stopMoveForm>.fld{display:block;margin:14px 0 5px;font-weight:650}
+  .stopMoveForm>select{width:100%;min-height:44px;font:inherit}
+  .stopMoveForm .btnrow{margin-top:20px}
+  .timedStop{scroll-margin-block:70px 90px}
+  .moveHeld{opacity:.45}
+  .moveBefore{box-shadow:inset 0 3px 0 var(--moss,var(--acc)) !important}
+  .moveAfter{box-shadow:inset 0 -3px 0 var(--moss,var(--acc)) !important}
+  .moveOn{outline:3px solid var(--moss,var(--acc));outline-offset:-3px}
+  .moveGhost,#moveOtherDay{position:fixed;z-index:54;box-shadow:var(--sh2);border:1px solid var(--line);color:var(--ink);background:var(--surf);border-radius:12px;font-size:1rem;font-weight:650}
+  .moveGhost{pointer-events:none;max-width:min(70vw,340px);padding:9px 14px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+  #moveOtherDay{transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:8px 18px}
+  #moveOtherDay.moveOn{background:var(--ink);color:var(--bg)}
+  .tripMoving,.tripMoving *{cursor:grabbing !important;user-select:none !important;-webkit-user-select:none !important}
+  #moveNotice{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
+  @media screen and (max-width:540px){
+    .stopGrip{flex-basis:32px}
+    .timedStop .stopButton{display:grid;grid-template-columns:minmax(0,1fr);gap:1px;padding:8px 2px}
+    .stopButton time{font-size:.875rem}
+    .stopButton i{display:none}
+  }
+  @media print{.stopGrip,.moveTip,.moveGhost,#moveOtherDay{display:none!important}}
 </style>
 </head>
 <body>
@@ -1116,7 +1143,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261124-v83" style="padding-top:0">v83</div>
+        <div id="ver" data-build="20261124-v84" style="padding-top:0">v84</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1136,6 +1163,7 @@
     </div>
     <div class="netbar" id="netbar">📴 離線中 — 可以查看和修改，重新連線後會自動同步</div>
     <div id="main"></div>
+    <span id="moveNotice" role="status" aria-live="polite"></span>
     <nav class="tripDock" aria-label="旅程捷徑">
       <button type="button" data-act="doclibrary"><span id="dockFiles"></span>全部附件</button>
       <button type="button" data-act="ai"><span id="dockChat"></span>問行程</button>
@@ -1182,7 +1210,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261124-v83';
+  var APP_VER='20261124-v84';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -3472,7 +3500,7 @@
     var ds=days(), i=ds.indexOf(d);
     if(i<=0) return null;                       // 第一日冇「昨晚」
     for(var k=i-1;k>=0;k--){
-      var prev=dayItems(ds[k]).filter(function(x){ return kd(x.kind).geo && x.lat!=null; });
+      var prev=dayItems(ds[k]).filter(function(x){ return kd(x.kind).geo && x.lat!=null && x.lng!=null; });
       if(!prev.length) continue;
       // 你係喺住宿過夜，唔係喺當日最後去嗰個景點過夜。
       // 有住宿就用住宿（取最後一個，即係當晚 check in 嗰間）。
@@ -3487,31 +3515,28 @@
     var off = tzMin==null? 0 : tzMin, sg = off<0? '-' : '+', ao=Math.abs(off);
     return ds+'T'+pad(+q[0]||0)+':'+pad(+(q[1]||0))+':00'+sg+pad(Math.floor(ao/60))+':'+pad(ao%60);
   }
-  function routeSig(pts){ return pts.map(function(p){ return p.lat.toFixed(4)+','+p.lng.toFixed(4); }).join('|'); }
+  function routeSig(pts){ return pts.map(function(p){ return Number(p.lat).toFixed(4)+','+Number(p.lng).toFixed(4); }).join('|'); }
   // 「由昨晚住嘅地方去今日第一站」嗰段
   function legFromPrev(d){
     var org=dayOrigin(d), first=dayItems(d).find(function(x){ return kd(x.kind).geo && x.lat!=null && x.lng!=null; });
     if(flightBetween(flightsOn(d),org,first)) return null;
     var r=dayRoute(d);
-    if(r && r.fromPrev && r.legs && r.legs[0]){
+    if(org && r && r.fromPrev && r.legs && r.legs[0]){
       var l=r.legs[0], mins=Math.max(1,Math.round(l.sec/60)), km=l.m/1000;
       // 昨晚住嘅地方同今日第一項係同一個位（例：退房就係嗰間酒店）→
       // 出「由 X 出發 · 1 分鐘 · 0.0 km」係廢話，索性唔出。
       if(l.m<150) return null;
-      return { name:r.fromPrev, t:minsTxt(l.sec)+' · '+(km<10?km.toFixed(1):Math.round(km))+' km', real:1 };
+      return { name:org.name, t:minsTxt(l.sec)+' · '+(km<10?km.toFixed(1):Math.round(km))+' km', real:1 };
     }
     if(!org || !first) return null;
     var e=legTxt(org, first);
     return e? { name:org.name, t:e.t, real:0 } : null;
   }
   function dayRoute(d){
-    if(!state.routes) state.routes={};
-    var t=curTrip(); if(!t) return null;
+    var t=curTrip(); if(!t || !state.routes) return null;
     var route=state.routes[t.id+'|'+d];
     if(!route) return null;
-    var flights=flightsOn(d);
-    if(flights.length && !route.flightRouting) return null;
-    return route;
+    return routeMatches(route,routePlan(d)) ? route : null;
   }
   function flightBetween(flights,a,b){
     if(!a || !b || a.lat==null || b.lat==null) return null;
@@ -3531,14 +3556,13 @@
     groups.push(pts.slice(start));
     return groups;
   }
-  function ensureRoute(d){
-    if(GOOG===false || MODE!=='cloud') return;
-    var t=curTrip(); if(!t) return;
-    var own=dayItems(d).filter(function(x){ return kd(x.kind).geo && x.lat!=null && x.lng!=null; });
+  function routePlan(d){
+    var items=dayItems(d), own=items.filter(function(x){ return kd(x.kind).geo && x.lat!=null && x.lng!=null; });
+    if(!own.length) return null;
     var org=dayOrigin(d);
     var pts=own.map(function(x){ return {lat:x.lat,lng:x.lng}; });
     if(org) pts.unshift({lat:org.lat,lng:org.lng});
-    if(pts.length<2) return;
+    if(pts.length<2) return null;
     // 🔴 規劃期嘅路線本來唔計路況（TRAFFIC_UNAWARE），所以系統性低報。
     // 實測新宿→箱根：唔計路況 107 分鐘 / 97.7km，計路況 133 分鐘 / 113.9km
     // —— 差 26 分鐘，而且 Google 會揀另一條路。你撳「路線」跳去 Google Maps
@@ -3550,32 +3574,66 @@
     var firstT=(own.filter(function(x){ return x.time; })[0]||{}).time || '09:00';
     var dep=isoAt(d, firstT, tz0);
     var useTf = Date.parse(dep) > Date.now()+5*60000;
-    var sig=routeSig(pts)+(org?'|o':'')+(useTf?'|t'+firstT:''), k=t.id+'|'+d;
+    var flights=items.filter(function(x){return x.kind==='flight' && x.airLeg;});
+    var air=flights.length?'|air:'+JSON.stringify(flights.map(function(f){return f.airLeg;})):'';
+    var base=routeSig(pts)+(org?'|o':'');
+    var timed=base+'|t'+firstT+air, plain=base+air;
+    return {pts:pts,org:org,flights:flights,dep:dep,traffic:useTf,sig:useTf?timed:plain,timed:timed,plain:plain};
+  }
+  function routeMatches(route,plan){
+    if(!plan || (plan.flights.length && !route.flightRouting)) return false;
+    return (route.sig===plan.plain || route.sig===plan.timed) &&
+      (!route.dep || route.dep===plan.dep);
+  }
+  // Moving a stop may also change the origin of the next nonempty day. Remove stale
+  // entries before saving so other devices and trip briefings see the same itinerary.
+  function discardMovedRoutes(fromDate,toDate){
+    var t=curTrip(), first=[fromDate,toDate].filter(Boolean).sort()[0];
+    if(!t || !first) return;
+    days().forEach(function(d){
+      if(d<first) return;
+      var k=t.id+'|'+d, saved=state.routes && state.routes[k], busy=routeBusy[k];
+      if(!saved && !busy) return;
+      var plan=routePlan(d);
+      if(saved && !routeMatches(saved,plan)) delete state.routes[k];
+      if(busy && (!plan || busy.sig!==plan.sig || busy.dep!==plan.dep)) delete routeBusy[k];
+    });
+  }
+  function ensureRoute(d){
+    if(GOOG===false || MODE!=='cloud') return;
+    var t=curTrip(); if(!t) return;
+    var plan=routePlan(d); if(!plan) return;
+    var k=t.id+'|'+d, sig=plan.sig;
     if(!state.routes) state.routes={};
     var cur2=state.routes[k];
-    var flights=flightsOn(d), groups=roadGroups(pts,flights);
-    if(flights.length) sig+='|air:'+JSON.stringify(flights.map(function(f){return f.airLeg;}));
-    if(cur2 && cur2.sig===sig) return;
-    if(routeBusy[k]) return;
-    routeBusy[k]=1;
+    if(cur2 && cur2.sig===sig && routeMatches(cur2,plan)) return;
+    if(routeBusy[k] && routeBusy[k].sig===sig && routeBusy[k].dep===plan.dep) return;
+    routeBusy[k]=plan;
+    var groups=roadGroups(plan.pts,plan.flights);
     Promise.all(groups.map(function(points){
       if(points.length<2) return Promise.resolve([]);
       return new Promise(function(resolve,reject){
-        gCall({op:'route',points:points,mode:'DRIVE',traffic:useTf,departureTime:useTf?dep:undefined},function(j,err){
+        gCall({op:'route',points:points,mode:'DRIVE',traffic:plan.traffic,departureTime:plan.traffic?plan.dep:undefined},function(j,err){
           if(err || !j || !j.legs || j.legs.length!==points.length-1) return reject();
           resolve(j.legs);
         });
       });
     })).then(function(parts){
+      if(routeBusy[k]!==plan) return;
+      delete routeBusy[k];
+      if(!curTrip() || curTrip().id!==t.id) return;
+      var latest=routePlan(d);
+      if(!latest || latest.sig!==sig || latest.dep!==plan.dep) return;
       var legs=[], sec=0, metres=0;
       parts.forEach(function(part,i){
         if(i) legs.push({air:true,sec:0,m:0});
         part.forEach(function(l){legs.push(l); sec+=l.sec; metres+=l.m;});
       });
+      if(!state.routes) state.routes={};
       state.routes[k]={sig:sig,legs:legs,mode:'DRIVE',totalSec:sec,totalM:metres,flightRouting:true,
-        traffic:useTf,dep:useTf?dep:'',fromPrev:org?org.name:'',at:Date.now()};
-      delete routeBusy[k]; save(true); render();
-    },function(){delete routeBusy[k];});
+        traffic:plan.traffic,dep:plan.traffic?plan.dep:'',fromPrev:latest.org?latest.org.name:'',at:Date.now()};
+      save(true); render();
+    },function(){if(routeBusy[k]===plan) delete routeBusy[k];});
   }
   var routeBusy={};
   function legReal(d, i){
@@ -4303,7 +4361,7 @@
       ? '<button type="button" class="stopPin" data-act="pinjump" data-id="'+esc(x.id)+'" style="--pin-color:'+point.c+'" aria-label="'+esc('在地圖查看 '+point.n+' 號 · '+x.name)+'"><b>'+point.n+'</b></button>'
       : '<span class="stopType" aria-hidden="true">'+kico(x.kind,17)+'</span>';
     var files=fileEntries(x).length, id=esc(x.id);
-    return '<div class="row timedStop'+(x.done?' done':'')+'" data-id="'+id+'" draggable="true">'+badge+'<button class="stopButton" data-act="readstop" data-id="'+id+'"><time>'+esc((r.est?'約 ':'')+minHM(r.at))+'</time><span>'+esc(x.name)+'</span>'+'<i>›</i></button>'+
+    return '<div class="row timedStop'+(x.done?' done':'')+'" data-id="'+id+'" draggable="true"><button type="button" class="stopGrip" data-act="movestop" data-id="'+id+'" aria-label="'+esc('移動行程：'+x.name)+'" title="長按拖動，或點一下選日期及位置">'+ic('grip',17)+'</button>'+badge+'<button class="stopButton" data-act="readstop" data-id="'+id+'"><time>'+esc((r.est?'約 ':'')+minHM(r.at))+'</time><span>'+esc(x.name)+'</span>'+'<i>›</i></button>'+
       (files?'<button type="button" class="stopFile" data-act="chipfile" data-id="'+id+'" aria-label="'+esc(x.name)+'，附件 '+files+'">'+ic('clip',16)+'附件 '+files+'</button>':'')+
       '<button class="kebab" data-act="rowmenu" data-id="'+id+'" aria-label="項目選單">⋯</button></div>';
   }
@@ -4325,6 +4383,7 @@
          '<button class="kebab" data-act="daymenu" data-d="'+d+'">⋯</button></div>'+
          (wxl?'<div class="dayw">'+wxl+'</div>':'')+
          (printDays?'':hourPair(d));
+      if(arr.length && !printDays)h+='<p class="moveTip">'+ic('grip',16)+'長按行程拖動，或點一下拖動掣選日期及位置。</p>';
       h+='<div class="panel" data-drop="day:'+d+'">';
       if(arr.length){
         h+='<div class="rows">';
@@ -5060,37 +5119,307 @@
     if(x.lat) flyTo(x);
   }
 
-  // ---------- drag ----------
+  // Reuse the item itself so its booking, notes and documents follow its position.
+  function moveStopTo(id,scope,beforeId){
+    var x=itemById(id), t=curTrip();
+    if(!x || !t || x.tripId!==t.id || !scope)return false;
+    var day=scope.startsWith('day:'), key=scope.slice(scope.indexOf(':')+1);
+    if(day ? !days().includes(key) : !scope.startsWith('list:') || !tLists().some(function(l){return l.id===key;}))return false;
+    var target=day?dayItems(key):listItems(key), oldIndex=target.findIndex(function(row){return row.id===id;});
+    var ordered=target.filter(function(row){return row.id!==id;});
+    var index=beforeId?ordered.findIndex(function(row){return row.id===beforeId;}):ordered.length;
+    if(index<0 || oldIndex===index)return false;
+    var fromDate=x.date;
+    snap();
+    x.date=day?key:null;
+    x.listId=day?null:key;
+    // Only change the moved stop when there is room between its neighbours.
+    // Other devices may be editing notes on those neighbours at the same time.
+    var left=index>0?Number(ordered[index-1].ord||0):null;
+    var right=index<ordered.length?Number(ordered[index].ord||0):null;
+    var order=left===null?(right===null?10:right-10):right===null?left+10:left+(right-left)/2;
+    if(Number.isFinite(order) && (left===null || left<order) && (right===null || order<right)){
+      x.ord=order;
+    }else{
+      ordered.splice(index,0,x);
+      ordered.forEach(function(row,i){row.ord=(i+1)*10;});
+    }
+    discardMovedRoutes(fromDate,x.date);
+    if(day){expandedDay=t.id+'|'+key;mapDay=key;}
+    save();
+    if(day){
+      var row=$('main').querySelector('.timedStop[data-id="'+CSS.escape(id)+'"]');
+      if(row){row.querySelector('.stopGrip').focus({preventScroll:true});row.scrollIntoView({block:'nearest'});}
+    }
+    $('moveNotice').textContent=x.name+'已移至'+(day?'第 '+(days().indexOf(key)+1)+' 日':'清單')+'第 '+(index+1)+' 個位置';
+    return true;
+  }
+  function movePositionOptions(id,date){
+    var items=dayItems(date), current=items.findIndex(function(x){return x.id===id;});
+    var rest=items.filter(function(x){return x.id!==id;});
+    var opts=rest.map(function(x,i){
+      return '<option value="'+esc(x.id)+'"'+(i===current?' selected':'')+'>第 '+(i+1)+' 位 · 在「'+esc(x.name)+'」之前</option>';
+    });
+    opts.push('<option value=""'+(current<0 || current===rest.length?' selected':'')+'>'+(!rest.length?'第 1 位':'第 '+(rest.length+1)+' 位 · 放在最後')+'</option>');
+    return opts.join('');
+  }
+  function moveStopSheet(id){
+    var x=itemById(id), ds=days();
+    if(!x || !ds.length || x.tripId!==curTrip().id)return;
+    var date=ds.includes(x.date)?x.date:ds[0];
+    openSheet('<div class="stopMoveForm"><h3>移動行程</h3><p>'+esc(x.name)+'</p>'+
+      '<label class="fld" for="moveDate">移到哪一天</label><select class="inp" id="moveDate" data-id="'+esc(id)+'">'+ds.map(function(d,i){
+        return '<option value="'+d+'"'+(d===date?' selected':'')+'>Day '+(i+1)+' · '+md(d)+'（'+dow(d)+'）</option>';
+      }).join('')+'</select><label class="fld" for="moveBefore">放在哪個位置</label><select class="inp" id="moveBefore">'+movePositionOptions(id,date)+'</select>'+
+      '<div class="btnrow"><button type="button" class="btn" data-act="applystopmove" data-id="'+esc(id)+'">移到這裡</button>'+
+      '<button type="button" class="btn ghost" data-act="closesheet">取消</button></div></div>');
+    $('moveDate').focus({preventScroll:true});
+  }
+  function tripDropTarget(el,clientY,id){
+    if(!el || !el.closest)return null;
+    var picker=el.closest('#moveOtherDay');
+    if(picker)return {picker:true,mark:picker,side:'on'};
+    var summary=el.closest('.daySummary'), panel=el.closest('[data-drop]');
+    if(summary)return {scope:'day:'+summary.dataset.d,beforeId:'',mark:summary,side:'on'};
+    if(!panel)return null;
+    var row=el.closest('.row[data-id]'), side='before', lane, sibling;
+    if(row){
+      var rect=row.getBoundingClientRect();
+      if(clientY>=rect.top+rect.height/2)side='after';
+    }else if((lane=el.closest('.venueInfo')) && lane.previousElementSibling && lane.previousElementSibling.matches('.timedStop')){
+      row=lane.previousElementSibling;side='after';
+    }else if((lane=el.closest('.leg'))){
+      sibling=lane.nextElementSibling;
+      while(sibling && !sibling.matches('.row[data-id]'))sibling=sibling.nextElementSibling;
+      row=sibling;
+    }
+    var scope=panel.dataset.drop;
+    if(!row)return {scope:scope,beforeId:'',mark:panel,side:'after'};
+    if(row.dataset.id===id)return null;
+    var beforeId=row.dataset.id, mark=row;
+    if(side==='after'){
+      var arr=scope.startsWith('day:')?dayItems(scope.slice(4)):listItems(scope.slice(5));
+      var i=arr.findIndex(function(x){return x.id===beforeId;});
+      if(i<0)return null;
+      var next=arr.slice(i+1).find(function(x){return x.id!==id;});beforeId=next?next.id:'';
+      if(row.nextElementSibling && row.nextElementSibling.matches('.venueInfo'))mark=row.nextElementSibling;
+    }
+    return {scope:scope,beforeId:beforeId,mark:mark,side:side};
+  }
+  var lastDropMark=null, lastDropClass='';
+  function paintTripDrop(target){
+    var mark=target && target.mark, klass=target && ({before:'moveBefore',after:'moveAfter',on:'moveOn'})[target.side];
+    if(mark===lastDropMark && klass===lastDropClass)return;
+    if(lastDropMark)lastDropMark.classList.remove(lastDropClass);
+    if(mark)mark.classList.add(klass);
+    lastDropMark=mark;lastDropClass=klass;
+  }
+  function finishTripDrop(id,target){
+    if(!target)return;
+    if(target.picker)moveStopSheet(id);
+    else moveStopTo(id,target.scope,target.beforeId);
+  }
+  // Desktop drag from existing list cards also accepts collapsed itinerary days.
   var dragId=null;
   document.addEventListener('dragstart',function(e){
-    var r=e.target.closest && e.target.closest('.row'); if(!r) return;
-    dragId=r.getAttribute('data-id'); r.classList.add('drag');
-    try{ e.dataTransfer.setData('text/plain',dragId); e.dataTransfer.effectAllowed='move'; }catch(err){}
+    var r=e.target.closest && e.target.closest('.row[draggable="true"]');
+    if(!r)return;
+    if(stopGesture){e.preventDefault();return;}
+    dragId=r.dataset.id;r.classList.add('drag');
+    if(e.dataTransfer){e.dataTransfer.setData('text/plain',dragId);e.dataTransfer.effectAllowed='move';}
   });
-  document.addEventListener('dragend',function(){ dragId=null;
-    document.querySelectorAll('.drag,.over').forEach(function(n){ n.classList.remove('drag','over'); }); });
+  document.addEventListener('dragend',function(){
+    dragId=null;paintTripDrop(null);
+    document.querySelectorAll('.row.drag').forEach(function(n){n.classList.remove('drag');});
+  });
   document.addEventListener('dragover',function(e){
-    var p=e.target.closest && e.target.closest('[data-drop]'); if(!p||!dragId) return;
-    e.preventDefault();
-    document.querySelectorAll('.over').forEach(function(n){ n.classList.remove('over'); });
-    var r=e.target.closest('.row'); if(r) r.classList.add('over');
+    if(!dragId)return;
+    var target=tripDropTarget(e.target,e.clientY,dragId);
+    paintTripDrop(target);
+    if(target){e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='move';}
   });
   document.addEventListener('drop',function(e){
-    var p=e.target.closest && e.target.closest('[data-drop]'); if(!p||!dragId) return;
-    e.preventDefault();
-    var x=itemById(dragId); if(!x) return;
-    var scope=p.getAttribute('data-drop'), part=scope.split(':'), isDay=part[0]==='day';
-    var target=e.target.closest('.row'), tid=target&&target.getAttribute('data-id');
-    snap();
-    x.date = isDay? part[1] : null;
-    x.listId = isDay? null : part[1];
-    var arr = (isDay? dayItems(part[1]) : listItems(part[1])).filter(function(i){return i.id!==x.id;});
-    var at = arr.length;
-    if(tid){ for(var i=0;i<arr.length;i++) if(arr[i].id===tid){ at=i; break; } }
-    arr.splice(at,0,x);
-    arr.forEach(function(i,k){ i.ord=(k+1)*10; });
-    save();
+    if(!dragId)return;
+    var id=dragId,target=tripDropTarget(e.target,e.clientY,id);
+    e.preventDefault();dragId=null;paintTripDrop(null);
+    document.querySelectorAll('.row.drag').forEach(function(n){n.classList.remove('drag');});
+    finishTripDrop(id,target);
   });
+
+  // ---------- stop gesture ----------
+  // A tap still opens a stop. A stationary long press takes over the finger;
+  // movement before that point belongs to the normal vertical scroller.
+  var stopGesture=null, suppressTripMoveClick=0;
+  function stopMoveControl(el){
+    return el && el.closest && el.closest('.timedStop .stopGrip, .timedStop .stopButton');
+  }
+  function stopMoveRow(g){
+    var t=curTrip(), item=itemById(g.id);
+    if(!t || t.id!==g.trip || !item || item.tripId!==t.id || item.date!==g.day)return null;
+    if(!g.row.isConnected){
+      var rows=$('doc').querySelectorAll('.timedStop');
+      g.row=Array.prototype.find.call(rows,function(row){return row.dataset.id===g.id;});
+    }
+    return g.row || null;
+  }
+  function cancelStopMove(){
+    var g=stopGesture;
+    if(!g)return;
+    stopGesture=null;
+    clearTimeout(g.timer);
+    cancelAnimationFrame(g.frame);
+    document.removeEventListener('touchmove',moveStopTouch,true);
+    if(g.active){
+      suppressTripMoveClick=Date.now()+600;
+      document.body.classList.remove('tripMoving');
+      if(g.row)g.row.classList.remove('moveHeld');
+      g.ghost.remove(); g.picker.remove();
+      paintTripDrop(null);
+    }
+  }
+  function stopMoveTarget(g){
+    return tripDropTarget(document.elementFromPoint(g.x,g.y),g.y,g.id);
+  }
+  function stopMoveFrame(g){
+    if(stopGesture!==g)return;
+    var row=stopMoveRow(g);
+    if(!row){cancelStopMove();return;}
+    row.classList.add('moveHeld');
+    var doc=$('doc'), rect=doc.getBoundingClientRect();
+    var left=Math.max(0,rect.left), right=Math.min(innerWidth,rect.right);
+    var top=Math.max(0,rect.top), bottom=Math.min(innerHeight,rect.bottom);
+    g.picker.style.left=((left+right)/2)+'px';
+    g.picker.style.bottom=(innerHeight-bottom+14)+'px';
+    g.ghost.style.left=Math.max(4,Math.min(innerWidth-g.ghost.offsetWidth-4,g.x+12))+'px';
+    g.ghost.style.top=Math.max(4,Math.min(innerHeight-g.ghost.offsetHeight-4,g.y-45))+'px';
+    var target=stopMoveTarget(g);
+    if(g.moved && g.x>=left && g.x<=right && g.y>=top && g.y<=bottom && !(target && target.picker)){
+      var toolbar=doc.querySelector('.top'), head=toolbar?toolbar.getBoundingClientRect().bottom:top;
+      var zone=Math.min(68,(bottom-top)/4), atTop=Math.max(top,Math.min(head,bottom-zone));
+      var intensity=g.y<atTop+zone ? -Math.min(1,(atTop+zone-g.y)/zone) :
+        g.y>bottom-zone ? Math.min(1,(g.y-bottom+zone)/zone) : 0;
+      if(intensity){
+        var ts=performance.now(), dt=Math.min(32,Math.max(0,ts-g.lastFrame));
+        doc.scrollTop+=Math.sign(intensity)*Math.max(1,Math.round(intensity*intensity*0.72*dt));
+        target=stopMoveTarget(g);
+      }
+    }
+    g.lastFrame=performance.now();
+    if((target && target.mark)!==(g.target && g.target.mark) ||
+       (target && target.side)!==(g.target && g.target.side))paintTripDrop(target);
+    g.target=target;
+    g.frame=requestAnimationFrame(function(){stopMoveFrame(g);});
+  }
+  function activateStopMove(g){
+    if(stopGesture!==g || g.active)return;
+    var row=stopMoveRow(g);
+    if(!row || Math.abs($('doc').scrollTop-g.initialScroll)>3){cancelStopMove();return;}
+    clearTimeout(g.timer); g.active=true;
+    g.ghost=document.createElement('div');
+    g.ghost.className='moveGhost';
+    g.ghost.textContent=itemById(g.id).name;
+    g.ghost.setAttribute('aria-hidden','true');
+    g.ghost.style.pointerEvents='none';
+    g.picker=document.createElement('div');
+    g.picker.id='moveOtherDay'; g.picker.textContent='移到其他日子…';
+    g.picker.setAttribute('aria-hidden','true');
+    document.body.appendChild(g.ghost); document.body.appendChild(g.picker);
+    document.body.classList.add('tripMoving');
+    g.lastFrame=performance.now();
+    stopMoveFrame(g);
+  }
+  function startStopMove(el,x,y,input,contact,pointerType){
+    var ctl=stopMoveControl(el);
+    if(!ctl || !ctl.closest('#doc') || stopGesture)return;
+    var row=ctl.closest('.timedStop'), item=itemById(row.dataset.id), trip=curTrip();
+    if(!trip || !item || !item.date || item.tripId!==trip.id)return;
+    var g={row:row,id:item.id,trip:trip.id,day:item.date,sx:x,sy:y,x:x,y:y,
+      input:input,contact:contact,pointerType:pointerType,active:false,moved:false,initialScroll:$('doc').scrollTop,target:null};
+    stopGesture=g;
+    g.timer=setTimeout(function(){activateStopMove(g);},380);
+  }
+  function updateStopMove(g,x,y,ev){
+    g.x=x; g.y=y;
+    if(Math.hypot(x-g.sx,y-g.sy)>6)g.moved=true;
+    if(!g.active && Math.hypot(x-g.sx,y-g.sy)>8){
+      if(g.pointerType==='mouse')activateStopMove(g);
+      else {cancelStopMove();return;}
+    }
+    if(g.active && ev.cancelable)ev.preventDefault();
+  }
+  function releaseStopMove(g,x,y,ev){
+    if(!g.active){cancelStopMove();return;}
+    g.x=x; g.y=y;
+    if(ev.cancelable)ev.preventDefault();
+    var travelled=g.moved || Math.hypot(x-g.sx,y-g.sy)>6;
+    var target=travelled && stopMoveRow(g) && stopMoveTarget(g);
+    cancelStopMove();
+    if(target)finishTripDrop(g.id,target);
+  }
+  document.addEventListener('pointerdown',function(ev){
+    suppressTripMoveClick=0;
+    if(ev.isPrimary===false){cancelStopMove();return;}
+    if(ev.button!==0)return;
+    startStopMove(ev.target,ev.clientX,ev.clientY,'pointer',ev.pointerId,ev.pointerType);
+  },true);
+  window.addEventListener('pointermove',function(ev){
+    var g=stopGesture;
+    if(g && g.input==='pointer' && g.contact===ev.pointerId)updateStopMove(g,ev.clientX,ev.clientY,ev);
+  },{capture:true,passive:false});
+  window.addEventListener('pointerup',function(ev){
+    var g=stopGesture;
+    if(g && g.input==='pointer' && g.contact===ev.pointerId)releaseStopMove(g,ev.clientX,ev.clientY,ev);
+  },true);
+  window.addEventListener('pointercancel',function(ev){
+    var g=stopGesture;
+    if(g && g.input==='pointer' && g.contact===ev.pointerId)cancelStopMove();
+  },true);
+  function matchingTouch(list,id){
+    for(var i=0;i<list.length;i++)if(list[i].identifier===id)return list[i];
+    return null;
+  }
+  document.addEventListener('touchstart',function(ev){
+    suppressTripMoveClick=0;
+    if(ev.touches.length!==1){cancelStopMove();return;}
+    var finger=ev.changedTouches[0];
+    if(!finger)return;
+    var g=stopGesture;
+    if(g && g.input==='pointer' && g.pointerType==='touch'){
+      g.input='touch'; g.contact=finger.identifier;
+    }else startStopMove(ev.target,finger.clientX,finger.clientY,'touch',finger.identifier,'touch');
+    if(stopGesture && stopGesture.input==='touch'){
+      // A non-passive listener lets the app claim the pan after the hold. Before
+      // the hold, default scrolling stays enabled and cancels our candidate.
+      document.addEventListener('touchmove',moveStopTouch,{capture:true,passive:false});
+    }
+  },{capture:true,passive:true});
+  function moveStopTouch(ev){
+    var g=stopGesture;
+    if(!g || g.input!=='touch')return;
+    var finger=matchingTouch(ev.touches,g.contact);
+    if(!finger || ev.touches.length!==1 || !ev.cancelable){cancelStopMove();return;}
+    updateStopMove(g,finger.clientX,finger.clientY,ev);
+  }
+  document.addEventListener('touchend',function(ev){
+    var g=stopGesture;
+    if(!g || g.input!=='touch')return;
+    var finger=matchingTouch(ev.changedTouches,g.contact);
+    if(finger)releaseStopMove(g,finger.clientX,finger.clientY,ev);
+  },{capture:true,passive:false});
+  document.addEventListener('touchcancel',function(){cancelStopMove();},true);
+  document.addEventListener('contextmenu',function(ev){
+    if(stopGesture && stopMoveControl(ev.target))ev.preventDefault();
+  },true);
+  document.addEventListener('keydown',function(ev){
+    if(stopGesture && ev.key==='Escape'){ev.preventDefault();ev.stopPropagation();cancelStopMove();}
+  },true);
+  document.addEventListener('click',function(ev){
+    if(suppressTripMoveClick>Date.now() && ev.detail!==0){
+      ev.preventDefault(); ev.stopImmediatePropagation(); suppressTripMoveClick=0;
+    }
+  },true);
+  window.addEventListener('blur',cancelStopMove);
+  document.addEventListener('visibilitychange',function(){if(document.hidden)cancelStopMove();});
 
   // ---------- sheets ----------
   function sideOpen(on){
@@ -6736,6 +7065,10 @@
     if((e.metaKey||e.ctrlKey)&&e.key==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
   });
   document.addEventListener('change',function(e){
+    if(e.target.id==='moveDate'){
+      $('moveBefore').innerHTML=movePositionOptions(e.target.dataset.id,e.target.value);
+      return;
+    }
     if(e.target.getAttribute&&e.target.getAttribute('data-act')==='pickfile'){
       var xpid=e.target.getAttribute('data-id');
       var fl=[].slice.call(e.target.files||[]);
@@ -6833,6 +7166,7 @@
     else if(act==='rowmenu'){
       var x3=itemById(id); if(!x3) return;
       openMenu(ev,'<button data-act="tick" data-id="'+id+'">'+(x3.done?'取消完成':'標記完成')+'</button><button data-act="edititem" data-id="'+id+'">改</button>'+
+        (days().length?'<button data-act="movestop" data-id="'+esc(id)+'">移動行程…</button>':'')+
         (x3.lat?'<button data-act="nav" data-id="'+id+'">Google 導航</button>':'<button data-act="geo1" data-id="'+id+'">定位</button>')+
         (x3.photoUrl? '<button data-act="setcover" data-id="'+id+'">用這張相片做封面</button>':'')+
         '<button data-act="dup" data-id="'+id+'">複製一份</button><hr>'+
@@ -7038,6 +7372,11 @@
       expandedDay=expandedDay===key?'':key;mapDay=expandedDay?date:'all';render();
       var summary=$('s-d'+days().indexOf(date)).querySelector('.daySummary');
       summary.focus({preventScroll:true});summary.scrollIntoView({block:expandedDay?'start':'nearest'});
+    }
+    else if(act==='movestop'){moveStopSheet(id);}
+    else if(act==='applystopmove'){
+      var dest=$('moveDate').value, before=$('moveBefore').value;
+      closeSheet();moveStopTo(id,'day:'+dest,before);
     }
     else if(act==='readstop'){stopDetails(itemById(id));}
     else if(act==='doclibrary'){documentLibrary();}
