@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261124-v84">
+<html lang="zh-HK" data-build="20261124-v85">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -81,10 +81,10 @@
   ::-webkit-scrollbar-thumb{background:var(--line); border-radius:9px; border:2px solid transparent; background-clip:content-box}
 
   /* ============ shell ============ */
-  .shell{display:grid; grid-template-columns:var(--side) minmax(0,1fr) var(--mapw); height:100dvh}
+  .shell{display:grid; grid-template-columns:var(--side) minmax(0,1fr) var(--mapw); grid-template-rows:minmax(0,1fr); height:100vh; height:100dvh}
   .side{background:var(--surf); border-right:1px solid var(--line); display:flex; flex-direction:column; overflow-y:auto; padding-bottom:10px}
-  .doc{overflow-y:auto; overflow-x:hidden; background:var(--bg); touch-action:pan-y; overscroll-behavior-x:none}
-  .mapwrap{position:relative; height:100%; min-height:0; background:var(--soft)}
+  .doc{min-width:0;min-height:0;overflow-y:auto; overflow-x:hidden; background:var(--bg); touch-action:pan-y; overscroll-behavior-x:none}
+  .mapwrap{position:relative; min-width:0; height:100%; min-height:0; background:var(--soft)}
   #map{position:absolute; inset:0; z-index:1}
 
   /* ============ sidebar ============ */
@@ -438,8 +438,9 @@
   .pin b{transform:rotate(45deg); font-size:0.71875rem; font-weight:700}
   .pin.big{width:34px; height:34px; z-index:900 !important}
   .pin.big b{font-size:0.875rem}
-  .mapbar{position:absolute; top:12px; left:12px; right:86px; z-index:5; display:flex; gap:5px;
+  .mapbar{position:absolute; top:max(12px,env(safe-area-inset-top)); left:12px; right:max(12px,env(safe-area-inset-right)); z-index:5; display:flex; gap:5px;
     flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px}
+  .mapbar{width:max-content;max-width:calc(100% - 12px - max(12px,env(safe-area-inset-right)))}
   .mapbar::-webkit-scrollbar{display:none}
   .mapbar button{flex:0 0 auto; background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:6px 12px; font-size:0.8125rem; font-weight:700; color:var(--ink2)}
   .mapbar button.on{background:var(--ink); color:var(--surf)}
@@ -869,22 +870,29 @@
 
   /* ============ responsive ============ */
   .sidebd{display:none; position:fixed; inset:0; z-index:79; background:rgba(33,37,41,.42)}
-  .sidebd.show{display:block}
+  .mapclose{display:none}
   .sideclose{display:none; margin-left:auto; width:30px; height:30px; border-radius:50%;
     align-items:center; justify-content:center; font-size:1.0625rem; color:var(--muted)}
   .sideclose:hover{background:var(--soft)}
-  @media (max-width:1080px){ :root{ --side:0px; --mapw:38%; }
+  @media (max-width:1080px), (pointer:coarse){ :root{ --side:0px; --mapw:42%; }
+    .shell{grid-template-columns:minmax(0,1fr) var(--mapw)}
+    .doc{padding-inline-start:env(safe-area-inset-left)}
+    .sidebd.show{display:block}
     .side{position:fixed; left:0; top:0; bottom:0; width:230px; max-width:82vw; z-index:80;
       transform:translateX(-100%); transition:transform .2s}
     .side.open{transform:none; box-shadow:var(--sh2)}
-    .mapbtn{display:flex}
+    #hamb{display:flex}
     .sideclose{display:flex} }
-  @media (max-width:820px){
+  @media (max-width:820px) and (orientation:portrait), (pointer:coarse) and (orientation:portrait){
     :root{ --mapw:0px; }
-    .shell{grid-template-columns:1fr}
+    .shell{grid-template-columns:minmax(0,1fr)}
     .mapwrap{position:fixed; inset:0; z-index:50; display:none}
     .mapwrap.open{display:block}
-    .mapclose{position:absolute; top:12px; right:12px; z-index:6; background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:7px 14px; font-size:0.84375rem; font-weight:700}
+    .mapbtn,.mapclose{display:flex}
+    .mapbar{right:calc(84px + env(safe-area-inset-right));max-width:calc(100% - 96px - env(safe-area-inset-right))}
+    .mapclose{position:absolute; top:max(12px,env(safe-area-inset-top)); right:max(12px,env(safe-area-inset-right)); z-index:6; background:var(--surf); box-shadow:var(--sh2); border-radius:99px; padding:7px 14px; font-size:0.84375rem; font-weight:700}
+  }
+  @media (max-width:820px){
     .page{padding:6px 18px 150px}
     .locblock{margin:6px -18px 20px}
     .locsky{padding:10px 12px 0; gap:8px}
@@ -909,7 +917,6 @@
     .tenki,.tenki.load{margin-left:0}
     .here{margin-left:0; margin-right:0}
   }
-  @media (min-width:821px){ .mapclose{display:none} .mapbar{right:12px} }
   .overviewActions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.overviewActions button,.dayBack{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:9px;padding:8px 12px;font-weight:650;background:var(--card,#fff)}
   .overviewActions button{font-size:0.875rem;padding:7px 10px}.overviewActions button:first-child{background:var(--ink);color:var(--bg)}.daySummary{display:grid;grid-template-columns:65px minmax(0,1fr) auto 12px;align-items:center;gap:10px;width:100%;min-height:47px;padding:8px 4px;text-align:left;border-bottom:1px solid var(--line)}.daySummary b{color:var(--muted);font-size:0.8125rem}.daySummary strong{font-size:1rem}.daySummary small,.stopRead>small,.docFile small{color:var(--muted)}.daySummary i,.stopButton i{color:var(--muted);font-style:normal}.daySummary[aria-expanded=true]{border-bottom-color:var(--link);background:var(--soft)}.daySumWrap{margin:0!important}
   .timedStop{display:flex;align-items:center;padding:0;border-bottom:1px solid var(--line)}.stopButton{flex:1;min-width:0;display:flex;align-items:center;gap:9px;text-align:left;padding:13px 2px}.stopButton time{flex:0 0 67px;color:var(--link);font-size:0.875rem;font-variant-numeric:tabular-nums;font-weight:700}.stopButton span{flex:1;min-width:0;overflow-wrap:anywhere;font-size:0.9375rem;font-weight:620}.stopButton small{display:inline-flex;gap:3px;align-items:center;white-space:nowrap;color:var(--muted)}.stopButton small svg{vertical-align:middle}.timedStop .kebab{opacity:1}
@@ -999,7 +1006,9 @@
   }
   @media print{.travelFriends,.friendStamp{display:none}}
 
-  .tripDock{display:none}
+  .tripDock{display:none;container:trip-shortcuts / inline-size}
+  .tripDock button{white-space:nowrap}
+  .tripDock button:disabled{opacity:.55;cursor:default}
   @media screen{
     #s-itin{container-type:inline-size;container-name:itinerary}
     #s-itin>.sech{gap:8px;margin:0 0 11px;padding-left:3px}
@@ -1030,10 +1039,10 @@
       .dayPages>.day:has(>.daySummary[aria-expanded=true])>.daySummary{border-bottom:1px solid var(--rule);margin-bottom:10px}
     }
   }
-  @media screen and (max-width:820px){
+  @media screen and (max-width:820px), screen and (pointer:coarse){
     .doc:has(.tripPage){margin-bottom:calc(50px + env(safe-area-inset-bottom))}
     .doc:has(.tripPage) .tripPage{padding-bottom:36px}
-    .doc:has(.tripPage) .tripDock{display:flex;justify-content:center;align-items:center;position:fixed;inset:auto 0 0;z-index:13;
+    .doc:has(.tripPage) .tripDock{display:flex;justify-content:center;align-items:center;position:fixed;inset:auto var(--mapw) 0 0;z-index:13;
       gap:clamp(8px,3vw,18px);background:var(--paper);border-top:1px solid var(--thread);padding:2px 10px calc(3px + env(safe-area-inset-bottom))}
     .tripDock span{display:flex}.tripDock #dockTop{transform:rotate(180deg)}
     .tripDock button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding-inline:6px;gap:6px;font-size:0.8125rem;font-weight:650;color:var(--moss)}
@@ -1076,6 +1085,12 @@
     .top .sync{order:1;flex-basis:100%;line-height:1.3}
     .top .tbtn{padding-inline:6px}
   }
+  @container trip-shortcuts (max-width:465px){
+    .tripDock button,.tripDock [data-act="doclibrary"]{
+      flex:1 1 0;min-width:0;min-height:46px;flex-direction:column;
+      gap:2px;padding:3px 0;font-size:.8125rem;line-height:1.2}
+    .tripDock svg{width:18px;height:18px}
+  }
   .heroWxSource{display:inline-block;margin-top:4px;padding:2px 6px;border-radius:6px;background:#fffaf2eb;color:#362f29!important;text-shadow:none!important;font-size:0.6875rem;font-weight:650}
   .rowWxSource{display:block;margin:-3px 0 6px;font-size:0.75rem}
   .venueInfo{display:flex;align-items:flex-start;gap:14px;padding:2px 10px 15px 40px;color:var(--ink2);overflow-wrap:anywhere}
@@ -1111,11 +1126,19 @@
   #moveOtherDay.moveOn{background:var(--ink);color:var(--bg)}
   .tripMoving,.tripMoving *{cursor:grabbing !important;user-select:none !important;-webkit-user-select:none !important}
   #moveNotice{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
-  @media screen and (max-width:540px){
+  @container itinerary (max-width:540px){
     .stopGrip{flex-basis:32px}
     .timedStop .stopButton{display:grid;grid-template-columns:minmax(0,1fr);gap:1px;padding:8px 2px}
     .stopButton time{font-size:.875rem}
     .stopButton i{display:none}
+  }
+  @media screen and (orientation:landscape) and (max-width:1080px), screen and (orientation:landscape) and (pointer:coarse){
+    .mapwrap{border-inline-start:1px solid var(--line)}
+    .top{gap:3px;padding:5px 7px;flex-wrap:wrap}
+    .top .tbtn{padding-inline:7px}
+    .doc:has(.tripPage) .tripDock{padding-inline-start:max(5px,env(safe-area-inset-left))}
+    .leaflet-bottom.leaflet-right{margin-bottom:env(safe-area-inset-bottom);margin-right:env(safe-area-inset-right)}
+    #map .leaflet-top.leaflet-left{top:54px}
   }
   @media print{.stopGrip,.moveTip,.moveGhost,#moveOtherDay{display:none!important}}
 </style>
@@ -1143,7 +1166,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261124-v84" style="padding-top:0">v84</div>
+        <div id="ver" data-build="20261124-v85" style="padding-top:0">v85</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1156,8 +1179,8 @@
       <span class="sync" id="sync">載緊…</span>
       <button class="tbtn mapbtn" data-act="menu-side" id="hamb" title="目錄"></button>
       <button class="tbtn now" data-act="now" title="現在位置／今日行程／換算">現在</button>
-      <button class="tbtn" id="bUndo" data-act="undo" title="復原"></button>
-      <button class="tbtn" id="bRedo" data-act="redo" title="重做"></button>
+      <button class="tbtn" id="bUndo" data-act="undo" title="還原上一步" disabled><span id="topUndoIcon" aria-hidden="true"></span>還原</button>
+      <button class="tbtn" id="bRedo" data-act="redo" title="重做" aria-label="重做" disabled></button>
       <button class="tbtn mapbtn" data-act="openmap"><span id="mapIc"></span> 地圖</button>
       <button class="tbtn solid" data-act="export">匯出</button>
     </div>
@@ -1165,6 +1188,7 @@
     <div id="main"></div>
     <span id="moveNotice" role="status" aria-live="polite"></span>
     <nav class="tripDock" aria-label="旅程捷徑">
+      <button type="button" id="dockUndo" data-act="undo" title="還原上一步" disabled><span id="dockUndoIcon" aria-hidden="true"></span>還原</button>
       <button type="button" data-act="doclibrary"><span id="dockFiles"></span>全部附件</button>
       <button type="button" data-act="ai"><span id="dockChat"></span>問行程</button>
       <button type="button" data-act="totop"><span id="dockTop"></span>回頁頂</button>
@@ -1210,7 +1234,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261124-v84';
+  var APP_VER='20261124-v85';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2482,10 +2506,14 @@
     try{ undoStack.push(JSON.stringify(state)); }catch(e){ return; }
     if(undoStack.length>40) undoStack.shift();
     redoStack.length=0;
+    upBtns();
   }
   function undo(){ if(!undoStack.length) return; try{ redoStack.push(JSON.stringify(state)); state=JSON.parse(undoStack.pop()); save(); }catch(e){} }
   function redo(){ if(!redoStack.length) return; try{ undoStack.push(JSON.stringify(state)); state=JSON.parse(redoStack.pop()); save(); }catch(e){} }
-  function upBtns(){ $('bUndo').disabled=!undoStack.length; $('bRedo').disabled=!redoStack.length; }
+  function upBtns(){
+    $('bUndo').disabled=$('dockUndo').disabled=!undoStack.length;
+    $('bRedo').disabled=!redoStack.length;
+  }
 
   // ---------- persist ----------
   function save(quiet){
@@ -4587,21 +4615,44 @@
              scaledSize:new google.maps.Size(w,h), anchor:new google.maps.Point(w/2-(offset||0),h) };
   }
   // 手機開合地圖／視窗變化之後通知兩個地圖庫重新量尺寸
-  var gKickT=null;
+  var gKickT=null, mapFrame=0, mapDrawPending=false, requestedPinId=null;
+  function mapIsOverlay(){
+    return getComputedStyle($('mapwrap')).position==='fixed';
+  }
+  var lastMapOverlay=mapIsOverlay();
   function sizeMap(){
     var wrap=$('mapwrap');
     if(!wrap) return false;
     var r=wrap.getBoundingClientRect();
     return !(r.width<60 || r.height<60);
   }
+  function refreshMapSize(){
+    mapFrame=0;
+    var overlay=mapIsOverlay();
+    if(overlay!==lastMapOverlay){
+      lastMapOverlay=overlay;
+      sideOpen(false);
+      if(!overlay) $('mapwrap').classList.remove('open');
+      if(map) map.__fit=0;
+      if(gmap) gmap.__fit=0;
+      if(state && view==='trip' && curTrip()) mapDrawPending=true;
+    }
+    if(!sizeMap()) return;
+    if(gmap && window.google){
+      if(gmap.__checkTilesOnShow){gmap.__checkTilesOnShow=false;gWatch();}
+      google.maps.event.trigger(gmap,'resize');
+    }
+    if(map) map.invalidateSize();
+    if(mapDrawPending) drawMap();
+  }
   function gKick(){
-    if(gKickT) clearTimeout(gKickT);
-    var go=function(){
-      if(gmap && window.google){ try{ google.maps.event.trigger(gmap,'resize'); }catch(e){} }
-      if(map && map.invalidateSize){ try{ map.invalidateSize(); }catch(e){} }
-    };
-    requestAnimationFrame(go);
-    gKickT=setTimeout(go, 300);
+    if(!mapFrame) mapFrame=requestAnimationFrame(refreshMapSize);
+    clearTimeout(gKickT);
+    gKickT=setTimeout(refreshMapSize,300);
+  }
+  function revealMap(){
+    if(mapIsOverlay()) $('mapwrap').classList.add('open');
+    gKick();
   }
   // Maps 3.66 喺呢個版面下，初始化之後有機會永遠唔貼磚（成塊白）。
   // 實測過嘅事實：另起一個 Map 實例，原本嗰個就即刻畫。
@@ -4609,10 +4660,11 @@
   var gTries=0;
   function gWatch(){
     if(!gmap || !window.google) return;
-    var ok=false;
-    google.maps.event.addListenerOnce(gmap,'tilesloaded',function(){ ok=true; });
+    var ok=false, watchedMap=gmap;
+    google.maps.event.addListenerOnce(watchedMap,'tilesloaded',function(){ ok=true; watchedMap.__checkTilesOnShow=false; });
     setTimeout(function(){
-      if(ok || !gmap) return;
+      if(ok || gmap!==watchedMap) return;
+      if(!sizeMap()){watchedMap.__checkTilesOnShow=true;return;}
       if(gTries>=2){
         // 放棄 Google 底圖，自動退返 OSM —— 寧願底圖冇咁靚，都唔可以畀你睇住一塊白
         gState='fail'; gmap=null; gmarks=[]; gInfo=null;
@@ -4641,11 +4693,6 @@
   function drawGMap(pts){
     var el=$('map');
     if(!gmap){
-      if(!sizeMap()){                      // 容器仲未有尺寸，下一格再嚟
-        if(!drawGMap.__wait){ drawGMap.__wait=1;
-          requestAnimationFrame(function(){ drawGMap.__wait=0; drawMap(); }); }
-        return;
-      }
       el.innerHTML='';
       gmap=new google.maps.Map(el,{
         center:{lat:22.3193,lng:114.1694}, zoom:11,
@@ -4656,16 +4703,7 @@
       gInfo=new google.maps.InfoWindow();
       try{ gTraffic=new google.maps.TrafficLayer(); }catch(e){}
       gWatch();                            // 磚唔出就自我重建（見 gWatch 註解）
-      // 建立嗰刻容器尺寸未必 settle（三欄 grid 嘅 40% 欄）。Google 量到 0 就再也唔會重畫，
-      // 所以一定要主動踢佢 resize，並且用 ResizeObserver 盯住之後任何尺寸變化。
       gKick();
-      try{
-        var wrap=$('mapwrap');
-        if(window.ResizeObserver && wrap && !wrap.__ro){
-          wrap.__ro=new ResizeObserver(function(){ sizeMap(); });
-          wrap.__ro.observe(wrap);
-        }
-      }catch(e){}
     }
     gmarks.forEach(function(m){ m.setMap(null); }); gmarks=[];
     if(!pts.length) return;
@@ -4841,6 +4879,8 @@
       '</div></div>';
   }
   function drawMap(){
+    if(!sizeMap()){mapDrawPending=true;return;}
+    mapDrawPending=false;
     // 線上就清走離線提示。一定要喺呢度做：Leaflet 路徑係 append 唔係換 innerHTML，
     // 唔清就會被個 absolute 提示蓋住成個地圖。
     if(navigator.onLine){
@@ -4869,11 +4909,10 @@
         if(gState==='loading'){ mapBar(); return; } }
       if(gState==='on'){
         if(map){ try{ map.remove(); }catch(e){} map=null; markers=[]; }
-        mapBar(); drawGMap(mapPoints()); return;
+        mapBar(); drawGMap(mapPoints()); focusRequestedPin(); return;
       }
     }
     if(!window.L) return;
-    sizeMap();
     if(!map){
       map=L.map('map',{zoomControl:true});
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
@@ -4891,7 +4930,7 @@
         html:'<div class="pin'+(big?' big':'')+'" style="background:'+p.c+'"><b>'+(p.n||'·')+'</b></div>',
         iconSize:[25,25], iconAnchor:[12-p.offset,25],popupAnchor:[p.offset,-23]}), zIndexOffset: big?1000:0});
       // 同 Google 路徑一樣：render() 會清走 marker，popup 即開即消失
-      m.bindPopup(mapPop(p.x), {maxWidth:260});
+      m.bindPopup(mapPop(p.x), {maxWidth:260,autoPanPaddingTopLeft:[8,60],autoPanPaddingBottomRight:[8,12]});
       m.__id=p.x.id;
       m.on('click',function(){ lastPinAt=Date.now(); hlId=p.x.id; scrollTo(p.x.id); });
       m.bindTooltip(esc(pinTitle(p)),{direction:'top',offset:[p.offset,-22]});
@@ -4902,8 +4941,17 @@
       if(lines[d].a.length>1){ var pl=L.polyline(lines[d].a,{color:lines[d].c,weight:3,opacity:.8,dashArray:'5 6'}).addTo(map); markers.push(pl); }
     });
     if(!map.__fit || mapDay!==map.__lastDay){ map.fitBounds(L.latLngBounds(ll).pad(.25)); if(ll.length===1) map.setZoom(14); map.__fit=1; map.__lastDay=mapDay; }
-    setTimeout(function(){ map.invalidateSize(); },60);
+    gKick();
     bindMapFallback();          // 🔴 之前只綁咗 Google 路徑，OSM 路徑冇綁
+    focusRequestedPin();
+  }
+  function focusRequestedPin(){
+    if(!requestedPinId) return;
+    var x=itemById(requestedPinId);
+    requestedPinId=null;
+    if(!x || hlId!==x.id || (x.date && x.date!==mapDay)) return;
+    flyTo(x);
+    setTimeout(function(){if(hlId===x.id && (!x.date || x.date===mapDay) && sizeMap()) openPin(x);},450);
   }
   function flyTo(x){
     if(x.lat==null || x.lng==null) return;
@@ -7060,7 +7108,7 @@
       if($('aiPanel') && $('aiPanel').classList.contains('open')){ aiClose(); return; }
       if($('side').classList.contains('open')){ sideOpen(false); return; }
       if($('sheet').classList.contains('show')){ closeSheet(); return; }
-      if($('mapwrap').classList.contains('open') && innerWidth<=820){ $('mapwrap').classList.remove('open'); return; }
+      if(mapIsOverlay() && $('mapwrap').classList.contains('open')){ $('mapwrap').classList.remove('open'); return; }
     }
     if((e.metaKey||e.ctrlKey)&&e.key==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); }
   });
@@ -7114,14 +7162,11 @@
     else if(act==='pinjump'){
       var xj=itemById(id); if(!xj) return;
       if(xj.lat==null){ setSync('err','這個項目沒有座標，地圖上看不到'); return; }
-      if(xj.date && mapDay!==xj.date){mapDay=xj.date;drawMap();}
+      if(xj.date) mapDay=xj.date;
       hlId=xj.id;
-      $('mapwrap').classList.add('open');           // 手機要先開地圖（desktop 本來就開）
-      setTimeout(function(){
-        if(map) map.invalidateSize(); gKick();
-        flyTo(xj);
-        setTimeout(function(){ openPin(xj); }, 450);
-      }, 90);
+      requestedPinId=xj.id;
+      revealMap();
+      drawMap();
     }
     else if(act==='mapdetail'){ ev.preventDefault(); var xm=itemById(id); if(xm) placeSheet(xm); }
     else if(act==='focus'){ var x=itemById(id); if(x){ hlId=x.id; render(); if(x.lat) flyTo(x); placeSheet(x); } }
@@ -7430,8 +7475,7 @@
       var selectedDay=$('s-d'+days().indexOf(mapDay));
       if(selectedDay) selectedDay.scrollIntoView({block:'start'});
     }
-    else if(act==='openmap'){ $('mapwrap').classList.add('open');
-      setTimeout(function(){ if(map) map.invalidateSize(); gKick(); },80); }
+    else if(act==='openmap'){ revealMap(); }
     else if(act==='closemap'){ $('mapwrap').classList.remove('open'); }
     else if(act==='menu-side'){ sideOpen(!$('side').classList.contains('open')); }
     else if(act==='closeside'){ sideOpen(false); }
@@ -7716,6 +7760,7 @@
   },15000);
   addEventListener('resize',gKick);
   addEventListener('orientationchange',gKick);
+  if(window.ResizeObserver) new ResizeObserver(gKick).observe($('mapwrap'));
   addEventListener('online',function(){
     setNet(); refreshIfChanged();
     // 離線期間 Google Maps 個 script 一定載失敗 → gState 變 'fail' → 之後就算有網
@@ -7873,15 +7918,15 @@
         var b=$('toTop'); if(!b) return;
         var hero=document.querySelector('.lochero, .locblock');
         var gate=hero && hero.offsetHeight>80 ? Math.round(hero.offsetHeight*0.72) : 240;
-        var mapOpen=$('mapwrap') && $('mapwrap').classList.contains('open') && window.innerWidth<=820;
+        var mapOpen=$('mapwrap').classList.contains('open') && mapIsOverlay();
         var on=docScroll.scrollTop>gate && !mapOpen;
         b.classList.toggle('on', on);
       };
       docScroll.addEventListener('scroll', syncToTop, {passive:true});
       syncToTop();
     }
-    var u=$('bUndo'), r=$('bRedo'), hb=$('hamb'), sc=document.querySelector('.sideclose');
-    if(u) u.innerHTML=ic('undo',17); if(r) r.innerHTML=ic('redo',17);
+    set('topUndoIcon','undo',17); set('dockUndoIcon','undo',18); set('bRedo','redo',17);
+    var hb=$('hamb'), sc=document.querySelector('.sideclose');
     if(hb) hb.innerHTML='<svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>';
     if(sc) sc.innerHTML=ic('x',16);
   })();
