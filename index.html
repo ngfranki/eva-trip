@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261124-v85">
+<html lang="zh-HK" data-build="20261124-v86">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -829,7 +829,7 @@
   .btnrow .btn{flex:1}
   .hint{font-size:0.8125rem; color:var(--muted); margin-top:9px; line-height:1.65}
   .hint.err{color:var(--warn)}
-  .menu{position:fixed; z-index:70; background:var(--card); border:1px solid var(--line); border-radius:9px; box-shadow:var(--sh2); padding:4px; min-width:180px}
+  .menu{position:fixed; z-index:70; background:var(--card); border:1px solid var(--line); border-radius:9px; box-shadow:var(--sh2); padding:4px; min-width:180px;max-height:calc(100dvh - 16px);overflow-y:auto}
   .menu button{display:block; width:100%; text-align:left; padding:8px 11px; border-radius:6px; font-size:0.875rem}
   .menu button:hover{background:var(--soft)}
   .menu button.dz{color:var(--warn)}
@@ -1125,7 +1125,9 @@
   #moveOtherDay{transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:8px 18px}
   #moveOtherDay.moveOn{background:var(--ink);color:var(--bg)}
   .tripMoving,.tripMoving *{cursor:grabbing !important;user-select:none !important;-webkit-user-select:none !important}
-  #moveNotice{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
+  .row.moveLanded{background:var(--leaf);box-shadow:inset 3px 0 var(--moss);border-radius:7px}
+  .moveCaption{display:block;font-size:.8125rem;font-weight:650;color:var(--moss);margin-top:2px}
+  #moveNotice{position:fixed;top:0;left:0;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
   @container itinerary (max-width:540px){
     .stopGrip{flex-basis:32px}
     .timedStop .stopButton{display:grid;grid-template-columns:minmax(0,1fr);gap:1px;padding:8px 2px}
@@ -1166,7 +1168,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261124-v85" style="padding-top:0">v85</div>
+        <div id="ver" data-build="20261124-v86" style="padding-top:0">v86</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1234,7 +1236,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261124-v85';
+  var APP_VER='20261124-v86';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -1727,7 +1729,7 @@
       var hero=document.querySelector('.home .locblock');
       if(hero) hero.outerHTML=locHeroHTML();
     }
-    if(doc) doc.scrollTop=y;
+    if(doc && !moveLanding) doc.scrollTop=y;
     if($('pan') && $('pan').__now) nowRender();
   }
   function tenkiLoad(p){
@@ -3679,6 +3681,7 @@
     upBtns();
     var t=curTrip();
     if(view==='home' || !t){
+      if(moveLanding) releaseMoveLanding();
       $('main').innerHTML=homeView();
       $('toc').innerHTML=toc();
       var v0=$('ver'); if(v0) v0.textContent='v '+APP_VER;
@@ -3699,6 +3702,7 @@
     var v=$('ver'); if(v) v.textContent='v '+APP_VER;
     drawMap();
     hereKick();
+    if(moveLanding) positionMovedStop();
   }
   // 封面：揀個有相、評分最高嘅地點做 hero；冇就用漸變
   // ==================== 首頁：行程格 ====================
@@ -5167,8 +5171,62 @@
     if(x.lat) flyTo(x);
   }
 
+  // Keep the destination in the itinerary pane while weather and route details settle.
+  var moveLanding=null, moveObserver=null;
+  function releaseMoveLanding(){
+    moveLanding=null;
+    if(moveObserver){moveObserver.disconnect();moveObserver=null;}
+  }
+  ['pointerdown','touchstart','wheel','keydown'].forEach(function(type){
+    document.addEventListener(type,releaseMoveLanding,{capture:true,passive:true});
+  });
+  document.addEventListener('click',function(ev){if(ev.detail===0)releaseMoveLanding();},true);
+  if(window.visualViewport) window.visualViewport.addEventListener('resize',positionMovedStop);
+  function positionMovedStop(){
+    if(!moveLanding)return;
+    var row=$('main').querySelector(moveLanding.selector);
+    if(!row || !row.getClientRects().length){releaseMoveLanding();return;}
+    if(!row.classList.contains('moveLanded')){
+      row.classList.add('moveLanded');
+      var caption=document.createElement('small');
+      caption.className='moveCaption';
+      caption.textContent=moveLanding.label;
+      row.querySelector('.stopButton > span, .rcard .nm').appendChild(caption);
+      if(moveLanding.keyboard) row.querySelector('.stopGrip, .kebab').focus({preventScroll:true});
+    }
+    var pane=$('doc'), bounds=pane.getBoundingClientRect();
+    var viewport=window.visualViewport;
+    var top=Math.max(bounds.top,pane.querySelector('.top').getBoundingClientRect().bottom,viewport?viewport.offsetTop:0);
+    var bottom=Math.min(bounds.bottom,viewport?viewport.offsetTop+viewport.height:window.innerHeight);
+    var dock=pane.querySelector('.tripDock').getBoundingClientRect();
+    if(dock.height)bottom=Math.min(bottom,dock.top);
+    if(bottom<=top)return;
+    var rect=row.getBoundingClientRect();
+    var desired=top+Math.max(0,bottom-top-rect.height)*0.42;
+    var delta=rect.top-desired;
+    if(Math.abs(delta)>1)pane.scrollTop+=delta;
+  }
+  function showMoveDestination(x,keyboard){
+    releaseMoveLanding();
+    var scope,label,items;
+    if(x.date){
+      expandedDay=curTrip().id+'|'+x.date;mapDay=x.date;
+      scope='day:'+x.date;label='第 '+(days().indexOf(x.date)+1)+' 日';items=dayItems(x.date);
+    }else{
+      foldOpen['s-'+x.listId]=1;
+      scope='list:'+x.listId;label=listLabel(tLists().find(function(l){return l.id===x.listId;}));items=listItems(x.listId);
+    }
+    label='已移至'+label+' · 第 '+(items.findIndex(function(item){return item.id===x.id;})+1)+' 項';
+    moveLanding={selector:'[data-drop="'+CSS.escape(scope)+'"] .row[data-id="'+CSS.escape(x.id)+'"]',label:label,keyboard:keyboard};
+    $('moveNotice').textContent=x.name+'，'+label;
+    if(window.ResizeObserver){
+      moveObserver=new ResizeObserver(positionMovedStop);
+      moveObserver.observe($('main'));
+      moveObserver.observe($('doc'));
+    }
+  }
   // Reuse the item itself so its booking, notes and documents follow its position.
-  function moveStopTo(id,scope,beforeId){
+  function moveStopTo(id,scope,beforeId,keyboard){
     var x=itemById(id), t=curTrip();
     if(!x || !t || x.tripId!==t.id || !scope)return false;
     var day=scope.startsWith('day:'), key=scope.slice(scope.indexOf(':')+1);
@@ -5193,13 +5251,8 @@
       ordered.forEach(function(row,i){row.ord=(i+1)*10;});
     }
     discardMovedRoutes(fromDate,x.date);
-    if(day){expandedDay=t.id+'|'+key;mapDay=key;}
+    showMoveDestination(x,keyboard);
     save();
-    if(day){
-      var row=$('main').querySelector('.timedStop[data-id="'+CSS.escape(id)+'"]');
-      if(row){row.querySelector('.stopGrip').focus({preventScroll:true});row.scrollIntoView({block:'nearest'});}
-    }
-    $('moveNotice').textContent=x.name+'已移至'+(day?'第 '+(days().indexOf(key)+1)+' 日':'清單')+'第 '+(index+1)+' 個位置';
     return true;
   }
   function movePositionOptions(id,date){
@@ -5500,7 +5553,7 @@
     document.body.appendChild(d);
     var r=ev.target.getBoundingClientRect(), w=d.offsetWidth, hh=d.offsetHeight;
     d.style.left=Math.max(8,Math.min(r.left-w+r.width, innerWidth-w-8))+'px';
-    d.style.top=(r.bottom+6+hh>innerHeight? r.top-hh-6 : r.bottom+6)+'px';
+    d.style.top=Math.max(8,r.bottom+6+hh>innerHeight-8? r.top-hh-6 : r.bottom+6)+'px';
   }
   function scopeOpts(x){
     var h='<optgroup label="清單">';
@@ -6099,7 +6152,7 @@
     }
     return 0;
   }
-  window.addEventListener('beforeprint',function(){printDays=true;render();});
+  window.addEventListener('beforeprint',function(){releaseMoveLanding();printDays=true;render();});
   window.addEventListener('afterprint',function(){printDays=false;render();});
   function dayPlan(d){
     var arr=dayItems(d);
@@ -7246,12 +7299,19 @@
         var el2=$('e'+key.charAt(0).toUpperCase()+key.slice(1));
         if(el2) x4[key]=(el2.value||'').trim();
       });
-      var sc2=$('eScope').value.split(':');
+      var oldScope=x4.date?'day:'+x4.date:'list:'+x4.listId;
+      var newScope=$('eScope').value, sc2=newScope.split(':');
+      var oldDate=x4.date;
       if(sc2[0]==='day'){ x4.date=sc2[1]; x4.listId=null; } else { x4.date=null; x4.listId=sc2[1]; }
       var ec=$('eChecks');
       if(ec){ var old=x4.checks||[]; x4.checks=ec.value.split('\n').map(function(l){return l.trim();}).filter(Boolean).map(function(t2){
         var p=old.filter(function(o){return o.t===t2;})[0]; return {t:t2, done:p?p.done:false}; }); }
-      save(); closeSheet();
+      closeSheet();
+      if(newScope!==oldScope){
+        discardMovedRoutes(oldDate,x4.date);
+        showMoveDestination(x4,ev.detail===0);
+      }
+      save();
     }
     else if(act==='relookup'){
       var x5=itemById(id); if(!x5) return; x5.lat=null; x5.lng=null; geoQ.push(id); pumpGeo();
@@ -7421,7 +7481,7 @@
     else if(act==='movestop'){moveStopSheet(id);}
     else if(act==='applystopmove'){
       var dest=$('moveDate').value, before=$('moveBefore').value;
-      closeSheet();moveStopTo(id,'day:'+dest,before);
+      closeSheet();moveStopTo(id,'day:'+dest,before,ev.detail===0);
     }
     else if(act==='readstop'){stopDetails(itemById(id));}
     else if(act==='doclibrary'){documentLibrary();}
