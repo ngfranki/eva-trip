@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-HK" data-build="20261124-v87">
+<html lang="zh-HK" data-build="20261125-v88">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1168,7 +1168,7 @@
       <button data-act="trips">切換旅程</button>
       <button data-act="settings">設定</button>
       <div class="verrow">
-        <div id="ver" data-build="20261124-v87" style="padding-top:0">v87</div>
+        <div id="ver" data-build="20261125-v88" style="padding-top:0">v88</div>
         <button class="forceup" data-act="forceup" type="button">強制更新</button>
       </div>
     </div>
@@ -1236,7 +1236,7 @@
   var SBK = 'sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj';
   var TABLE='trip_log', AI_URL=SB+'/functions/v1/trip-ai';
   var APP='trip', SESS_KEY='appSession.trip', AUTH=SB+'/functions/v1/app-auth';
-  var APP_VER='20261124-v87';
+  var APP_VER='20261125-v88';
 
   // kind：類型定義（icon、名、有冇座標、預設時間 label）
   var KINDS={
@@ -2298,6 +2298,7 @@
     });
   }
   function sceneStyle(art){
+    if(art.photo) return 'background-image:url('+esc(JSON.stringify(art.path))+');background-size:cover;background-position:center';
     if(art.standalone) return 'background-image:url('+art.path+');background-size:cover;background-position:center';
     var layers=(art.overlay?'url('+art.overlay+'),':'')+'url('+art.path+')';
     return 'background-image:'+layers+';background-size:'+art.cols*100+'% '+art.rows*100+'%;background-position:'+art.x+'% '+art.y+'%';
@@ -2328,7 +2329,7 @@
     var nearby=TripScenery.resolve(trip,lat,lng,hav,selectedScene,hint,myPos && myPos.acc);
     if(selectedScene && !nearby.options.some(function(o){return o.key===selectedScene;})) selectedScene='';
     var landmark=nearby.key;
-    if(!selectedScene && g.cachedScene && SCENE_KEYS.includes(g.cachedScene) && TripScenery.entry(trip,g.cachedScene)){
+    if(!selectedScene && g.cachedScene && (SCENE_KEYS.includes(g.cachedScene) || TripScenery.available?.(trip,g.cachedScene)) && TripScenery.entry(trip,g.cachedScene)){
       landmark=g.cachedScene;
       if(!nearby.options.some(function(o){return o.key===landmark;})) nearby.options=[];
     }
@@ -2380,7 +2381,7 @@
     // After the dawn window, keep a morning activity until 11 local time.
     var phase=!night && !light && c.loc<'11:00'?'morning':light;
     var scene=TripScenery.condition(w,night,phase);
-    var art=TripScenery.artwork(landmark,scene,night,phase);
+    var art=TripScenery.artwork(landmark,scene,night,phase,trip);
     var exact=nearby.options.length>0 || g.cachedScene===landmark || (g.src==='stop' && hint===landmark);
     var stop=TripScenery.entry(exact?trip:null,landmark);
     if(stop){
@@ -2394,6 +2395,7 @@
       }).join('')+'</select></label>';
     }
     var tag=g.src==='stop'? '<i class="loctag">行程推算</i>' : '';
+    if(art.photo) tag+=' <i class="loctag">地點相片</i>';
     var todayBits=[];
     function span(t){return '<span>'+esc(t)+'</span>';}
     if(g.src==='gps' && myPos && myPos.acc>100) todayBits.push(span('定位約 ±'+Math.round(myPos.acc)+' 米'));
@@ -2413,8 +2415,8 @@
           (cond?'<span class="loccond">'+esc(cond)+'</span>':'')+'</div>'
       : '';
     return '<div class="locblock">'+
-      '<div class="lochero '+skyClass+' '+lightClass+'"><div class="locimg" role="img" aria-label="'+esc((name||'旅途')+' · '+(cond||'旅程插畫'))+'" style="'+sceneStyle(art)+'"></div>'+
-        (scene.covered && scene.sky?'<div aria-hidden="true" class="precip '+scene.sky+'"></div>':'')+
+      '<div class="lochero '+skyClass+' '+lightClass+'"><div class="locimg" role="img" aria-label="'+esc((name||'旅途')+' · '+(art.photo?'地點相片':(cond||'旅程插畫'))) +'" style="'+sceneStyle(art)+'"></div>'+
+        (!art.photo && scene.covered && scene.sky?'<div aria-hidden="true" class="precip '+scene.sky+'"></div>':'')+
         '<div class="locsky">'+
           '<div class="locleft">'+
             (name?'<div class="locname">'+esc(name)+tag+'</div>':'')+
@@ -3794,7 +3796,7 @@
       var scenic=items.reduce(function(best,x){return coverScore(x)>coverScore(best)?x:best;},items[0]);
       var match=TripScenery.resolve(t,+scenic.lat,+scenic.lng,hav);
       if(match.options.length){
-        var panel=TripScenery.artwork(match.key,TripScenery.condition({code:0},false,''),false,'');
+        var panel=TripScenery.artwork(match.key,TripScenery.condition({code:0},false,''),false,'',t);
         return '<span class="locimg" aria-hidden="true" style="'+sceneStyle(panel)+'"></span>';
       }
     }

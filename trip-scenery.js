@@ -30,6 +30,17 @@ const TripScenery = (() => {
     const row=stop || places[key];
     return row && {key,place:row[0],lat:row[1],lng:row[2],q:row[0],src:'stop'};
   }
+  function venuePhoto(trip,key){
+    const photo=trip?.sceneStops?.[key]?.[3]?.photo;
+    if(typeof photo!=='string') return '';
+    try {
+      const url=new URL(photo);
+      return url.protocol==='https:' ? url.href : '';
+    } catch { return ''; }
+  }
+  function available(trip,key){
+    return SCENE_KEYS.includes(key) || Boolean(venuePhoto(trip,key));
+  }
   function planned(trip,now){
     if(!trip) return null;
     const jp=new Date(now.getTime()+9*3600000);
@@ -46,7 +57,7 @@ const TripScenery = (() => {
     const nearby=[];
     if(Number.isFinite(lat) && Number.isFinite(lng)){
       for(const [key,[place,y,x]] of Object.entries(trip?.sceneStops || {})){
-        if(!SCENE_KEYS.includes(key)) continue;
+        if(!available(trip,key)) continue;
         const km=distance([lat,lng],[y,x]);
         if(km<=0.22) nearby.push({key,place,km});
       }
@@ -331,7 +342,12 @@ const TripScenery = (() => {
       SCENE_KEYS.flatMap(key=>[atlasPath(key),atlasPath(key+'-b')])
     );
   }
-  function artwork(key,scene,night,light){
+  function artwork(key,scene,night,light,trip){
+    if(!SCENE_KEYS.includes(key)){
+      const path=venuePhoto(trip,key);
+      if(path) return {path,standalone:true,photo:true};
+      key='default';
+    }
     let tile=-1;
     if(scene.covered && ['rain','downpour'].includes(scene.kind)) tile=night?28:light==='morning'?26:27;
     else if(scene.covered && scene.kind==='snow' && !night && light!=='morning') tile=29;
@@ -349,5 +365,5 @@ const TripScenery = (() => {
     if(overlayRevisions[stem]?.tiles.includes(tile)) art.overlay=overlayPath(stem);
     return art;
   }
-  return {places,entry,nearest,planned,resolve,panels,condition,artwork,offlineArtwork};
+  return {places,entry,available,nearest,planned,resolve,panels,condition,artwork,offlineArtwork};
 })();
