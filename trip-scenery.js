@@ -108,7 +108,7 @@ const TripScenery = (() => {
   const nightKinds=['partly','overcast','fog','wind','downpour','freezingrain','sleet','storm','hail','heavysnow','blizzard'];
   // First 12 characters of each revised WebP's SHA-256. An absent tile keeps its original atlas panel.
   const tileRevisions={'narita-b1':'506881713572','tokachi-b29':'c19e0db2fa1f'};
-  const atlasRevisions={};
+  const atlasRevisions={"spot-0a971d163":"e60abb557c9c","spot-0a971d163-b":"256b04de39a7","spot-7dc89ac25":"6c4b9fc5c613","spot-7dc89ac25-b":"b9162f18e7bd"};
   // Each sparse overlay has its original atlas dimensions and lists only the tiles it corrects.
   const overlayRevisions={
     "akan":{"rev":"08afd52883ce","tiles":[4]},
